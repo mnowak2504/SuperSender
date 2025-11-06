@@ -1,36 +1,141 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MAK Consulting Supersender - MVP
 
-## Getting Started
+System zarządzania magazynem i wysyłkami dla MAK Consulting.
 
-First, run the development server:
+## Funkcjonalności MVP
 
+### Role użytkowników
+- **Klient** - widzi wyłącznie własne dane
+- **Magazyn** - widzi i edytuje wszystkie dostawy/zamówienia operacyjne
+- **Biuro/Administrator** - pełny dostęp, konfiguracja cen/planów, płatności, transport
+
+### Główne funkcje
+
+#### Panel Klienta
+- Dashboard z informacjami o kodzie klienta, opiekunie, planie, zajętości przestrzeni
+- Zgłaszanie dostaw (formularz)
+- Przegląd dostaw i zamówień na magazynie
+- Wizard do zlecania wysyłki (wybór zamówień → adres → tryb transportu)
+- Przegląd faktur i płatności (abonament/transport/operacje)
+
+#### Panel Magazynu
+- Lista oczekujących dostaw
+- Formularz przyjęcia dostawy (liczba paczek, stan, uwagi, min. 2 zdjęcia)
+- Lista zamówień do spakowania
+- Wprowadzanie wagi i wymiarów po spakowaniu
+- Zarządzanie wysyłkami (statusy: gotowe do załadunku → w trasie → dostarczone)
+
+#### Panel Biura/Admin
+- Zarządzanie klientami (tworzenie, aktywacja, nadawanie kodów MN-IE-001)
+- Wycena transportu
+- Generowanie faktur (3 typy)
+- Konfiguracja planów abonamentowych
+
+### Płatności
+- Integracja z Revolut (stub - wymaga implementacji)
+- Generowanie linków płatniczych
+- Webhook potwierdzenia płatności
+
+## Technologie
+
+- **Framework**: Next.js 15 (App Router)
+- **Baza danych**: PostgreSQL (Supabase)
+- **ORM**: Prisma
+- **Autentykacja**: NextAuth.js
+- **Stylowanie**: Tailwind CSS
+- **Języki**: TypeScript
+
+## Instalacja
+
+1. Sklonuj repozytorium:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repo-url>
+cd supersender
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Zainstaluj zależności:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Skonfiguruj zmienne środowiskowe:
+Skopiuj `.env.example` do `.env` i uzupełnij:
+- `DATABASE_URL` - connection string do Supabase PostgreSQL
+  Format: `postgresql://postgres:[PASSWORD]@db.ewqthhqjxxujpcmjtfme.supabase.co:5432/postgres`
+- `NEXTAUTH_SECRET` - losowy sekret (np. wygeneruj przez `openssl rand -base64 32`)
+- `NEXTAUTH_URL` - URL aplikacji (dla dev: `http://localhost:3000`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Uruchom migracje Prisma:
+```bash
+npx prisma migrate dev
+npx prisma generate
+```
 
-## Learn More
+5. Uruchom serwer deweloperski:
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Aplikacja będzie dostępna pod adresem `http://localhost:3000`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Konfiguracja bazy danych
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Supabase Setup
+1. Zaloguj się do Supabase Dashboard
+2. Pobierz hasło bazy danych z Settings > Database
+3. Użyj connection string w formacie:
+```
+postgresql://postgres:[YOUR-PASSWORD]@db.ewqthhqjxxujpcmjtfme.supabase.co:5432/postgres
+```
 
-## Deploy on Vercel
+### Struktura bazy danych
+Schema Prisma zawiera wszystkie modele:
+- User (z rolami)
+- Client
+- Plan
+- DeliveryExpected
+- WarehouseOrder
+- ShipmentOrder
+- Invoice
+- Address
+- Media
+- ChangeLog
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Użycie
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Rejestracja
+Domyślnie rejestracja tworzy użytkownika z rolą CLIENT. Admin musi:
+1. Zaakceptować klienta
+2. Ustawić kod klienta (format: MN-IE-001)
+3. Przypisać plan abonamentowy
+
+### Przepływ pracy
+
+1. **Klient zgłasza dostawę** → status: EXPECTED
+2. **Magazyn przyjmuje dostawę** → status: RECEIVED, tworzy WarehouseOrder
+3. **Klient zleca wysyłkę** → wybiera zamówienia, adres, tryb transportu
+4. **Magazyn pakuje** → wprowadza wymiary/wagę, status: READY_FOR_QUOTE
+5. **Biuro wycenia** → proponuje cenę, klient akceptuje
+6. **Generowanie faktury** → jeśli MAK transport, faktura przed załadunkiem
+7. **Płatność** → przez Revolut link
+8. **Załadunek** → status: READY_FOR_LOADING → IN_TRANSIT → DELIVERED
+
+## TODO / Do implementacji
+
+- [ ] Upload zdjęć do cloud storage (obecnie stub)
+- [ ] Integracja z rzeczywistym API Revolut
+- [ ] System powiadomień e-mail (obecnie stub)
+- [ ] RLS (Row Level Security) w Supabase
+- [ ] Implementacja pełnego i18n (obecnie podstawowe)
+- [ ] Testy jednostkowe i E2E
+- [ ] CI/CD pipeline
+
+## Notatki techniczne
+
+- **Języki**: EN dla klienta, PL dla magazynu/biura (podstawowa implementacja)
+- **Mobile-friendly**: Magazyn zoptymalizowany pod upload zdjęć
+- **Log zmian**: ChangeLog zapisuje wszystkie operacje magazynowe
+
+## Licencja
+
+Wewnętrzny projekt MAK Consulting.

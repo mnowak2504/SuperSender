@@ -1,0 +1,336 @@
+// Prisma schema for Supersender MVP
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CLIENT
+  WAREHOUSE
+  ADMIN
+  SUPERADMIN
+}
+
+enum DeliveryExpectedStatus {
+  EXPECTED
+  RECEIVED
+  REJECTED
+}
+
+enum WarehouseOrderStatus {
+  AT_WAREHOUSE
+  BEING_PACKED
+  TO_PACK
+  READY_FOR_QUOTE
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+}
+
+enum ShipmentStatus {
+  REQUESTED
+  QUOTED
+  AWAITING_ACCEPTANCE
+  AWAITING_PAYMENT
+  READY_FOR_LOADING
+  IN_TRANSIT
+  DELIVERED
+}
+
+enum InvoiceType {
+  SUBSCRIPTION
+  TRANSPORT
+  OPERATIONS
+}
+
+enum InvoiceStatus {
+  ISSUED
+  PAID
+  OVERDUE
+}
+
+enum TransportMode {
+  MAK
+  CLIENT_OWN
+}
+
+enum PackageType {
+  PACKAGE
+  PALLET
+}
+
+enum TransportPricingType {
+  FIXED_PER_UNIT
+  DYNAMIC_M3_WEIGHT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  phone        String?
+  role         Role     @default(CLIENT)
+  client       Client?  @relation(fields: [clientId], references: [id])
+  clientId     String?
+  changeLogs   ChangeLog[]
+  salesClients Client[] @relation("SalesOwner")
+  quotedShipments ShipmentOrder[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Client {
+  id                 String    @id @default(cuid())
+  displayName        String
+  email              String
+  phone              String?
+  country            String
+  clientCode         String    @unique
+  salesOwnerCode     String
+  plan               Plan?     @relation(fields: [planId], references: [id])
+  planId             String?
+  status             String
+  spaceUsagePct      Int       @default(0)
+  usedCbm            Float     @default(0)
+  limitCbm           Float     @default(0)
+  caretakerName      String?
+  caretakerContact   String?
+  salesOwner         User?     @relation("SalesOwner", fields: [salesOwnerId], references: [id])
+  salesOwnerId       String?
+
+  users              User[]
+  addresses          Address[]
+  expectedDeliveries DeliveryExpected[]
+  warehouseOrders    WarehouseOrder[]
+  shipmentOrders     ShipmentOrder[]
+  invoices           Invoice[]
+  warehouseCapacity  WarehouseCapacity?
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model Plan {
+  id                 String   @id @default(cuid())
+  name               String
+  deliveriesPerMonth Int
+  spaceLimitCbm      Float
+  overSpaceRateEur   Float
+  operationsRateEur  Float
+  clients            Client[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model DeliveryExpected {
+  id               String                  @id @default(cuid())
+  client           Client                  @relation(fields: [clientId], references: [id])
+  clientId         String
+  deliveryNumber   String?                 @unique // Auto-generated unique number (e.g., "DEL-2024-001")
+  supplierName     String
+  goodsDescription String
+  orderNumber      String?
+  eta              DateTime?
+  status           DeliveryExpectedStatus  @default(EXPECTED)
+  location         String?
+  photos           Media[]
+  warehouseOrder   WarehouseOrder?
+  createdAt        DateTime                @default(now())
+}
+
+model WarehouseOrder {
+  id                 String                 @id @default(cuid())
+  client             Client                 @relation(fields: [clientId], references: [id])
+  clientId           String
+  sourceDelivery     DeliveryExpected?      @relation(fields: [sourceDeliveryId], references: [id])
+  sourceDeliveryId   String?                @unique
+  status             WarehouseOrderStatus   @default(AT_WAREHOUSE)
+  packedLengthCm     Int?
+  packedWidthCm      Int?
+  packedHeightCm     Int?
+  packedWeightKg     Float?
+  photosBeforeWrap   Media[] @relation("PhotosBeforeWrap")
+  photosAfterWrap    Media[] @relation("PhotosAfterWrap")
+  packages           Package[]
+  createdAt          DateTime               @default(now())
+  shipmentItems      ShipmentItem[]
+}
+
+model ShipmentOrder {
+  id                 String           @id @default(cuid())
+  client             Client           @relation(fields: [clientId], references: [id])
+  clientId           String
+  deliveryAddress    Address          @relation(fields: [deliveryAddressId], references: [id])
+  deliveryAddressId  String
+  transportMode        TransportMode
+  timeWindowFrom     DateTime?
+  timeWindowTo       DateTime?
+  status             ShipmentStatus   @default(REQUESTED)
+  proposedPriceEur   Float?
+  calculatedPriceEur Float?
+  transportPricing   TransportPricing? @relation(fields: [transportPricingId], references: [id])
+  transportPricingId String?
+  clientTransportChoice String?      // 'ACCEPT', 'REQUEST_CUSTOM', 'OWN_TRANSPORT'
+  customQuoteRequestedAt DateTime?
+  salesOwner         User?           @relation(fields: [salesOwnerId], references: [id])
+  salesOwnerId       String?
+  acceptedAt         DateTime?
+  // Own transport details
+  ownTransportVehicleReg String?     // Vehicle registration number (for pallets/lorry)
+  ownTransportTrailerReg String?     // Trailer registration number (optional, for pallets/lorry)
+  ownTransportCarrier   String?     // Carrier name (for parcels)
+  ownTransportTrackingNumber String? // Tracking number (for parcels)
+  ownTransportPlannedLoadingDate DateTime? // Planned loading date (set by client)
+  // MAK transport details (set by warehouse/admin)
+  transportCompanyName String?      // Transport company name
+  plannedLoadingDate DateTime?      // Planned loading date (set by warehouse/admin)
+  plannedDeliveryDateFrom DateTime?  // Planned delivery date range (from)
+  plannedDeliveryDateTo DateTime?   // Planned delivery date range (to)
+  items              ShipmentItem[]
+  packages           Package[]        // Packages created when packing this shipment
+  createdAt          DateTime         @default(now())
+}
+
+model ShipmentItem {
+  id               String          @id @default(cuid())
+  shipment         ShipmentOrder   @relation(fields: [shipmentId], references: [id])
+  shipmentId       String
+  warehouseOrder   WarehouseOrder  @relation(fields: [warehouseOrderId], references: [id])
+  warehouseOrderId String
+  @@unique([shipmentId, warehouseOrderId])
+}
+
+model Invoice {
+  id                String        @id @default(cuid())
+  client            Client        @relation(fields: [clientId], references: [id])
+  clientId          String
+  type              InvoiceType
+  amountEur         Float
+  currency          String        @default("EUR")
+  status            InvoiceStatus @default(ISSUED)
+  revolutLink       String?
+  dueDate           DateTime
+  createdAt         DateTime      @default(now())
+  paidAt            DateTime?
+}
+
+model Address {
+  id            String   @id @default(cuid())
+  client        Client   @relation(fields: [clientId], references: [id])
+  clientId      String
+  contactName   String
+  contactPhone  String
+  line1         String
+  line2         String?
+  city          String
+  postalCode    String
+  country       String
+  isDefault     Boolean  @default(false)
+  shipments     ShipmentOrder[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Media {
+  id                    String           @id @default(cuid())
+  url                   String
+  kind                  String
+  deliveryExpected      DeliveryExpected? @relation(fields: [deliveryExpectedId], references: [id])
+  deliveryExpectedId    String?
+  warehouseOrderBefore  WarehouseOrder?   @relation("PhotosBeforeWrap", fields: [warehouseOrderBeforeId], references: [id])
+  warehouseOrderBeforeId String?
+  warehouseOrderAfter   WarehouseOrder?   @relation("PhotosAfterWrap", fields: [warehouseOrderAfterId], references: [id])
+  warehouseOrderAfterId  String?
+  createdAt             DateTime          @default(now())
+}
+
+model ChangeLog {
+  id         String   @id @default(cuid())
+  actor      User     @relation(fields: [actorId], references: [id])
+  actorId    String
+  entityType String
+  entityId   String
+  action     String
+  details    String?
+  createdAt  DateTime @default(now())
+}
+
+model Package {
+  id              String          @id @default(cuid())
+  warehouseOrder  WarehouseOrder?  @relation(fields: [warehouseOrderId], references: [id], onDelete: Cascade)
+  warehouseOrderId String?
+  shipmentOrder   ShipmentOrder?   @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  shipmentId      String?
+  type            PackageType     @default(PACKAGE)
+  widthCm         Int
+  lengthCm        Int
+  heightCm        Int
+  weightKg        Float
+  volumeCbm       Float           // Calculated: (width * length * height) / 1,000,000 * 1.05
+  createdAt       DateTime        @default(now())
+}
+
+model WarehouseCapacity {
+  id              String   @id @default(cuid())
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId        String   @unique
+  limitCbm       Float      @default(0)
+  usedCbm        Float     @default(0)
+  usagePercent    Float     @default(0)
+  isOverLimit     Boolean   @default(false)
+  lastCalculatedAt DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model TransportPricing {
+  id              String   @id @default(cuid())
+  name            String
+  type            TransportPricingType @default(FIXED_PER_UNIT)
+  weightMinKg     Float?
+  weightMaxKg     Float?
+  volumeMinCbm    Float?
+  volumeMaxCbm    Float?
+  palletCountMin  Int?     // For pallet pricing rules
+  palletCountMax  Int?     // For pallet pricing rules
+  priceEur        Float
+  transportType   String   @default("PALLET") // 'PALLET' or 'PACKAGE'
+  isActive        Boolean  @default(true)
+  priority        Int      @default(0) // Higher priority = checked first
+  shipments       ShipmentOrder[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model MetricsDaily {
+  id                    String   @id @default(cuid())
+  date                  DateTime @unique @db.Date
+  totalCbmUsed          Float    @default(0)
+  totalClients          Int      @default(0)
+  averageUsagePercent   Float    @default(0)
+  totalRevenueEur       Float    @default(0)
+  subscriptionRevenueEur Float   @default(0)
+  transportRevenueEur   Float    @default(0)
+  overSpaceRevenueEur   Float    @default(0)
+  averageTransportCostEur Float?
+  totalShipments        Int      @default(0)
+  clientsOverLimit      Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model TranslationCache {
+  id            String   @id @default(cuid())
+  originalText  String
+  translatedText String
+  sourceLang    String
+  targetLang    String
+  createdAt     DateTime @default(now())
+
+  @@unique([originalText, sourceLang, targetLang])
+}
