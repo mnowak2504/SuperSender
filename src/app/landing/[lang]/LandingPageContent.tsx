@@ -529,7 +529,7 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <h3 className="text-xl font-bold text-white mb-4">{translations.footer_company}</h3>
-              <p className="text-sm whitespace-pre-line">{translations.footer_address}</p>
+              <p className="text-sm whitespace-pre-line">{translations.footer_registered_office}</p>
             </div>
             <div>
               <h4 className="text-lg font-semibold text-white mb-4">{translations.footer_address_title}</h4>
@@ -566,8 +566,11 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
             </div>
             <div>
               <h4 className="text-lg font-semibold text-white mb-4">{translations.nav_contact}</h4>
-              <p className="text-sm">
-                {translations.footer_address}
+              <p className="text-sm whitespace-pre-line">
+                {translations.footer_warehouse_address}
+                <br />
+                <br />
+                {translations.footer_office_address}
               </p>
             </div>
           </div>

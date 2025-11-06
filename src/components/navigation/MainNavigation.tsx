@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import { languages, type Language, getTranslations } from '@/lib/i18n'
 import { useLanguage } from '@/lib/use-language'
@@ -50,9 +51,16 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
           <div className="flex items-center">
             <Link 
               href={isLandingPage ? `/landing/${currentLang}` : '/landing/en'} 
-              className="text-2xl font-bold text-blue-600"
+              className="flex items-center"
             >
-              MAK Consulting
+              <Image
+                src="/logo-mak.png"
+                alt="MAK Consulting"
+                width={120}
+                height={40}
+                className="h-10 w-auto"
+                priority
+              />
             </Link>
           </div>
           
