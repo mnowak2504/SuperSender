@@ -4,13 +4,17 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
+import { useLanguage } from '@/lib/use-language'
 
 export default function SignUpPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -18,6 +22,17 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    
+    // Validate checkboxes
+    if (!acceptTerms) {
+      setError(t('signup_terms_required'))
+      return
+    }
+    if (!acceptPrivacy) {
+      setError(t('signup_privacy_required'))
+      return
+    }
+    
     setLoading(true)
 
     try {
@@ -36,7 +51,7 @@ export default function SignUpPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || 'Registration failed')
+        setError(data.error || t('signup_error'))
         setLoading(false)
         return
       }
@@ -68,7 +83,7 @@ export default function SignUpPage() {
         }, 2000)
       }
     } catch (err) {
-      setError('An error occurred. Please try again.')
+      setError(t('signup_error'))
       setLoading(false)
     }
   }
@@ -79,8 +94,8 @@ export default function SignUpPage() {
         <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
           <div className="text-center">
             <div className="text-green-600 text-5xl mb-4">✓</div>
-            <h2 className="text-2xl font-bold text-gray-900">Registration Successful!</h2>
-            <p className="mt-2 text-gray-600">Redirecting to sign in...</p>
+            <h2 className="text-2xl font-bold text-gray-900">{t('signup_success_title')}</h2>
+            <p className="mt-2 text-gray-600">{t('signup_success_message')}</p>
           </div>
         </div>
       </div>
@@ -92,10 +107,10 @@ export default function SignUpPage() {
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
         <div>
           <h2 className="text-center text-3xl font-bold text-gray-900">
-            MAK Consulting Supersender
+            {t('signup_title')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Create your account
+            {t('signup_subtitle')}
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -107,7 +122,7 @@ export default function SignUpPage() {
           <div className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name
+                {t('signup_full_name')}
               </label>
               <input
                 id="name"
@@ -121,7 +136,7 @@ export default function SignUpPage() {
             </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+                {t('signup_email')}
               </label>
               <input
                 id="email"
@@ -136,7 +151,7 @@ export default function SignUpPage() {
             </div>
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                Phone (optional)
+                {t('signup_phone')}
               </label>
               <input
                 id="phone"
@@ -150,7 +165,7 @@ export default function SignUpPage() {
             </div>
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
+                {t('signup_password')}
               </label>
               <input
                 id="password"
@@ -165,21 +180,66 @@ export default function SignUpPage() {
             </div>
           </div>
 
+          <div className="space-y-3">
+            <div className="flex items-start">
+              <div className="flex items-center h-5">
+                <input
+                  id="accept-terms"
+                  name="accept-terms"
+                  type="checkbox"
+                  required
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+              </div>
+              <div className="ml-3 text-sm">
+                <label htmlFor="accept-terms" className="text-gray-700">
+                  {t('signup_accept_terms')}{' '}
+                  <Link href="/terms" target="_blank" className="text-blue-600 hover:text-blue-500 underline">
+                    {t('signup_terms_link')}
+                  </Link>
+                </label>
+              </div>
+            </div>
+            <div className="flex items-start">
+              <div className="flex items-center h-5">
+                <input
+                  id="accept-privacy"
+                  name="accept-privacy"
+                  type="checkbox"
+                  required
+                  checked={acceptPrivacy}
+                  onChange={(e) => setAcceptPrivacy(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+              </div>
+              <div className="ml-3 text-sm">
+                <label htmlFor="accept-privacy" className="text-gray-700">
+                  {t('signup_accept_privacy')}{' '}
+                  <Link href="/privacy" target="_blank" className="text-blue-600 hover:text-blue-500 underline">
+                    {t('signup_privacy_link')}
+                  </Link>
+                </label>
+              </div>
+            </div>
+          </div>
+
           <div>
             <button
               type="submit"
               disabled={loading}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              {loading ? 'Creating account...' : 'Sign up'}
+              {loading ? t('signup_button_loading') : t('signup_button')}
             </button>
           </div>
 
           <div className="text-center">
             <p className="text-sm text-gray-600">
-              Already have an account?{' '}
+              {t('signup_already_have')}{' '}
               <Link href="/auth/signin" className="font-medium text-blue-600 hover:text-blue-500">
-                Sign in
+                {t('signup_sign_in')}
               </Link>
             </p>
           </div>
