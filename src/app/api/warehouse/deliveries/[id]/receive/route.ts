@@ -4,10 +4,11 @@ import { prisma } from '@/lib/prisma'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
+    const { id } = await params
     const role = (session?.user as any)?.role
 
     if (!session || (role !== 'WAREHOUSE' && role !== 'SUPERADMIN')) {
@@ -33,12 +34,12 @@ export async function POST(
     const photoUrls: string[] = []
     for (let i = 0; i < photos.length; i++) {
       // TODO: Implement actual file upload
-      photoUrls.push(`/uploads/delivery-${params.id}-${i}.jpg`)
+      photoUrls.push(`/uploads/delivery-${id}-${i}.jpg`)
     }
 
     // Update delivery status
     const delivery = await prisma.deliveryExpected.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: 'RECEIVED',
         location: location || null,

@@ -6,10 +6,11 @@ export const runtime = 'nodejs'
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { planId: string } }
+  { params }: { params: Promise<{ planId: string }> }
 ) {
   try {
     const session = await auth()
+    const { planId } = await params
 
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -23,7 +24,7 @@ export async function GET(
     const { data: plan, error } = await supabase
       .from('Plan')
       .select('*')
-      .eq('id', params.planId)
+      .eq('id', planId)
       .single()
 
     if (error || !plan) {

@@ -7,10 +7,11 @@ export const runtime = 'nodejs'
 // Update address
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
+    const { id } = await params
 
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -47,7 +48,7 @@ export async function PUT(
     const { data: address } = await supabase
       .from('Address')
       .select('clientId')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!address || address.clientId !== clientId) {
@@ -60,7 +61,7 @@ export async function PUT(
         .from('Address')
         .update({ isDefault: false })
         .eq('clientId', clientId)
-        .neq('id', params.id)
+        .neq('id', id)
     }
 
     const { data: updatedAddress, error } = await supabase
@@ -75,7 +76,7 @@ export async function PUT(
         country,
         isDefault: isDefault || false,
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -94,10 +95,11 @@ export async function PUT(
 // Delete address
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
+    const { id } = await params
 
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -131,7 +133,7 @@ export async function DELETE(
     const { data: address } = await supabase
       .from('Address')
       .select('clientId')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!address || address.clientId !== clientId) {
@@ -141,7 +143,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('Address')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       console.error('Error deleting address:', error)

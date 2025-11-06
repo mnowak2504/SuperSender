@@ -6,10 +6,11 @@ export const runtime = 'nodejs'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
+    const { id } = await params
 
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -43,7 +44,7 @@ export async function POST(
     const { data: address } = await supabase
       .from('Address')
       .select('clientId')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!address || address.clientId !== clientId) {
@@ -60,7 +61,7 @@ export async function POST(
     const { data: updatedAddress, error } = await supabase
       .from('Address')
       .update({ isDefault: true })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 

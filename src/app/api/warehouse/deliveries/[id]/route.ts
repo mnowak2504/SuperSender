@@ -4,10 +4,11 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
+    const { id } = await params
     const role = (session?.user as any)?.role
 
     if (!session || (role !== 'WAREHOUSE' && role !== 'SUPERADMIN')) {
@@ -15,7 +16,7 @@ export async function GET(
     }
 
     const delivery = await prisma.deliveryExpected.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         client: true,
         photos: true,
