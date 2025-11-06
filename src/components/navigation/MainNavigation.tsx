@@ -51,7 +51,7 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
           <div className="flex items-center">
             <Link 
               href={isLandingPage ? `/landing/${currentLang}` : '/landing/en'} 
-              className="flex items-center"
+              className="flex items-center gap-3"
             >
               <Image
                 src="/logo-mak.png"
@@ -61,6 +61,10 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
                 className="h-10 w-auto"
                 priority
               />
+              <div className="flex flex-col">
+                <span className="text-xl font-bold text-gray-900 leading-tight">SUPERSENDER</span>
+                <span className="text-xs text-gray-600 leading-tight">by MAK Consulting</span>
+              </div>
             </Link>
           </div>
           

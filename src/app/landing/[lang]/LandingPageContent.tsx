@@ -548,14 +548,14 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
                   </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition">
+                  <Link href="/terms" className="hover:text-white transition">
                     {translations.footer_links_terms}
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition">
+                  <Link href="/privacy" className="hover:text-white transition">
                     {translations.footer_links_privacy}
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <a href="#contact" className="hover:text-white transition">
@@ -578,8 +578,8 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
             <p>© {new Date().getFullYear()} {translations.footer_company} | {translations.footer_rights}</p>
             <p className="mt-2">
               <Link href="/about" className="hover:text-white transition mr-4">{translations.footer_links_about}</Link>
-              <a href="#" className="hover:text-white transition mr-4">{translations.footer_links_terms}</a>
-              <a href="#" className="hover:text-white transition mr-4">{translations.footer_links_privacy}</a>
+              <Link href="/terms" className="hover:text-white transition mr-4">{translations.footer_links_terms}</Link>
+              <Link href="/privacy" className="hover:text-white transition mr-4">{translations.footer_links_privacy}</Link>
               <a href="#contact" className="hover:text-white transition">{translations.footer_links_contact}</a>
             </p>
           </div>
