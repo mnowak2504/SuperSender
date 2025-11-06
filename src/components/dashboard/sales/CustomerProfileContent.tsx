@@ -35,8 +35,15 @@ interface Client {
   createdAt: string
   Plan?: {
     name: string
-    priceEur: number
-  }
+    priceEur?: number
+    spaceLimitCbm?: number
+    deliveriesPerMonth?: number
+  } | Array<{
+    name: string
+    priceEur?: number
+    spaceLimitCbm?: number
+    deliveriesPerMonth?: number
+  }>
   WarehouseCapacity?: {
     usedCbm: number
     limitCbm: number
@@ -136,12 +143,19 @@ export default function CustomerProfileContent({
               </div>
               <div>
                 <p className="text-xs text-gray-500">Plan</p>
-                <p className="text-sm font-medium text-gray-900">{client.Plan?.name || 'No Plan'}</p>
-                {client.Plan && (
-                  <p className="text-xs text-gray-500">
-                    {client.Plan.spaceLimitCbm?.toFixed(2) || 0} m³, {client.Plan.deliveriesPerMonth || 0} deliveries/month
-                  </p>
-                )}
+                {(() => {
+                  const plan = Array.isArray(client.Plan) ? client.Plan[0] : client.Plan
+                  return (
+                    <>
+                      <p className="text-sm font-medium text-gray-900">{plan?.name || 'No Plan'}</p>
+                      {plan && (
+                        <p className="text-xs text-gray-500">
+                          {plan.spaceLimitCbm?.toFixed(2) || 0} m³, {plan.deliveriesPerMonth || 0} deliveries/month
+                        </p>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
               <div>
                 <p className="text-xs text-gray-500">Assigned Sales Owner</p>

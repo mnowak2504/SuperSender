@@ -84,7 +84,7 @@ export default async function PackShipmentPage({
     )
   }
 
-  const client = shipment.Client
+  const client = Array.isArray(shipment.Client) ? shipment.Client[0] : shipment.Client
   const warehouseOrders = shipment.items?.map((item: any) => item.warehouseOrder).filter(Boolean) || []
 
   return (
@@ -111,7 +111,7 @@ export default async function PackShipmentPage({
           <div>
             <dt className="text-sm font-medium text-gray-500">Klient</dt>
             <dd className="mt-1 text-sm text-gray-900">
-              {client?.displayName || 'Brak'} ({client?.clientCode || 'Brak kodu'})
+              {(client as any)?.displayName || 'Brak'} ({(client as any)?.clientCode || 'Brak kodu'})
             </dd>
           </div>
           <div>

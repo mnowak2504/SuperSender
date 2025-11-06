@@ -59,7 +59,11 @@ export default function ConfirmShipmentButton({ shipmentId }: ConfirmShipmentBut
 
   return (
     <div>
-      {error && <AlertBanner type="error" message={error} className="mb-2" />}
+      {error && (
+        <div className="mb-2">
+          <AlertBanner type="error" title="Błąd" message={error} />
+        </div>
+      )}
       <button
         onClick={handleConfirm}
         disabled={loading}

@@ -247,6 +247,5 @@ export const db = {
   },
 }
 
-// Export supabase client for direct use when needed
-export { supabase }
+// supabase is already exported above
 

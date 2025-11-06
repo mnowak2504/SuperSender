@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
         clientCode: client.clientCode,
         email: client.email,
         country: client.country,
-        plan: client.Plan?.name || 'No Plan',
+        plan: (Array.isArray(client.Plan) && client.Plan.length > 0 ? (client.Plan[0] as any)?.name : (client.Plan as any)?.name) || 'No Plan',
         planId: client.planId,
         storageUsed: capacity?.usedCbm || 0,
         storageLimit: capacity?.limitCbm || client.limitCbm || 0,

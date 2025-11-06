@@ -110,9 +110,9 @@ export default function SalesDashboardContent() {
               <span className="text-xs text-gray-600">
                 {kpi?.quotesAwaitingAction?.over24h || 0} &gt;24h
               </span>
-              {kpi?.quotesAwaitingAction?.over48h > 0 && (
+              {(kpi?.quotesAwaitingAction?.over48h || 0) > 0 && (
                 <span className="text-xs text-red-600 font-medium">
-                  {kpi.quotesAwaitingAction.over48h} &gt;48h
+                  {kpi?.quotesAwaitingAction?.over48h || 0} &gt;48h
                 </span>
               )}
             </div>

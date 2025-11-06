@@ -12,7 +12,12 @@ interface DeliveryAlert {
   Client: {
     displayName: string
     clientCode: string
-  }
+    email?: string
+  } | Array<{
+    displayName: string
+    clientCode: string
+    email?: string
+  }>
   daysPending: number
 }
 
@@ -40,15 +45,20 @@ export default function DeliveryAlertsSection() {
 
   const handleContactSupplier = (alert: DeliveryAlert) => {
     // TODO: Open email draft or modal
+    const client = Array.isArray(alert.Client) ? alert.Client[0] : alert.Client
+    if (!client.email) {
+      window.alert('Email address not available for this client')
+      return
+    }
     const subject = encodeURIComponent(`Missing Delivery: ${alert.supplierName}`)
     const body = encodeURIComponent(
-      `Dear ${alert.Client.displayName},\n\n` +
+      `Dear ${client.displayName},\n\n` +
       `We noticed that the delivery from ${alert.supplierName} (${alert.goodsDescription}) ` +
       `reported on ${new Date(alert.createdAt).toLocaleDateString()} has not yet arrived at our warehouse.\n\n` +
       `Could you please check with the supplier and confirm the delivery status?\n\n` +
       `Thank you,\nMAK Consulting Team`
     )
-    window.location.href = `mailto:${alert.Client.email}?subject=${subject}&body=${body}`
+    window.location.href = `mailto:${client.email}?subject=${subject}&body=${body}`
   }
 
   if (loading) {
@@ -87,10 +97,10 @@ export default function DeliveryAlertsSection() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
                     <div className="text-sm font-medium text-gray-900">
-                      {alert.Client?.displayName || 'Unknown'}
+                      {(Array.isArray(alert.Client) ? alert.Client[0] : alert.Client)?.displayName || 'Unknown'}
                     </div>
                     <div className="text-xs text-gray-500 font-mono">
-                      {alert.Client?.clientCode || '-'}
+                      {(Array.isArray(alert.Client) ? alert.Client[0] : alert.Client)?.clientCode || '-'}
                     </div>
                   </div>
                 </td>
