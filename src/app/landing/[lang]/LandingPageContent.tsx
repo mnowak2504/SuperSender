@@ -259,9 +259,11 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
 
             {/* Professional Plan */}
             <div className="bg-blue-600 border-2 border-blue-600 rounded-lg p-6 hover:shadow-xl transition transform scale-105 relative">
-              <div className="bg-blue-700 text-white text-xs font-semibold px-2 py-1 rounded-full inline-block mb-3 absolute top-4 right-4">
-                Popular
-              </div>
+              {translations.pricing_pro_popular && (
+                <div className="bg-blue-700 text-white text-xs font-semibold px-2 py-1 rounded-full inline-block mb-3 absolute top-4 right-4">
+                  {translations.pricing_pro_popular}
+                </div>
+              )}
               <h3 className="text-xl font-bold text-white mb-3">
                 {translations.pricing_pro_name}
               </h3>
@@ -327,10 +329,10 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
               </ul>
               <p className="text-xs text-gray-500 mb-4 italic">{translations.pricing_enterprise_notes}</p>
               <Link
-                href="/auth/signup"
+                href={translations.pricing_enterprise_cta ? "#contact" : "/auth/signup"}
                 className="block w-full bg-blue-600 text-white text-center px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold text-sm"
               >
-                {translations.nav_signup}
+                {translations.pricing_enterprise_cta || translations.nav_signup}
               </Link>
             </div>
           </div>
@@ -354,11 +356,20 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
                 <div className="pt-3">
                   <p className="font-medium text-gray-700 mb-2">{translations.pricing_local_pickup_title}</p>
                   <div className="ml-4 space-y-1 text-gray-600">
-                    <div>→ up to 10 km: €20</div>
-                    <div>→ up to 20 km: €35</div>
-                    <div>→ up to 30 km: €45</div>
-                    <div>→ up to 50 km: €60</div>
-                    <div>→ up to 100 km: €110</div>
+                    {translations.pricing_local_pickup_10km && <div>{translations.pricing_local_pickup_10km}</div>}
+                    {translations.pricing_local_pickup_20km && <div>{translations.pricing_local_pickup_20km}</div>}
+                    {translations.pricing_local_pickup_30km && <div>{translations.pricing_local_pickup_30km}</div>}
+                    {translations.pricing_local_pickup_50km && <div>{translations.pricing_local_pickup_50km}</div>}
+                    {translations.pricing_local_pickup_100km && <div>{translations.pricing_local_pickup_100km}</div>}
+                    {!translations.pricing_local_pickup_10km && (
+                      <>
+                        <div>→ up to 10 km: €20</div>
+                        <div>→ up to 20 km: €35</div>
+                        <div>→ up to 30 km: €45</div>
+                        <div>→ up to 50 km: €60</div>
+                        <div>→ up to 100 km: €110</div>
+                      </>
+                    )}
                   </div>
                   <p className="mt-3 text-xs text-gray-500 italic">{translations.pricing_local_pickup_note}</p>
                 </div>
@@ -524,7 +535,7 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-300 py-12 px-4 sm:px-6 lg:px-8">
+      <footer id="contact" className="bg-gray-900 text-gray-300 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
