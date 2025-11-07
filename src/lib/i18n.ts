@@ -1854,16 +1854,6 @@ const translations: Record<Language, Record<string, string>> = {
     about_description: 'MAK Consulting è specializzata in servizi professionali di magazzinaggio e spedizione per aziende in tutta Europa. Offriamo soluzioni di stoccaggio sicure, gestione efficiente degli ordini e trasporti affidabili.',
     
     process_title: 'Come funziona',
-    process_step1_title: 'Segnala una consegna',
-    process_step1_desc: 'Registra le tue spedizioni in arrivo nel pannello online — il sistema traccia automaticamente tutte le consegne previste.',
-    process_step2_title: 'Ricezione delle merci',
-    process_step2_desc: 'Riceviamo, verifichiamo e fotografiamo le tue merci. In caso di danni, prepariamo un rapporto fotografico incluso nel servizio.',
-    process_step3_title: 'Stoccaggio e gestione',
-    process_step3_desc: 'Le tue merci sono conservate in modo sicuro e visibili in tempo reale, con il volume (m³) sempre aggiornato.',
-    process_step4_title: 'Imballaggio e preparazione',
-    process_step4_desc: 'Gli ordini vengono preparati per il trasporto internazionale — con imballaggio sicuro e ottimizzato (pallet, film estensibile, etichette).',
-    process_step5_title: 'Spedizione',
-    process_step5_desc: 'Puoi scegliere il trasporto organizzato da MAK Consulting oppure gestire il tuo — con dati completi su dimensioni, peso e foto disponibili nel sistema.',
     
     // Process Page (IT) - Adding Italian translations for process page
     process_hero_title: 'Semplifica il modo in cui le tue merci si muovono — dall\'ordine alla consegna.',
