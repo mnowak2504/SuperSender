@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-// Middleware runs in Edge runtime - cannot use Node.js modules like bcrypt
+// Proxy runs in Edge runtime - cannot use Node.js modules like bcrypt
 // Authentication checks will be done at the page/route level instead
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Allow auth routes, landing page, public assets, and API routes
@@ -30,3 +30,4 @@ export const config = {
     '/superadmin/:path*',
   ],
 }
+
