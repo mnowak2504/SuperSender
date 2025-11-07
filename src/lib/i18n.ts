@@ -3,7 +3,7 @@
 export type Language = 'en' | 'de' | 'fr' | 'it' | 'pl'
 
 export const languages: { code: Language; name: string; nativeName: string; flag: string }[] = [
-  { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
+  { code: 'en', name: 'English', nativeName: 'EN', flag: '🇬🇧' },
   { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },
   { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷' },
   { code: 'it', name: 'Italian', nativeName: 'Italiano', flag: '🇮🇹' },
