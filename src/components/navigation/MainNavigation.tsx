@@ -91,17 +91,14 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
                 <select
                   value={currentLang}
                   onChange={(e) => handleLanguageChange(e.target.value as Language)}
-                  className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pl-8 text-sm text-gray-700 cursor-pointer hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 cursor-pointer hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {languages.map((l) => (
                     <option key={l.code} value={l.code}>
-                      {l.flag} {l.nativeName}
+                      {l.code.toUpperCase()} - {l.nativeName}
                     </option>
                   ))}
                 </select>
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                  {languages.find(l => l.code === currentLang)?.flag}
-                </span>
               </div>
             
             <Link
@@ -175,17 +172,14 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
                 <select
                   value={currentLang}
                   onChange={(e) => handleLanguageChange(e.target.value as Language)}
-                  className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 pl-8 text-sm text-gray-700"
+                  className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700"
                 >
                   {languages.map((l) => (
                     <option key={l.code} value={l.code}>
-                      {l.flag} {l.nativeName}
+                      {l.code.toUpperCase()} - {l.nativeName}
                     </option>
                   ))}
                 </select>
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none">
-                  {languages.find(l => l.code === currentLang)?.flag}
-                </span>
               </div>
               
               <Link
