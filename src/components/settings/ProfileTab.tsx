@@ -38,7 +38,13 @@ export default function ProfileTab() {
             phone: data.client.phone || '',
             country: data.client.country || '',
           })
+        } else if (profileRes.status === 404) {
+          // Client not found - might be a new user, show a message
+          console.warn('Client profile not found')
         }
+      } else if (profileRes.status === 404) {
+        // Client not found
+        console.warn('Client profile not found')
       }
 
       if (invoicesRes.ok) {

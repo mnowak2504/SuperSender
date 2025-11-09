@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CreditCard, Check, Loader2, ArrowLeft } from 'lucide-react'
+import { CreditCard, Check, Loader2, ArrowLeft, Mail } from 'lucide-react'
 import Link from 'next/link'
 import ClientLayout from '@/components/ClientLayout'
 import ClientPageHeader from '@/components/ClientPageHeader'
@@ -59,6 +59,12 @@ export default function UpgradePage() {
   const handleUpgrade = async () => {
     if (!selectedPlanId) {
       setError('Please select a plan')
+      return
+    }
+
+    const selectedPlan = plans.find(p => p.id === selectedPlanId)
+    if (selectedPlan?.name.toLowerCase() === 'enterprise') {
+      window.location.href = 'mailto:contact@makconsulting.com?subject=Enterprise Plan Inquiry'
       return
     }
 
@@ -132,16 +138,20 @@ export default function UpgradePage() {
             {plans.map((plan) => {
               const isCurrent = plan.id === currentPlanId
               const isSelected = plan.id === selectedPlanId
+              const isEnterprise = plan.name.toLowerCase() === 'enterprise'
+              const isUnlimited = plan.deliveriesPerMonth >= 999 || plan.spaceLimitCbm >= 999
 
               return (
                 <div
                   key={plan.id}
-                  onClick={() => setSelectedPlanId(plan.id)}
+                  onClick={() => !isEnterprise && setSelectedPlanId(plan.id)}
                   className={`
-                    relative p-6 rounded-xl border-2 cursor-pointer transition-all
-                    ${isSelected
-                      ? 'border-blue-600 bg-blue-50 shadow-lg'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
+                    relative p-6 rounded-xl border-2 transition-all
+                    ${isEnterprise 
+                      ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-indigo-50 cursor-default'
+                      : isSelected
+                      ? 'border-blue-600 bg-blue-50 shadow-lg cursor-pointer'
+                      : 'border-gray-200 bg-white hover:border-gray-300 cursor-pointer'
                     }
                     ${isCurrent ? 'ring-2 ring-green-500' : ''}
                   `}
@@ -154,7 +164,7 @@ export default function UpgradePage() {
                     </div>
                   )}
 
-                  {isSelected && !isCurrent && (
+                  {isSelected && !isCurrent && !isEnterprise && (
                     <div className="absolute top-4 right-4">
                       <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
                         <Check className="w-4 h-4 text-white" />
@@ -162,28 +172,73 @@ export default function UpgradePage() {
                     </div>
                   )}
 
+                  {isEnterprise && (
+                    <div className="absolute top-4 right-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        Custom
+                      </span>
+                    </div>
+                  )}
+
                   <div className="mb-4">
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">{plan.name}</h3>
-                    <div className="flex items-baseline">
-                      <span className="text-3xl font-bold text-gray-900">€{plan.operationsRateEur.toFixed(2)}</span>
-                      <span className="text-gray-500 ml-2">/month</span>
-                    </div>
+                    {isEnterprise ? (
+                      <div className="flex items-baseline">
+                        <span className="text-2xl font-bold text-gray-900">Custom Pricing</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-baseline">
+                        <span className="text-3xl font-bold text-gray-900">€{plan.operationsRateEur.toFixed(2)}</span>
+                        <span className="text-gray-500 ml-2">/month</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3 mb-6">
                     <div className="flex items-center text-sm text-gray-600">
                       <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                      <span>{plan.deliveriesPerMonth} deliveries per month</span>
+                      <span>
+                        {isUnlimited ? 'Unlimited' : plan.deliveriesPerMonth} deliveries per month
+                      </span>
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                      <span>{plan.spaceLimitCbm} CBM storage limit</span>
+                      <span>
+                        {isUnlimited ? 'Unlimited' : plan.spaceLimitCbm} CBM storage limit
+                      </span>
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
                       <span>€{plan.overSpaceRateEur.toFixed(2)} / CBM over limit</span>
                     </div>
+                    {isEnterprise && (
+                      <>
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                          <span>Dedicated account manager</span>
+                        </div>
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                          <span>Priority support</span>
+                        </div>
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                          <span>Custom integrations</span>
+                        </div>
+                      </>
+                    )}
                   </div>
+
+                  {isEnterprise && (
+                    <a
+                      href="mailto:contact@makconsulting.com?subject=Enterprise Plan Inquiry"
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full mt-4 px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center justify-center gap-2"
+                    >
+                      <Mail className="w-4 h-4" />
+                      Contact Us
+                    </a>
+                  )}
                 </div>
               )
             })}
