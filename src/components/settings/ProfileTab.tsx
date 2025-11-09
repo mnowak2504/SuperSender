@@ -8,6 +8,7 @@ export default function ProfileTab() {
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [client, setClient] = useState<any>(null)
+  const [invoices, setInvoices] = useState<any[]>([])
   const [formData, setFormData] = useState({
     displayName: '',
     email: '',
@@ -21,19 +22,28 @@ export default function ProfileTab() {
 
   const fetchClientData = async () => {
     try {
-      const res = await fetch('/api/client/profile')
-      if (!res.ok) throw new Error('Failed to fetch profile')
+      const [profileRes, invoicesRes] = await Promise.all([
+        fetch('/api/client/profile'),
+        fetch('/api/client/invoices'),
+      ])
       
-      const data = await res.json()
-      
-      if (data.client) {
-        setClient(data.client)
-        setFormData({
-          displayName: data.client.displayName || '',
-          email: data.client.email || '',
-          phone: data.client.phone || '',
-          country: data.client.country || '',
-        })
+      if (profileRes.ok) {
+        const data = await profileRes.json()
+        
+        if (data.client) {
+          setClient(data.client)
+          setFormData({
+            displayName: data.client.displayName || '',
+            email: data.client.email || '',
+            phone: data.client.phone || '',
+            country: data.client.country || '',
+          })
+        }
+      }
+
+      if (invoicesRes.ok) {
+        const invoicesData = await invoicesRes.json()
+        setInvoices(invoicesData.invoices || [])
       }
     } catch (error) {
       console.error('Error:', error)
@@ -184,6 +194,42 @@ export default function ProfileTab() {
               <option value="US">United States</option>
             </select>
           </div>
+        </div>
+
+        {/* Invoice Information */}
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Invoice Information</h3>
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-medium text-gray-500">Billing Email</dt>
+              <dd className="mt-1 text-sm text-gray-900">{client.email || 'N/A'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500">Billing Contact</dt>
+              <dd className="mt-1 text-sm text-gray-900">{client.displayName || 'N/A'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500">Phone</dt>
+              <dd className="mt-1 text-sm text-gray-900">{client.phone || 'N/A'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500">Country</dt>
+              <dd className="mt-1 text-sm text-gray-900">{client.country || 'N/A'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500">Total Invoices</dt>
+              <dd className="mt-1 text-sm font-medium text-gray-900">{invoices.length}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500">Outstanding Balance</dt>
+              <dd className="mt-1 text-sm font-medium text-gray-900">
+                €{invoices
+                  .filter((inv) => inv.status !== 'PAID')
+                  .reduce((sum, inv) => sum + (inv.amountEur || 0), 0)
+                  .toFixed(2)}
+              </dd>
+            </div>
+          </dl>
         </div>
 
         {/* Save Button */}

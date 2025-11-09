@@ -1,26 +1,85 @@
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import ClientLayout from '@/components/ClientLayout'
+import ClientHeader from '@/components/ClientHeader'
 import { formatCurrency, formatDate } from '@/lib/utils'
+
+export const runtime = 'nodejs'
 
 export default async function InvoicesPage() {
   const session = await auth()
 
-  if (!session?.user || !(session.user as any)?.clientId) {
+  if (!session?.user) {
     redirect('/auth/signin')
   }
 
-  const invoices = await prisma.invoice.findMany({
-    where: { clientId: (session.user as any).clientId },
-    orderBy: { createdAt: 'desc' },
-  })
-
-  const groupedInvoices = {
-    SUBSCRIPTION: invoices.filter((i) => i.type === 'SUBSCRIPTION'),
-    TRANSPORT: invoices.filter((i) => i.type === 'TRANSPORT'),
-    OPERATIONS: invoices.filter((i) => i.type === 'OPERATIONS'),
+  const role = (session.user as any)?.role
+  if (role !== 'CLIENT') {
+    redirect('/unauthorized')
   }
+
+  // Find client by email or clientId
+  let clientId = (session.user as any)?.clientId
+  
+  if (!clientId) {
+    const { data: clientByEmail } = await supabase
+      .from('Client')
+      .select('id')
+      .eq('email', session.user.email)
+      .single()
+    
+    if (clientByEmail) {
+      clientId = clientByEmail.id
+    }
+  }
+
+  if (!clientId) {
+    redirect('/auth/signin')
+  }
+
+  // Fetch all invoices, ordered by createdAt descending (latest first)
+  const { data: invoices, error } = await supabase
+    .from('Invoice')
+    .select('*')
+    .eq('clientId', clientId)
+    .order('createdAt', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching invoices:', error)
+  }
+
+  const allInvoices = invoices || []
+
+  // Calculate status for each invoice
+  const invoicesWithStatus = allInvoices.map((invoice) => {
+    let status = invoice.status
+    let statusLabel = status
+    let dueDateInfo = ''
+
+    // If status is ISSUED, check if it's overdue
+    if (status === 'ISSUED') {
+      const dueDate = new Date(invoice.dueDate)
+      const now = new Date()
+      
+      if (dueDate < now) {
+        status = 'OVERDUE'
+        statusLabel = 'Overdue'
+      } else {
+        statusLabel = 'Due'
+        dueDateInfo = formatDate(invoice.dueDate)
+      }
+    } else if (status === 'PAID') {
+      statusLabel = 'Paid'
+    }
+
+    return {
+      ...invoice,
+      calculatedStatus: status,
+      statusLabel,
+      dueDateInfo,
+    }
+  })
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -38,220 +97,160 @@ export default async function InvoicesPage() {
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'SUBSCRIPTION':
-        return 'Abonament'
+        return 'Subscription'
       case 'TRANSPORT':
         return 'Transport (MAK)'
       case 'OPERATIONS':
-        return 'Operacje magazynowe'
+        return 'Operations'
       default:
         return type
     }
   }
 
+  // Group invoices by month for better organization
+  const invoicesByMonth = invoicesWithStatus.reduce((acc, invoice) => {
+    const date = new Date(invoice.createdAt)
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    const monthLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+    
+    if (!acc[monthKey]) {
+      acc[monthKey] = {
+        label: monthLabel,
+        invoices: [],
+      }
+    }
+    acc[monthKey].invoices.push(invoice)
+    return acc
+  }, {} as Record<string, { label: string; invoices: any[] }>)
+
+  const sortedMonths = Object.keys(invoicesByMonth).sort().reverse() // Latest months first
+
   return (
     <ClientLayout>
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">Invoices and Payments</h1>
+      <ClientHeader title="Invoices" showBackButton={true} backButtonHref="/client/dashboard" backButtonLabel="Dashboard" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Invoices</h1>
+          <p className="text-gray-600">View all your invoices and payment history</p>
+        </div>
 
-          {/* Subscription Tab */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Abonament (Paid in advance)</h2>
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              {groupedInvoices.SUBSCRIPTION.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">No subscription invoices</div>
-              ) : (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Amount
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {groupedInvoices.SUBSCRIPTION.map((invoice) => (
-                      <tr key={invoice.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDate(invoice.createdAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {formatCurrency(invoice.amountEur, invoice.currency)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                              invoice.status
-                            )}`}
-                          >
-                            {invoice.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {invoice.status !== 'PAID' && invoice.revolutLink && (
-                            <a
-                              href={invoice.revolutLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-900"
-                            >
-                              Pay via Revolut
-                            </a>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+        {invoicesWithStatus.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+            <p className="text-gray-500 text-lg">No invoices found</p>
+            <p className="text-gray-400 text-sm mt-2">Your invoices will appear here once they are generated</p>
           </div>
-
-          {/* Transport Tab */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">
-              Transport (MAK) - Payment required before loading
-            </h2>
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              {groupedInvoices.TRANSPORT.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">No transport invoices</div>
-              ) : (
+        ) : (
+          <div className="space-y-8">
+            {/* All Invoices - Chronological View */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 className="text-lg font-semibold text-gray-900">All Invoices</h2>
+                <p className="text-sm text-gray-500 mt-1">Latest invoices at the top</p>
+              </div>
+              <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Invoice Number
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Amount
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {groupedInvoices.TRANSPORT.map((invoice) => (
-                      <tr key={invoice.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDate(invoice.createdAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {formatCurrency(invoice.amountEur, invoice.currency)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                              invoice.status
-                            )}`}
-                          >
-                            {invoice.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {invoice.status !== 'PAID' && invoice.revolutLink && (
-                            <a
-                              href={invoice.revolutLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-900"
-                            >
-                              Pay via Revolut
-                            </a>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-
-          {/* Operations Tab */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">
-              Operations (End of month, 7 days payment term)
-            </h2>
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              {groupedInvoices.OPERATIONS.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">No operations invoices</div>
-              ) : (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Amount
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Due Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {groupedInvoices.OPERATIONS.map((invoice) => (
-                      <tr key={invoice.id}>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {invoicesWithStatus.map((invoice) => (
+                      <tr key={invoice.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {formatDate(invoice.createdAt)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {formatCurrency(invoice.amountEur, invoice.currency)}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
+                          {invoice.id.slice(-8).toUpperCase()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(invoice.dueDate)}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {getTypeLabel(invoice.type)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                          {formatCurrency(invoice.amountEur, invoice.currency || 'EUR')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {invoice.dueDateInfo || formatDate(invoice.dueDate)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                              invoice.status
+                              invoice.calculatedStatus
                             )}`}
                           >
-                            {invoice.status}
+                            {invoice.statusLabel}
+                            {invoice.calculatedStatus === 'ISSUED' && invoice.dueDateInfo && (
+                              <span className="ml-1 text-xs">({invoice.dueDateInfo})</span>
+                            )}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {invoice.status !== 'PAID' && invoice.revolutLink && (
+                          {invoice.calculatedStatus !== 'PAID' && invoice.revolutLink && (
                             <a
                               href={invoice.revolutLink}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-900"
+                              className="text-blue-600 hover:text-blue-900 font-medium"
                             >
-                              Pay via Revolut
+                              Pay Now
                             </a>
+                          )}
+                          {invoice.calculatedStatus === 'PAID' && (
+                            <span className="text-gray-400">Paid</span>
                           )}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              )}
+              </div>
+            </div>
+
+            {/* Summary Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Total Invoices</h3>
+                <p className="text-2xl font-bold text-gray-900">{invoicesWithStatus.length}</p>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Paid</h3>
+                <p className="text-2xl font-bold text-green-600">
+                  {invoicesWithStatus.filter((inv) => inv.calculatedStatus === 'PAID').length}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Outstanding</h3>
+                <p className="text-2xl font-bold text-red-600">
+                  €{invoicesWithStatus
+                    .filter((inv) => inv.calculatedStatus !== 'PAID')
+                    .reduce((sum, inv) => sum + (inv.amountEur || 0), 0)
+                    .toFixed(2)}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </ClientLayout>
   )
 }
-

@@ -75,9 +75,12 @@ export default function BillingTab() {
               <p className="text-sm text-gray-500">{plan?.name || 'No plan assigned'}</p>
             </div>
           </div>
-          <button className="px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-blue-300 rounded-lg hover:bg-blue-50">
+          <Link
+            href="/client/upgrade"
+            className="px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 inline-block"
+          >
             Upgrade Plan
-          </button>
+          </Link>
         </div>
 
         {plan && (
