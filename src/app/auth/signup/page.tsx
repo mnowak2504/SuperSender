@@ -345,8 +345,6 @@ export default function SignUpPage() {
                 </label>
               </div>
             </div>
-
-          <div className="space-y-3">
             <div className="flex items-start">
               <div className="flex items-center h-5">
                 <input
