@@ -134,12 +134,13 @@ export default function UpgradePage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
             {plans.map((plan) => {
               const isCurrent = plan.id === currentPlanId
               const isSelected = plan.id === selectedPlanId
               const isEnterprise = plan.name.toLowerCase() === 'enterprise'
-              const isUnlimited = plan.deliveriesPerMonth >= 999 || plan.spaceLimitCbm >= 999
+              const isUnlimitedDeliveries = plan.deliveriesPerMonth >= 999
+              const isUnlimitedStorage = plan.spaceLimitCbm >= 999
 
               return (
                 <div
@@ -198,13 +199,24 @@ export default function UpgradePage() {
                     <div className="flex items-center text-sm text-gray-600">
                       <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
                       <span>
-                        {isUnlimited ? 'Unlimited' : plan.deliveriesPerMonth} deliveries per month
+                        {isUnlimitedDeliveries ? 'Unlimited' : plan.deliveriesPerMonth} deliveries per month
                       </span>
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
                       <span>
-                        {isUnlimited ? 'Unlimited' : plan.spaceLimitCbm} CBM storage limit
+                        {isUnlimitedStorage 
+                          ? 'Unlimited' 
+                          : isEnterprise
+                            ? '50+ CBM'
+                            : plan.name === 'Professional' 
+                              ? '15 CBM (6 pallets) + 5 CBM buffer'
+                              : plan.spaceLimitCbm === 2.5
+                                ? '2.5 CBM (1 pallet space)'
+                                : plan.spaceLimitCbm === 5.0
+                                  ? '5 CBM (2 pallet spaces)'
+                                  : `${plan.spaceLimitCbm} CBM`
+                        } storage limit
                       </span>
                     </div>
                     <div className="flex items-center text-sm text-gray-600">

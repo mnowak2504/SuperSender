@@ -19,23 +19,30 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 const plans = [
   {
     name: 'Basic',
-    deliveriesPerMonth: 5,
-    spaceLimitCbm: 10,
-    overSpaceRateEur: 15.0,
+    deliveriesPerMonth: 4,
+    spaceLimitCbm: 2.5,
+    overSpaceRateEur: 20.0,
+    operationsRateEur: 59.0,
+  },
+  {
+    name: 'Standard',
+    deliveriesPerMonth: 8,
+    spaceLimitCbm: 5.0,
+    overSpaceRateEur: 20.0,
     operationsRateEur: 99.0,
   },
   {
-    name: 'Pro',
-    deliveriesPerMonth: 15,
-    spaceLimitCbm: 50,
-    overSpaceRateEur: 12.0,
-    operationsRateEur: 299.0,
+    name: 'Professional',
+    deliveriesPerMonth: 12,
+    spaceLimitCbm: 20.0, // 15 CBM + 5 CBM buffer
+    overSpaceRateEur: 20.0,
+    operationsRateEur: 229.0,
   },
   {
     name: 'Enterprise',
     deliveriesPerMonth: 999, // Unlimited
-    spaceLimitCbm: 999, // Unlimited
-    overSpaceRateEur: 10.0,
+    spaceLimitCbm: 50.0, // 50 CBM+
+    overSpaceRateEur: 20.0,
     operationsRateEur: 0, // Custom pricing
   },
 ]

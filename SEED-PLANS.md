@@ -34,25 +34,31 @@ Make sure you have the following environment variables set in `.env.local`:
 
 ## Plans Created
 
-The script will create three plans:
+The script will create four plans (matching the landing page):
 
 1. **Basic**
+   - €59/month
+   - 4 deliveries per month
+   - 2.5 CBM (1 pallet space) storage limit
+   - €20/CBM over limit
+
+2. **Standard**
    - €99/month
-   - 5 deliveries per month
-   - 10 CBM storage limit
-   - €15/CBM over limit
+   - 8 deliveries per month
+   - 5 CBM (2 pallet spaces) storage limit
+   - €20/CBM over limit
 
-2. **Pro**
-   - €299/month
-   - 15 deliveries per month
-   - 50 CBM storage limit
-   - €12/CBM over limit
+3. **Professional**
+   - €229/month
+   - 12 deliveries per month
+   - 15 CBM (6 pallets) + 5 CBM buffer = 20 CBM total
+   - €20/CBM over limit
 
-3. **Enterprise**
+4. **Enterprise**
    - Custom pricing
    - Unlimited deliveries
-   - Unlimited storage
-   - €10/CBM over limit
+   - 50+ CBM storage
+   - €20/CBM over limit
    - Includes: Dedicated account manager, Priority support, Custom integrations
    - Shows "Contact Us" CTA button
 
