@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { CreditCard, Check, Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import ClientLayout from '@/components/ClientLayout'
-import ClientHeader from '@/components/ClientHeader'
+import ClientPageHeader from '@/components/ClientPageHeader'
 
 interface Plan {
   id: string
@@ -101,7 +101,7 @@ export default function UpgradePage() {
   if (loading) {
     return (
       <ClientLayout>
-        <ClientHeader title="Upgrade Plan" showBackButton={true} backButtonHref="/client/settings?tab=billing" backButtonLabel="Back to Settings" />
+        <ClientPageHeader title="Upgrade Plan" showBackButton={true} backButtonHref="/client/settings?tab=billing" backButtonLabel="Back to Settings" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
             <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600 mb-4" />
@@ -114,7 +114,7 @@ export default function UpgradePage() {
 
   return (
     <ClientLayout>
-      <ClientHeader title="Upgrade Plan" showBackButton={true} backButtonHref="/client/settings?tab=billing" backButtonLabel="Back to Settings" />
+      <ClientPageHeader title="Upgrade Plan" showBackButton={true} backButtonHref="/client/settings?tab=billing" backButtonLabel="Back to Settings" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-6">
