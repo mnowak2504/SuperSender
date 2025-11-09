@@ -86,23 +86,26 @@ model User {
 }
 
 model Client {
-  id                 String    @id @default(cuid())
-  displayName        String
-  email              String
-  phone              String?
-  country            String
-  clientCode         String    @unique
-  salesOwnerCode     String
-  plan               Plan?     @relation(fields: [planId], references: [id])
-  planId             String?
-  status             String
-  spaceUsagePct      Int       @default(0)
-  usedCbm            Float     @default(0)
-  limitCbm           Float     @default(0)
-  caretakerName      String?
-  caretakerContact   String?
-  salesOwner         User?     @relation("SalesOwner", fields: [salesOwnerId], references: [id])
-  salesOwnerId       String?
+  id                         String    @id @default(cuid())
+  displayName                String
+  email                      String
+  phone                      String?
+  country                    String
+  clientCode                 String    @unique
+  salesOwnerCode             String
+  plan                       Plan?     @relation(fields: [planId], references: [id])
+  planId                     String?
+  status                     String
+  spaceUsagePct              Int       @default(0)
+  usedCbm                    Float     @default(0)
+  limitCbm                   Float     @default(0)
+  caretakerName              String?
+  caretakerContact           String?
+  salesOwner                 User?     @relation("SalesOwner", fields: [salesOwnerId], references: [id])
+  salesOwnerId               String?
+  subscriptionDiscount       Float?    // Max 30% for admin, unlimited for superadmin
+  additionalServicesDiscount Float?    // Max 40% for admin, unlimited for superadmin
+  revolutCustomerId         String?   // For Revolut Pay customer reuse
 
   users              User[]
   addresses          Address[]
@@ -215,6 +218,11 @@ model Invoice {
   currency          String        @default("EUR")
   status            InvoiceStatus @default(ISSUED)
   revolutLink       String?
+  revolutOrderId    String?       // Revolut order ID
+  revolutPublicId   String?       // Revolut public order ID
+  revolutCheckoutUrl String?      // Revolut checkout URL
+  revolutState      String?       // PENDING, COMPLETED, DECLINED, CANCELLED
+  providerCustomerId String?      // For payment provider customer reuse
   dueDate           DateTime
   createdAt         DateTime      @default(now())
   paidAt            DateTime?

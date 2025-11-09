@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
+import { requireActiveSubscription } from '@/lib/subscription-check'
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,6 +28,34 @@ export async function POST(req: NextRequest) {
 
     if (!clientId) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+    }
+
+    // Check subscription status - require active subscription
+    const subscriptionCheck = await requireActiveSubscription(clientId)
+    if (!subscriptionCheck.allowed) {
+      return subscriptionCheck.response as NextResponse
+    }
+
+    // Also check if client has at least one received item
+    const { data: warehouseOrders, error: ordersCheckError } = await supabase
+      .from('WarehouseOrder')
+      .select('id')
+      .eq('clientId', clientId)
+      .eq('status', 'AT_WAREHOUSE')
+      .limit(1)
+
+    if (ordersCheckError) {
+      console.error('Error checking warehouse orders:', ordersCheckError)
+    }
+
+    if (!warehouseOrders || warehouseOrders.length === 0) {
+      return NextResponse.json(
+        {
+          error: 'No items available',
+          message: 'You need at least one received item to request a shipment.',
+        },
+        { status: 400 }
+      )
     }
 
     const body = await req.json()

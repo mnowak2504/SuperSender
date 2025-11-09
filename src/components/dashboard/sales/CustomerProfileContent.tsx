@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Package, Truck, FileText, MessageSquare, Image, Plus, Calendar, Mail } from 'lucide-react'
+import SubscriptionManager from '@/components/admin/SubscriptionManager'
 
 interface TimelineItem {
   id: string
@@ -33,6 +34,8 @@ interface Client {
   planId: string | null
   limitCbm: number
   createdAt: string
+  subscriptionDiscount?: number | null
+  additionalServicesDiscount?: number | null
   Plan?: {
     name: string
     priceEur?: number
@@ -60,12 +63,14 @@ interface CustomerProfileContentProps {
   client: Client
   timeline: TimelineItem[]
   deliveryPhotos: DeliveryPhoto[]
+  isSuperAdmin?: boolean
 }
 
 export default function CustomerProfileContent({
   client,
   timeline,
   deliveryPhotos,
+  isSuperAdmin = false,
 }: CustomerProfileContentProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
   
@@ -200,6 +205,16 @@ export default function CustomerProfileContent({
               </div>
             </div>
           </div>
+
+          {/* Subscription Management */}
+          <SubscriptionManager
+            clientId={client.id}
+            currentPlanId={client.planId}
+            subscriptionDiscount={client.subscriptionDiscount}
+            additionalServicesDiscount={client.additionalServicesDiscount}
+            isSuperAdmin={isSuperAdmin}
+            onUpdate={() => window.location.reload()}
+          />
 
           {/* Quick Actions */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

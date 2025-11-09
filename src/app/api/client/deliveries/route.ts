@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
 import { autoAssignClient } from '@/lib/auto-assign-client'
+import { requireActiveSubscription } from '@/lib/subscription-check'
 
 export const runtime = 'nodejs'
 
@@ -76,6 +77,12 @@ export async function POST(req: NextRequest) {
           .update({ clientId })
           .eq('id', session.user.id)
       }
+    }
+
+    // Check subscription status - require active subscription
+    const subscriptionCheck = await requireActiveSubscription(clientId)
+    if (!subscriptionCheck.allowed) {
+      return subscriptionCheck.response as NextResponse
     }
 
     const body = await req.json()

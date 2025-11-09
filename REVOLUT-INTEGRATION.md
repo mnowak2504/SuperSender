@@ -1,130 +1,172 @@
-# Revolut Payment Integration
+# Revolut Pay Integration Guide
 
-## Overview
+## Wymagania do podłączenia aplikacji z płatnościami Revolut
 
-The system integrates with Revolut Business API for payment processing. This allows clients to pay invoices (subscriptions, transport, operations) directly through Revolut payment links.
+### 1. Konto Revolut Business
+- **Wymagane**: Konto Revolut Business (plany: Grow, Scale lub Enterprise)
+- **Dostęp do API**: Właściciel konta musi włączyć dostęp do API w sekcji Ustawienia
 
-## Setup
+### 2. API Credentials
+Potrzebne będą następujące dane:
+- **API Key** (Secret Key) - do autoryzacji żądań
+- **Webhook Secret** - do weryfikacji webhooków (HMAC)
+- **Merchant ID** - identyfikator konta merchant
 
-### 1. Create Revolut Business Account
+### 3. Revolut Pay API Endpoints
 
-1. Sign up for Revolut Business: https://www.revolut.com/business
-2. Complete business verification
-3. Get API access (may require business plan upgrade)
-
-### 2. Get API Credentials
-
-1. Go to Revolut Business Dashboard
-2. Navigate to Developer / API section
-3. Create a new API key
-4. Copy the API key (starts with `sk_` or similar)
-
-### 3. Configure Environment Variables
-
-Add to your `.env` file:
-
-```env
-REVOLUT_API_KEY=your_revolut_api_key_here
-REVOLUT_WEBHOOK_SECRET=your_webhook_secret_here  # Optional, for webhook verification
+#### Tworzenie płatności (Payment Link)
+```
+POST https://b2b.revolut.com/api/1.0/orders
 ```
 
-### 4. Configure Webhook URL
-
-In Revolut Business Dashboard:
-1. Go to Webhooks section
-2. Add webhook URL: `https://yourdomain.com/api/payments/revolut/webhook`
-3. Select events: `payment.completed`, `payment.failed`
-4. Copy webhook secret (if provided)
-
-## How It Works
-
-### Creating Payment Links
-
-When an invoice is created, the system can generate a Revolut payment link:
-
-```typescript
-POST /api/payments/revolut/create-link
-{
-  "invoiceId": "invoice_id_here"
-}
+**Headers:**
+```
+Authorization: Bearer {API_KEY}
+Content-Type: application/json
 ```
 
-Response:
+**Request Body:**
 ```json
 {
-  "link": "https://pay.revolut.com/...",
-  "isMock": false
+  "amount": 10000,  // w najmniejszych jednostkach (100.00 EUR = 10000)
+  "currency": "EUR",
+  "description": "Subscription payment",
+  "customer_email": "customer@example.com",
+  "metadata": {
+    "client_id": "client-uuid",
+    "invoice_id": "invoice-uuid",
+    "type": "subscription"
+  }
 }
 ```
 
-### Payment Flow
+**Response:**
+```json
+{
+  "id": "order-id",
+  "public_id": "public-order-id",
+  "checkout_url": "https://pay.revolut.com/checkout/...",
+  "state": "PENDING"
+}
+```
 
-1. **Invoice Created** → System creates invoice with status `ISSUED`
-2. **Payment Link Generated** → Client clicks "Pay Now" → Creates Revolut payment link
-3. **Client Pays** → Redirected to Revolut payment page
-4. **Webhook Received** → Revolut sends webhook on payment completion
-5. **Invoice Updated** → Status changes to `PAID`, shipment status updated if transport invoice
+### 4. Webhook Configuration
 
-### Webhook Events
+#### Endpoint URL
+```
+POST https://your-domain.com/api/webhooks/revolut
+```
 
-The webhook handler processes:
-- `payment.completed` → Updates invoice to `PAID`, unlocks shipment for loading
-- `payment.failed` → Logs failure (can send notification to client)
+#### Webhook Events do obsługi:
+- `ORDER_COMPLETED` - płatność zakończona pomyślnie
+- `ORDER_PAYMENT_CAPTURED` - płatność przechwycona
+- `ORDER_PAYMENT_DECLINED` - płatność odrzucona
+- `ORDER_CANCELLED` - zamówienie anulowane
 
-## Current Implementation
+#### Webhook Verification (HMAC)
+Revolut wysyła nagłówek `Revolut-Signature` z HMAC-SHA256 podpisem.
 
-### Features Implemented
+**Przykład weryfikacji:**
+```typescript
+import crypto from 'crypto'
 
-✅ Payment link creation via Revolut API
-✅ Webhook handler for payment status updates
-✅ Automatic invoice status update on payment
-✅ Automatic shipment status update (READY_FOR_LOADING) for transport invoices
-✅ Fallback to mock links if API key not configured (for development)
+function verifyWebhook(payload: string, signature: string, secret: string): boolean {
+  const hmac = crypto.createHmac('sha256', secret)
+  hmac.update(payload)
+  const calculatedSignature = hmac.digest('hex')
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(calculatedSignature)
+  )
+}
+```
 
-### API Endpoints
+### 5. Database Schema Updates
 
-- `POST /api/payments/revolut/create-link` - Create payment link
-- `POST /api/payments/revolut/webhook` - Handle webhook events
+Potrzebne pola w tabeli `Invoice`:
+```sql
+ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "revolutOrderId" TEXT;
+ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "revolutPublicId" TEXT;
+ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "revolutCheckoutUrl" TEXT;
+ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "revolutState" TEXT;
+ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "providerCustomerId" TEXT;
+```
 
-### Database Fields
+Potrzebne pola w tabeli `Client`:
+```sql
+ALTER TABLE "Client" ADD COLUMN IF NOT EXISTS "revolutCustomerId" TEXT;
+```
 
-- `Invoice.revolutLink` - Payment link URL
-- `Invoice.revolutPaymentId` - Revolut payment ID
-- `Invoice.paymentWebhookReceivedAt` - Timestamp of webhook
+### 6. Environment Variables
 
-## Testing
+Dodaj do `.env`:
+```env
+REVOLUT_API_KEY=your_api_key_here
+REVOLUT_WEBHOOK_SECRET=your_webhook_secret_here
+REVOLUT_MERCHANT_ID=your_merchant_id_here
+REVOLUT_API_URL=https://b2b.revolut.com/api/1.0
+REVOLUT_ENVIRONMENT=sandbox  # sandbox or production
+```
 
-### Without Revolut Account
+### 7. Implementation Steps
 
-The system will use mock payment links if `REVOLUT_API_KEY` is not set. This allows development without actual Revolut integration.
+1. **Create Payment Link Endpoint**
+   - `/api/client/payment/create-link`
+   - Tworzy Revolut Pay link dla faktury/subskrypcji
+   - Zwraca `checkout_url` do przekierowania użytkownika
 
-### With Revolut Account
+2. **Webhook Handler**
+   - `/api/webhooks/revolut`
+   - Weryfikuje HMAC signature
+   - Aktualizuje status faktury/subskrypcji
+   - Idempotency: sprawdza czy webhook już został przetworzony
 
-1. Use Revolut Sandbox/Test environment for testing
-2. Test payment links are generated correctly
-3. Test webhook receives payment events
-4. Verify invoice status updates automatically
+3. **Payment Status Check**
+   - Polling endpoint do sprawdzania statusu płatności
+   - Fallback jeśli webhook nie dotrze
 
-## Production Checklist
+4. **Customer Management**
+   - Zapisz `revolutCustomerId` dla reuse
+   - Użyj tego samego customer ID dla kolejnych płatności
 
-- [ ] Add `REVOLUT_API_KEY` to production environment
-- [ ] Configure webhook URL in Revolut dashboard
-- [ ] Add `REVOLUT_WEBHOOK_SECRET` for signature verification
-- [ ] Test payment flow end-to-end
-- [ ] Set up monitoring for webhook failures
-- [ ] Configure email notifications for payment confirmations
+### 8. Error Handling
 
-## Revolut API Documentation
+- **Network errors**: Retry z exponential backoff
+- **Invalid signature**: Log i reject
+- **Duplicate webhook**: Idempotency check
+- **Payment declined**: Notify user, allow retry
 
-- Official API Docs: https://developer.revolut.com/
-- Payment Links: https://developer.revolut.com/docs/api-reference/payment-links
-- Webhooks: https://developer.revolut.com/docs/api-reference/webhooks
+### 9. Testing
 
-## Security Notes
+- **Sandbox environment**: Użyj testowych kart
+- **Test cards**: 
+  - Success: `4242 4242 4242 4242`
+  - Decline: `4000 0000 0000 0002`
+- **Webhook testing**: Użyj ngrok lub podobnego narzędzia
 
-- Never commit API keys to version control
-- Use environment variables for all secrets
-- Verify webhook signatures in production
-- Use HTTPS for all webhook endpoints
-- Implement rate limiting on webhook endpoint
+### 10. Security Best Practices
 
+- ✅ Nigdy nie loguj pełnych API keys
+- ✅ Używaj HTTPS dla wszystkich webhooków
+- ✅ Weryfikuj HMAC signature dla każdego webhooka
+- ✅ Implementuj idempotency keys
+- ✅ Rate limiting dla API calls
+- ✅ Store secrets w environment variables, nie w kodzie
+
+### 11. Documentation Links
+
+- [Revolut Business API Docs](https://developer.revolut.com/)
+- [Revolut Pay Integration Guide](https://developer.revolut.com/docs/accept-payments)
+- [Webhook Documentation](https://developer.revolut.com/docs/webhooks)
+
+### 12. Przykładowy Flow
+
+1. Klient wybiera plan w `/client/settings?tab=billing`
+2. System tworzy Invoice w bazie danych
+3. System wywołuje Revolut API, tworzy order
+4. System zapisuje `revolutOrderId` i `checkout_url` w Invoice
+5. Klient jest przekierowany do `checkout_url`
+6. Klient płaci w Revolut
+7. Revolut wysyła webhook `ORDER_COMPLETED`
+8. System weryfikuje webhook i aktualizuje Invoice status na `PAID`
+9. System aktywuje subskrypcję klienta

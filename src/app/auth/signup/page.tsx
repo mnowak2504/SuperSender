@@ -5,14 +5,21 @@ import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 import { useLanguage } from '@/lib/use-language'
+import { countries } from '@/lib/countries'
 
 export default function SignUpPage() {
   const router = useRouter()
   const { t } = useLanguage()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [country, setCountry] = useState('')
+  const [accountType, setAccountType] = useState<'COMPANY' | 'INDIVIDUAL'>('INDIVIDUAL')
+  const [companyName, setCompanyName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
+  const [marketingConsent, setMarketingConsent] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
   const [error, setError] = useState('')
@@ -22,6 +29,33 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    
+    // Validation
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+    
+    if (!country) {
+      setError('Please select your country')
+      return
+    }
+    
+    if (accountType === 'COMPANY' && !companyName.trim()) {
+      setError('Company name is required for company accounts')
+      return
+    }
+    
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('First name and last name are required')
+      return
+    }
+    
+    // Validate phone format (E.164 basic check)
+    if (phone && !phone.match(/^\+[1-9]\d{1,14}$/)) {
+      setError('Phone number must be in E.164 format (e.g., +353123456789)')
+      return
+    }
     
     // Validate checkboxes
     if (!acceptTerms) {
@@ -42,8 +76,14 @@ export default function SignUpPage() {
         body: JSON.stringify({
           email,
           password,
-          name,
-          phone,
+          confirmPassword,
+          country,
+          accountType,
+          companyName: accountType === 'COMPANY' ? companyName : null,
+          firstName,
+          lastName,
+          phone: phone || null,
+          marketingConsent,
           role: 'CLIENT',
         }),
       })
@@ -73,8 +113,8 @@ export default function SignUpPage() {
         } else {
           // Successfully signed in, wait a bit for cookie to be set
           await new Promise(resolve => setTimeout(resolve, 100))
-          // Use window.location for full page reload to ensure session cookie is read
-          window.location.href = '/client/dashboard'
+          // Redirect to settings billing tab for onboarding
+          window.location.href = '/client/settings?tab=billing'
         }
       } catch (err) {
         // If auto-sign in fails, redirect to sign in page
@@ -121,22 +161,109 @@ export default function SignUpPage() {
           )}
           <div className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                {t('signup_full_name')}
+              <label htmlFor="country" className="block text-sm font-medium text-gray-700">
+                Country <span className="text-red-500">*</span>
               </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                autoComplete="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+              <select
+                id="country"
+                name="country"
+                required
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
+              >
+                <option value="">Select your country</option>
+                {countries.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
             </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Account Type <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="INDIVIDUAL"
+                    checked={accountType === 'INDIVIDUAL'}
+                    onChange={(e) => setAccountType(e.target.value as 'INDIVIDUAL')}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Individual</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="COMPANY"
+                    checked={accountType === 'COMPANY'}
+                    onChange={(e) => setAccountType(e.target.value as 'COMPANY')}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Company</span>
+                </label>
+              </div>
+            </div>
+            
+            {accountType === 'COMPANY' && (
+              <div>
+                <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
+                  Company Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="companyName"
+                  name="companyName"
+                  type="text"
+                  required={accountType === 'COMPANY'}
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            )}
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                  First Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  autoComplete="given-name"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                {t('signup_email')}
+                {t('signup_email')} <span className="text-red-500">*</span>
               </label>
               <input
                 id="email"
@@ -149,23 +276,27 @@ export default function SignUpPage() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
+            
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                {t('signup_phone')}
+                {t('signup_phone')} (E.164 format, e.g., +353123456789)
               </label>
               <input
                 id="phone"
                 name="phone"
                 type="tel"
                 autoComplete="tel"
+                placeholder="+353123456789"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
+              <p className="mt-1 text-xs text-gray-500">Include country code (e.g., +353 for Ireland)</p>
             </div>
+            
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                {t('signup_password')}
+                {t('signup_password')} <span className="text-red-500">*</span>
               </label>
               <input
                 id="password"
@@ -178,7 +309,42 @@ export default function SignUpPage() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
+            
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirm Password <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
+          
+          <div className="space-y-3">
+            <div className="flex items-start">
+              <div className="flex items-center h-5">
+                <input
+                  id="marketing-consent"
+                  name="marketing-consent"
+                  type="checkbox"
+                  checked={marketingConsent}
+                  onChange={(e) => setMarketingConsent(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+              </div>
+              <div className="ml-3 text-sm">
+                <label htmlFor="marketing-consent" className="text-gray-700">
+                  I would like to receive marketing communications (optional)
+                </label>
+              </div>
+            </div>
 
           <div className="space-y-3">
             <div className="flex items-start">

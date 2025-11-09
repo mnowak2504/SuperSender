@@ -154,6 +154,10 @@ export default async function ClientDashboard() {
   const isOverLimit = usedCbm > limitCbm
   const deliveriesThisMonth = client?.deliveriesThisMonth || 0
   const deliveriesLimit = client?.planId ? 0 : 0 // TODO: Get from plan if needed
+  
+  // Check subscription status
+  const hasActiveSubscription = !!client?.planId
+  const hasReceivedItems = warehouseOrders.length > 0
 
   // Fetch shipments in preparation (status: REQUESTED), ready (status: AWAITING_ACCEPTANCE), and own transport (READY_FOR_LOADING)
   let shipmentsInPrep: any[] = []
@@ -388,33 +392,82 @@ export default async function ClientDashboard() {
           </div>
         )}
 
+        {/* Subscription Inactive Banner */}
+        {!hasActiveSubscription && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <Activity className="h-5 w-5 text-yellow-400" />
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-sm font-medium text-yellow-800">Subscription inactive</h3>
+                <p className="mt-1 text-sm text-yellow-700">
+                  Start a plan to use your warehouse address and report deliveries.
+                </p>
+                <div className="mt-3">
+                  <Link
+                    href="/client/settings?tab=billing"
+                    className="text-sm font-medium text-yellow-800 hover:text-yellow-900 underline"
+                  >
+                    Choose a plan →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Quick Actions */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {hasActiveSubscription ? (
+              <Link
+                href="/client/deliveries/new"
+                className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all hover:shadow-lg hover:scale-[1.02]"
+                title="Report a new supplier delivery"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Report Delivery</span>
+              </Link>
+            ) : (
+              <div className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-gray-300 text-gray-500 font-medium rounded-xl cursor-not-allowed">
+                <Plus className="w-5 h-5" />
+                <span>Report Delivery</span>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  Activate your subscription to report deliveries.
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+                </div>
+              </div>
+            )}
+            {hasActiveSubscription && hasReceivedItems ? (
+              <Link
+                href="/client/shipments/new"
+                className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-all hover:shadow-lg hover:scale-[1.02]"
+                title="Request shipment of your warehouse orders"
+              >
+                <Truck className="w-5 h-5" />
+                <span>Request Shipment</span>
+              </Link>
+            ) : (
+              <div className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-gray-300 text-gray-500 font-medium rounded-xl cursor-not-allowed">
+                <Truck className="w-5 h-5" />
+                <span>Request Shipment</span>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  {!hasActiveSubscription 
+                    ? 'Activate your subscription to request shipments.'
+                    : 'You need at least one received item to request a shipment.'}
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+                </div>
+              </div>
+            )}
             <Link
-              href="/client/deliveries/new"
-              className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all hover:shadow-lg hover:scale-[1.02]"
-              title="Report a new supplier delivery"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Report Delivery</span>
-            </Link>
-            <Link
-              href="/client/shipments/new"
-              className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-all hover:shadow-lg hover:scale-[1.02]"
-              title="Request shipment of your warehouse orders"
-            >
-              <Truck className="w-5 h-5" />
-              <span>Request Shipment</span>
-            </Link>
-            <Link
-              href="/client/invoices"
+              href="/client/settings?tab=billing"
               className="group inline-flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-300 text-gray-700 font-medium rounded-xl hover:border-gray-400 hover:bg-gray-50 transition-all"
-              title="View and manage your invoices"
+              title="View and manage your billing and subscription"
             >
-              <FileText className="w-5 h-5" />
-              <span>View Invoices</span>
+              <Settings className="w-5 h-5" />
+              <span>Settings & Billing</span>
             </Link>
           </div>
           <div className="mt-4 flex items-center justify-between">
@@ -469,6 +522,11 @@ Tel. +48 534 759 809 (for couriers only)`}
                 📞 +48 534 759 809 <span className="text-gray-400">(for couriers only)</span>
               </div>
             </div>
+            {!hasActiveSubscription && (
+              <p className="text-xs text-gray-500 mt-3 italic">
+                Use of this address requires an active subscription.
+              </p>
+            )}
           </div>
         </div>
 
@@ -506,9 +564,15 @@ Tel. +48 534 759 809 (for couriers only)`}
               <div className="py-8 text-center">
                 <Truck className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-sm text-gray-500">No expected deliveries</p>
-                <p className="text-xs text-gray-400 mt-2">
-                  Deliveries you report will appear here.
-                </p>
+                {!hasActiveSubscription ? (
+                  <p className="text-xs text-blue-600 mt-2 font-medium">
+                    Activate your plan to start.
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Deliveries you report will appear here.
+                  </p>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
@@ -580,9 +644,15 @@ Tel. +48 534 759 809 (for couriers only)`}
               <div className="py-8 text-center">
                 <Box className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-sm text-gray-500">No items at warehouse</p>
-                <p className="text-xs text-gray-400 mt-2">
-                  Items will appear here once deliveries are received.
-                </p>
+                {!hasActiveSubscription ? (
+                  <p className="text-xs text-blue-600 mt-2 font-medium">
+                    Activate your plan to start.
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Items will appear here once deliveries are received.
+                  </p>
+                )}
               </div>
             ) : (
               <div className="space-y-3">

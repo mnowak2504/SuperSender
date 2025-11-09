@@ -1,0 +1,246 @@
+[1mdiff --git a/src/components/LanguageSelector.tsx b/src/components/LanguageSelector.tsx[m
+[1mindex 010f9fc..a2b7aed 100644[m
+[1m--- a/src/components/LanguageSelector.tsx[m
+[1m+++ b/src/components/LanguageSelector.tsx[m
+[36m@@ -11,17 +11,14 @@[m [mexport default function LanguageSelector() {[m
+       <select[m
+         value={language}[m
+         onChange={(e) => setLanguage(e.target.value as Language)}[m
+[31m-        className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pl-8 text-sm text-gray-700 cursor-pointer hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"[m
+[32m+[m[32m        className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 cursor-pointer hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"[m
+       >[m
+         {languages.map((l) => ([m
+           <option key={l.code} value={l.code}>[m
+[31m-            {l.flag} {l.nativeName}[m
+[32m+[m[32m            {l.code.toUpperCase()} - {l.nativeName}[m
+           </option>[m
+         ))}[m
+       </select>[m
+[31m-      <span className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none text-base">[m
+[31m-        {languages.find(l => l.code === language)?.flag}[m
+[31m-      </span>[m
+     </div>[m
+   )[m
+ }[m
+[1mdiff --git a/src/components/navigation/MainNavigation.tsx b/src/components/navigation/MainNavigation.tsx[m
+[1mindex e38d9ac..139bdfd 100644[m
+[1m--- a/src/components/navigation/MainNavigation.tsx[m
+[1m+++ b/src/components/navigation/MainNavigation.tsx[m
+[36m@@ -91,17 +91,14 @@[m [mexport default function MainNavigation({ currentLang: propLang, useLanguageConte[m
+                 <select[m
+                   value={currentLang}[m
+                   onChange={(e) => handleLanguageChange(e.target.value as Language)}[m
+[31m-                  className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pl-8 text-sm text-gray-700 cursor-pointer hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"[m
+[32m+[m[32m                  className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 cursor-pointer hover:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"[m
+                 >[m
+                   {languages.map((l) => ([m
+                     <option key={l.code} value={l.code}>[m
+[31m-                      {l.flag} {l.nativeName}[m
+[32m+[m[32m                      {l.code.toUpperCase()} - {l.nativeName}[m
+                     </option>[m
+                   ))}[m
+                 </select>[m
+[31m-                <span className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">[m
+[31m-                  {languages.find(l => l.code === currentLang)?.flag}[m
+[31m-                </span>[m
+               </div>[m
+             [m
+             <Link[m
+[36m@@ -175,17 +172,14 @@[m [mexport default function MainNavigation({ currentLang: propLang, useLanguageConte[m
+                 <select[m
+                   value={currentLang}[m
+                   onChange={(e) => handleLanguageChange(e.target.value as Language)}[m
+[31m-                  className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 pl-8 text-sm text-gray-700"[m
+[32m+[m[32m                  className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700"[m
+                 >[m
+                   {languages.map((l) => ([m
+                     <option key={l.code} value={l.code}>[m
+[31m-                      {l.flag} {l.nativeName}[m
+[32m+[m[32m                      {l.code.toUpperCase()} - {l.nativeName}[m
+                     </option>[m
+                   ))}[m
+                 </select>[m
+[31m-                <span className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none">[m
+[31m-                  {languages.find(l => l.code === currentLang)?.flag}[m
+[31m-                </span>[m
+               </div>[m
+               [m
+               <Link[m
+[1mdiff --git a/src/lib/i18n.ts b/src/lib/i18n.ts[m
+[1mindex 96f62fb..8a187a9 100644[m
+[1m--- a/src/lib/i18n.ts[m
+[1m+++ b/src/lib/i18n.ts[m
+[36m@@ -1,13 +1,13 @@[m
+[31m-// Internationalization for landing page[m
+[32m+[m[32m﻿// Internationalization for landing page[m
+ [m
+ export type Language = 'en' | 'de' | 'fr' | 'it' | 'pl'[m
+ [m
+[31m-export const languages: { code: Language; name: string; nativeName: string; flag: string }[] = [[m
+[31m-  { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },[m
+[31m-  { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },[m
+[31m-  { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷' },[m
+[31m-  { code: 'it', name: 'Italian', nativeName: 'Italiano', flag: '🇮🇹' },[m
+[31m-  { code: 'pl', name: 'Polish', nativeName: 'Polski', flag: '🇵🇱' },[m
+[32m+[m[32mexport const languages: { code: Language; name: string; nativeName: string }[] = [[m
+[32m+[m[32m  { code: 'en', name: 'English', nativeName: 'English' },[m
+[32m+[m[32m  { code: 'de', name: 'German', nativeName: 'Deutsch' },[m
+[32m+[m[32m  { code: 'fr', name: 'French', nativeName: 'Français' },[m
+[32m+[m[32m  { code: 'it', name: 'Italian', nativeName: 'Italiano' },[m
+[32m+[m[32m  { code: 'pl', name: 'Polish', nativeName: 'Polski' },[m
+ ][m
+ [m
+ const translations: Record<Language, Record<string, string>> = {[m
+[36m@@ -23,8 +23,8 @@[m [mconst translations: Record<Language, Record<string, string>> = {[m
+     [m
+     // Hero[m
+     hero_title: 'Smart Warehousing & Shipping Solutions Across Europe',[m
+[31m-    hero_subtitle: 'Efficient warehousing, transparent pricing, and flexible logistics for importers, builders, and self-builders. Your goods — safely stored and ready for dispatch from Poland.',[m
+[31m-    hero_cta_primary: 'Get Started (€59/month)',[m
+[32m+[m[32m    hero_subtitle: 'Efficient warehousing, transparent pricing, and flexible logistics for importers, builders, and self-builders. Your goods â€” safely stored and ready for dispatch from Poland.',[m
+[32m+[m[32m    hero_cta_primary: 'Get Started (â‚¬59/month)',[m
+     hero_cta_secondary: 'See How It Works',[m
+     [m
+     // About[m
+[36m@@ -41,7 +41,7 @@[m [mconst translations: Record<Language, Record<string, string>> = {[m
+     process_step3_title: 'Storage & Management',[m
+     process_step3_desc: 'Your goods are stored securely, visible in real time by volume (CBM).',[m
+     process_step4_title: 'Packing & Dispatch',[m
+[31m-    process_step4_desc: 'Orders are packed for international transport — optimized for space and protection, using pallet, stretch foil, and labeling.',[m
+[32m+[m[32m    process_step4_desc: 'Orders are packed for international transport â€” optimized for space and protection, using pallet, stretch foil, and labeling.',[m
+     process_step5_title: 'Shipping',[m
+     process_step5_desc: 'You can choose MAK-organised transport or arrange your own using the automatically provided dimensions, weight, and photos.',[m
+     [m
+[36m@@ -49,45 +49,45 @@[m [mconst translations: Record<Language, Record<string, string>> = {[m
+     pricing_title: 'Transparent Pricing',[m
+     pricing_subtitle: 'All prices include VAT (23% for Poland).',[m
+     pricing_basic_name: 'Basic',[m
+[31m-    pricing_basic_price: '€59/month',[m
+[32m+[m[32m    pricing_basic_price: 'â‚¬59/month',[m
+     pricing_basic_storage: '2.5 CBM (1 pallet space)',[m
+     pricing_basic_deliveries: '4 deliveries/month',[m
+     pricing_basic_dispatches: '1 dispatch/month',[m
+[31m-    pricing_basic_notes: 'Occasional buyers — get a Polish serviced warehouse address at a low monthly cost.',[m
+[32m+[m[32m    pricing_basic_notes: 'Occasional buyers â€” get a Polish serviced warehouse address at a low monthly cost.',[m
+     pricing_standard_name: 'Standard',[m
+[31m-    pricing_standard_price: '€99/month',[m
+[32m+[m[32m    pricing_standard_price: 'â‚¬99/month',[m
+     pricing_standard_storage: '5 CBM (2 pallet spaces)',[m
+     pricing_standard_deliveries: '8 deliveries/month',[m
+     pricing_standard_dispatches: '1 dispatch/month',[m
+[31m-    pricing_standard_notes: 'Small builders and self-builders — ideal as a material hub for ongoing projects or bargain purchases.',[m
+[32m+[m[32m    pricing_standard_notes: 'Small builders and self-builders â€” ideal as a material hub for ongoing projects or bargain purchases.',[m
+     pricing_pro_name: 'Professional',[m
+[31m-    pricing_pro_price: '€229/month',[m
+[32m+[m[32m    pricing_pro_price: 'â‚¬229/month',[m
+     pricing_pro_storage: '15 CBM (6 pallets) + 5 CBM buffer',[m
+     pricing_pro_deliveries: '12 deliveries/month',[m
+     pricing_pro_dispatches: '2 dispatches/month',[m
+[31m-    pricing_pro_notes: 'Small & medium builders — for regular use with larger items (tiles, flooring, adhesives, windows).',[m
+[32m+[m[32m    pricing_pro_notes: 'Small & medium builders â€” for regular use with larger items (tiles, flooring, adhesives, windows).',[m
+     pricing_enterprise_name: 'Enterprise',[m
+     pricing_enterprise_price: 'Custom pricing',[m
+     pricing_enterprise_storage: '50 CBM +',[m
+     pricing_enterprise_deliveries: 'Unlimited',[m
+     pricing_enterprise_dispatches: 'Custom',[m
+[31m-    pricing_enterprise_notes: 'Custom approach — tailored for non-standard or large-scale operations.',[m
+[32m+[m[32m    pricing_enterprise_notes: 'Custom approach â€” tailored for non-standard or large-scale operations.',[m
+     pricing_additional_title: 'Additional Services',[m
+[31m-    pricing_overstorage: 'Over-limit storage: €20 / CBM per month',[m
+[31m-    pricing_extra_delivery: 'Extra delivery: €5 each',[m
+[31m-    pricing_extra_dispatch: 'Extra dispatch: €15 each',[m
+[32m+[m[32m    pricing_overstorage: 'Over-limit storage: â‚¬20 / CBM per month',[m
+[32m+[m[32m    pricing_extra_delivery: 'Extra delivery: â‚¬5 each',[m
+[32m+[m[32m    pricing_extra_dispatch: 'Extra dispatch: â‚¬15 each',[m
+     pricing_local_pickup_title: 'Local pickup (up to 1000 kg):',[m
+[31m-    pricing_local_pickup_note: 'Note: These pickup prices cover transport only. Loading goods onto our truck must be pre-arranged with the supplier — especially for bulky or heavy items. Most suppliers have forklifts or manpower available, but please confirm before booking transport.',[m
+[32m+[m[32m    pricing_local_pickup_note: 'Note: These pickup prices cover transport only. Loading goods onto our truck must be pre-arranged with the supplier â€” especially for bulky or heavy items. Most suppliers have forklifts or manpower available, but please confirm before booking transport.',[m
+     pricing_dispatch_note_title: 'Dispatch Process Notes',[m
+[31m-    pricing_dispatch_note: '"Dispatch" means preparing your order for transport — ensuring items are securely packed, space-optimised, and ready for international shipment. Includes pallet, stretch-foil wrapping, and labeling. Basic / Standard orders are packed within 2 business days after request. Professional / Enterprise orders are packed and ready within 1 business day.',[m
+[32m+[m[32m    pricing_dispatch_note: '"Dispatch" means preparing your order for transport â€” ensuring items are securely packed, space-optimised, and ready for international shipment. Includes pallet, stretch-foil wrapping, and labeling. Basic / Standard orders are packed within 2 business days after request. Professional / Enterprise orders are packed and ready within 1 business day.',[m
+     pricing_vat_note: 'All prices include VAT (23% for Poland).',[m
+     [m
+     // Features[m
+     features_title: 'Key Features',[m
+     features_warehouse_title: 'Central European Warehouse',[m
+[31m-    features_warehouse_desc: 'Secure storage and operations hub located in Southern Poland — ideal for EU logistics.',[m
+[32m+[m[32m    features_warehouse_desc: 'Secure storage and operations hub located in Southern Poland â€” ideal for EU logistics.',[m
+     features_digital_title: 'Fully Digital Handling',[m
+[31m-    features_digital_desc: 'From delivery to dispatch — all operations tracked in your online dashboard.',[m
+[32m+[m[32m    features_digital_desc: 'From delivery to dispatch â€” all operations tracked in your online dashboard.',[m
+     features_flexible_title: 'Flexible Space Plans',[m
+     features_flexible_desc: 'Pay only for the storage volume you need, from 2.5 CBM to 50 CBM+.',[m
+     features_support_title: 'Dedicated Support',[m
+[36m@@ -98,7 +98,7 @@[m [mconst translations: Record<Language, Record<string, string>> = {[m
+     why_mak_location_title: 'Central EU Location',[m
+     why_mak_location_desc: 'Our warehouse in southern Poland is perfectly positioned for efficient distribution across Europe.',[m
+     why_mak_pricing_title: 'Transparent Pricing',[m
+[31m-    why_mak_pricing_desc: 'Simple subscription plans — no hidden costs, clear invoicing in EUR.',[m
+[32m+[m[32m    why_mak_pricing_desc: 'Simple subscription plans â€” no hidden costs, clear invoicing in EUR.',[m
+     why_mak_reliability_title: 'Reliability & Experience',[m
+     why_mak_reliability_desc: 'Over 10 years in logistics and export, serving hundreds of EU builders and SMEs.',[m
+     [m
+[36m@@ -109,13 +109,13 @@[m [mconst translations: Record<Language, Record<string, string>> = {[m
+     [m
+     // Footer[m
+     footer_address_title: 'Contact',[m
+[31m-    footer_address: 'ul. Plebiscytowa 3\n41-100 Siemianowice Śląskie, Poland',[m
+[32m+[m[32m    footer_address: 'ul. Plebiscytowa 3\n41-100 Siemianowice ĹšlÄ…skie, Poland',[m
+     footer_phone: '+48 791 350 527',[m
+     footer_email: 'info@makconsulting.pl',[m
+     footer_company: 'MAK Consulting',[m
+     footer_registered_office: 'Registered Office:\nAl. Wojciecha Korfantego 113/3\n40-156 Katowice',[m
+[31m-    footer_warehouse_address: 'Warehouse Address:\nul. Plebiscytowa 3\n41-100 Siemianowice Śląskie',[m
+[31m-    footer_office_address: 'Office Address:\nul. Klonowa 1D\n41-100 Siemianowice Śląskie',[m
+[32m+[m[32m    footer_warehouse_address: 'Warehouse Address:\nul. Plebiscytowa 3\n41-100 Siemianowice ĹšlÄ…skie',[m
+[32m+[m[32m    footer_office_address: 'Office Address:\nul. Klonowa 1D\n41-100 Siemianowice ĹšlÄ…skie',[m
+     footer_rights: 'All rights reserved.',[m
+     footer_links_about: 'About',[m
+     footer_links_terms: 'Terms',[m
+[36m@@ -123,40 +123,40 @@[m [mconst translations: Record<Language, Record<string, string>> = {[m
+     footer_links_contact: 'Contact',[m
+     [m
+     // Terms & Conditions[m
+[31m-    terms_title: 'Terms of Service — Applicable to the Supersender Platform and MAK Consulting Logistics Services',[m
+[32m+[m[32m    terms_title: 'Terms of Service â€” Applicable to the Supersender Platform and MAK Consulting Logistics Services',[m
+     terms_effective_date: 'Effective Date: October 1, 2025',[m
+[31m-    terms_company_name: 'Company Name: MAK Consulting p.h.u. Michał Nowak',[m
+[32m+[m[32m    terms_company_name: 'Company Name: MAK Consulting p.h.u. MichaĹ‚ Nowak',[m
+     terms_registered_office: 'Registered Office: al. Wojciecha Korfantego 113/3, 40-156 Katowice, Poland',[m
+[31m-    terms_warehouse_address: 'Warehouse Address: ul. Plebiscytowa 3, 41-100 Siemianowice Śląskie, Poland',[m
+[32m+[m[32m    terms_warehouse_address: 'Warehouse Address: ul. Plebiscytowa 3, 41-100 Siemianowice ĹšlÄ…skie, Poland',[m
+     terms_nip: '6343014789',[m
+     terms_eu_vat: 'EU VAT No.: PL6343014789',[m
+     terms_email: 'Email: info@makconsulting.pl',[m
+     terms_website: 'Website: www.makconsulting.pl | www.supersender.eu',[m
+[31m-    terms_business_hours: 'Business Hours (warehouse): Monday to Friday, 8:00–16:00 CET',[m
+[32m+[m[32m    terms_business_hours: 'Business Hours (warehouse): Monday to Friday, 8:00â€“16:00 CET',[m
+     terms_transport_license: 'Transport License: International Transport License No. TU-082508, valid until 30.04.2029',[m
+     terms_section1_title: 'Definitions',[m
+[31m-    terms_section1_mak: 'MAK Consulting p.h.u. Michał Nowak., the operator of the Supersender service.',[m
+[31m-    terms_section1_supersender: 'the digital warehousing, receiving, and dispatch management platform owned and operated by MAK Consulting p.h.u. Michał Nowak.',[m
+[32m+[m[32m    terms_section1_mak: 'MAK Consulting p.h.u. MichaĹ‚ Nowak., the operator of the Supersender service.',[m
+[32m+[m[32m    terms_section1_supersender: 'the digital warehousing, receiving, and dispatch management platform owned and operated by MAK Consulting p.h.u. MichaĹ‚ Nowak.',[m
+     terms_section1_client: 'any company or individual who registers for and uses the Supersender service.',[m
+[31m-    terms_section1_warehouse: 'the MAK Consulting logistics facility located in Siemianowice Śląskie, Poland.',[m
+[32m+[m[32m    terms_section1_warehouse: 'the MAK Consulting logistics facility located in Siemianowice ĹšlÄ…skie, Poland.',[m
+     terms_section1_delivery: 'any goods received at the Warehouse under the Client\'s assigned Supersender code.',[m
+     terms_section1_dispatch: 'the process of packing, preparing, and releasing goods for transport.',[m
+     terms_section1_transport_mak: 'a delivery organized by MAK Consulting as carrier, under License TU-082508, with the right to subcontract transport.',[m
+     terms_section1_transport_client: 'a transport arranged directly by the Client with an independent carrier. In this case, MAK acts only as warehouse operator, not as carrier or freight forwarder.',[m
+[31m-    terms_section1_subscription: 'the Client\'s monthly Supersender package, including defined cubic meter (m³) capacity and service limits.',[m
+[31m-    terms_section1_cubic: 'warehouse space usage calculated by (width × depth × height in cm) ÷ 1,000,000, increased by a 5% buffer.',[m
+[31m-    terms_section1_pallet: 'a standardized loading area of 80×120 cm (max height 260 cm), used for outbound shipment pricing only.',[m
+[32m+[m[32m    terms_section1_subscription: 'the Client\'s monthly Supersender package, including defined cubic meter (mÂł) capacity and service limits.',[m
+[32m+[m[32m    terms_section1_cubic: 'warehouse space usage calculated by (width Ă— depth Ă— height in cm) Ă· 1,000,000, increased by a 5% buffer.',[m
+[32m+[m[32m    terms_section1_pallet: 'a standardized loading area of 80Ă—120 cm (max height 260 cm), used for outbound shipment pricing only.',[m
+     terms_section1_overlimit: 'warehouse volume used above the Client\'s subscribed capacity.',[m
+     terms_section1_prohibited: 'strictly forbidden items including but not limited to: hazardous materials (ADR), explosives, flammable or toxic substances, illegal products, perishable goods, food, plants, animals, biological samples, pharmaceuticals, jewelry, cash, weapons, or any materials restricted by law or requiring temperature-controlled storage.',[m
+     terms_section2_title: 'Nature and Scope of Service',[m
+[31m-    terms_section2_p1: 'Supersender provides warehousing, receiving, consolidation, packing, and dispatch services, as well as — upon the Client\'s choice — transport organization by MAK Consulting acting as a licensed carrier.',[m
+[32m+[m[32m    terms_section2_p1: 'Supersender provides warehousing, receiving, consolidation, packing, and dispatch services, as well as â€” upon the Client\'s choice â€” transport organization by MAK Consulting acting as a licensed carrier.',[m
+     terms_section2_p2: 'MAK Consulting is not a freight forwarder (spedition) and does not broker third-party transport contracts.',[m
+     terms_section2_p3: 'When transport is organized by MAK, MAK acts as carrier, responsible directly to the Client under CMR and applicable law.',[m
+     terms_section2_p4: 'When the Client arranges transport independently, MAK\'s responsibility ends upon correct handover of the shipment to the Client\'s carrier.',[m
+     terms_section3_title: 'Account Registration',[m
+     terms_section3_p1: 'The Client mu

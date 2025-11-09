@@ -160,9 +160,12 @@ export default async function CustomerProfilePage({
       client={{
         ...client,
         WarehouseCapacity: capacity,
+        subscriptionDiscount: (client as any).subscriptionDiscount,
+        additionalServicesDiscount: (client as any).additionalServicesDiscount,
       }}
       timeline={timeline}
       deliveryPhotos={deliveryPhotos}
+      isSuperAdmin={role === 'SUPERADMIN'}
     />
   )
 }
