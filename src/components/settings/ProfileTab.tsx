@@ -27,10 +27,18 @@ export default function ProfileTab() {
         fetch('/api/client/invoices'),
       ])
       
+      // Handle profile response
       if (profileRes.ok) {
         const data = await profileRes.json()
         
         if (data.client) {
+          console.log('[ProfileTab] Received client data:', {
+            id: data.client.id,
+            displayName: data.client.displayName,
+            email: data.client.email,
+            phone: data.client.phone,
+            country: data.client.country,
+          })
           setClient(data.client)
           setFormData({
             displayName: data.client.displayName || '',
@@ -38,21 +46,28 @@ export default function ProfileTab() {
             phone: data.client.phone || '',
             country: data.client.country || '',
           })
-        } else if (profileRes.status === 404) {
-          // Client not found - might be a new user, show a message
-          console.warn('Client profile not found')
+        } else {
+          console.warn('[ProfileTab] Client data is missing in response:', data)
         }
-      } else if (profileRes.status === 404) {
-        // Client not found
-        console.warn('Client profile not found')
+      } else {
+        const errorData = await profileRes.json().catch(() => ({}))
+        console.error('Failed to fetch client profile:', profileRes.status, errorData)
+        
+        if (profileRes.status === 404) {
+          console.warn('Client profile not found - user may not have a Client record')
+        }
       }
 
+      // Handle invoices response
       if (invoicesRes.ok) {
         const invoicesData = await invoicesRes.json()
         setInvoices(invoicesData.invoices || [])
+      } else {
+        console.warn('Failed to fetch invoices:', invoicesRes.status)
+        setInvoices([])
       }
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error fetching client data:', error)
     } finally {
       setLoading(false)
     }
@@ -89,8 +104,19 @@ export default function ProfileTab() {
 
   if (!client) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">Client account not found. Please contact support.</p>
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">Profile & Account</h2>
+          <p className="text-sm text-gray-500">Manage your company information and account details</p>
+        </div>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <div className="text-center">
+            <p className="text-yellow-800 font-medium mb-2">Client account not found</p>
+            <p className="text-sm text-yellow-700">
+              Your account may not be fully set up yet. Please contact support to complete your account setup.
+            </p>
+          </div>
+        </div>
       </div>
     )
   }
