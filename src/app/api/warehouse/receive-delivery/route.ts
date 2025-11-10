@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
 import { calculateVolumeCbm } from '@/lib/warehouse-calculations'
 import { generateDeliveryNumber } from '@/lib/delivery-number'
+import { sendDeliveryReceivedEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
 
@@ -281,6 +282,34 @@ export async function POST(req: NextRequest) {
           deliveriesThisMonth: (client.deliveriesThisMonth || 0) + 1,
         })
         .eq('id', clientId)
+    }
+
+    // 5. Send delivery received email notification (only if status is RECEIVED)
+    if (newStatus === 'RECEIVED') {
+      // Get delivery details for email
+      const { data: updatedDelivery } = await supabase
+        .from('DeliveryExpected')
+        .select('deliveryNumber, supplierName')
+        .eq('id', deliveryId)
+        .single()
+
+      // Count photos
+      const { count: photosCount } = await supabase
+        .from('Media')
+        .select('*', { count: 'exact', head: true })
+        .eq('deliveryExpectedId', deliveryId)
+        .eq('kind', 'delivery_received')
+
+      // Send email (non-blocking)
+      sendDeliveryReceivedEmail(
+        clientId,
+        updatedDelivery?.deliveryNumber || deliveryNumber || 'N/A',
+        updatedDelivery?.supplierName || delivery.supplierName || 'Unknown',
+        photosCount || photos.length || 0
+      ).catch((error) => {
+        console.error('Error sending delivery received email:', error)
+        // Don't fail the request if email fails
+      })
     }
 
     return NextResponse.json(

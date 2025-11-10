@@ -81,8 +81,23 @@ model User {
   changeLogs   ChangeLog[]
   salesClients Client[] @relation("SalesOwner")
   quotedShipments ShipmentOrder[]
+  settings     UserSettings?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model UserSettings {
+  id                String   @id @default(cuid())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String   @unique
+  deliveryReceived  Boolean  @default(true)
+  shipmentReady     Boolean  @default(true)
+  invoiceIssued     Boolean  @default(true)
+  paymentReminder   Boolean  @default(true)
+  overStorageAlert  Boolean  @default(true)
+  newsletter        Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model Client {
@@ -106,6 +121,10 @@ model Client {
   subscriptionDiscount       Float?    // Max 30% for admin, unlimited for superadmin
   additionalServicesDiscount Float?    // Max 40% for admin, unlimited for superadmin
   revolutCustomerId         String?   // For Revolut Pay customer reuse
+  invoiceName                String?   // Name for invoice purposes
+  businessName               String?   // Business/company name (optional)
+  vatNumber                  String?   // EU VAT Number (optional)
+  invoiceAddress             String?   // Full invoice address
 
   users              User[]
   addresses          Address[]

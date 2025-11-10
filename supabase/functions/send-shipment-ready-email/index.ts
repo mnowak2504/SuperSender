@@ -34,7 +34,7 @@ serve(async (req) => {
     // Get shipment details for email
     const { data: shipment, error: shipmentError } = await supabase
       .from('ShipmentOrder')
-      .select('id, calculatedPriceEur, deliveryAddress:Address(*)')
+      .select('id, calculatedPriceEur, clientId, deliveryAddress:Address(*)')
       .eq('id', shipmentId)
       .single()
 
@@ -44,6 +44,34 @@ serve(async (req) => {
         JSON.stringify({ error: 'Shipment not found' }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
       )
+    }
+
+    // Check notification preferences
+    const { data: user } = await supabase
+      .from('User')
+      .select('id')
+      .eq('clientId', shipment.clientId)
+      .limit(1)
+      .single()
+
+    if (user) {
+      const { data: settings } = await supabase
+        .from('UserSettings')
+        .select('shipmentReady')
+        .eq('userId', user.id)
+        .single()
+
+      if (settings && !settings.shipmentReady) {
+        console.log(`[Email] Notification "shipmentReady" disabled for user ${user.id}, skipping`)
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Email skipped (user preference disabled)',
+            skipped: true
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     // Send email using Resend (or Supabase email if available)

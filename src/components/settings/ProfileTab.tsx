@@ -14,6 +14,10 @@ export default function ProfileTab() {
     email: '',
     phone: '',
     country: '',
+    invoiceName: '',
+    businessName: '',
+    vatNumber: '',
+    invoiceAddress: '',
   })
 
   useEffect(() => {
@@ -45,6 +49,10 @@ export default function ProfileTab() {
             email: data.client.email || '',
             phone: data.client.phone || '',
             country: data.client.country || '',
+            invoiceName: data.client.invoiceName || '',
+            businessName: data.client.businessName || '',
+            vatNumber: data.client.vatNumber || '',
+            invoiceAddress: data.client.invoiceAddress || '',
           })
         } else {
           console.warn('[ProfileTab] Client data is missing in response:', data)
@@ -229,39 +237,90 @@ export default function ProfileTab() {
         </div>
 
         {/* Invoice Information */}
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Invoice Information</h3>
-          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs font-medium text-gray-500">Billing Email</dt>
-              <dd className="mt-1 text-sm text-gray-900">{client.email || 'N/A'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-gray-500">Billing Contact</dt>
-              <dd className="mt-1 text-sm text-gray-900">{client.displayName || 'N/A'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-gray-500">Phone</dt>
-              <dd className="mt-1 text-sm text-gray-900">{client.phone || 'N/A'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-gray-500">Country</dt>
-              <dd className="mt-1 text-sm text-gray-900">{client.country || 'N/A'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-gray-500">Total Invoices</dt>
-              <dd className="mt-1 text-sm font-medium text-gray-900">{invoices.length}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-gray-500">Outstanding Balance</dt>
-              <dd className="mt-1 text-sm font-medium text-gray-900">
-                €{invoices
-                  .filter((inv) => inv.status !== 'PAID')
-                  .reduce((sum, inv) => sum + (inv.amountEur || 0), 0)
-                  .toFixed(2)}
-              </dd>
-            </div>
-          </dl>
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-gray-900">Invoice Information</h3>
+          
+          <div>
+            <label htmlFor="invoiceName" className="block text-sm font-medium text-gray-700 mb-1">
+              Name for Invoice *
+            </label>
+            <input
+              type="text"
+              id="invoiceName"
+              required
+              value={formData.invoiceName}
+              onChange={(e) => setFormData({ ...formData, invoiceName: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Full name or company name for invoices"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-1">
+              Business Name (Optional)
+            </label>
+            <input
+              type="text"
+              id="businessName"
+              value={formData.businessName}
+              onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Legal business/company name"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="vatNumber" className="block text-sm font-medium text-gray-700 mb-1">
+              EU VAT Number (Optional)
+            </label>
+            <input
+              type="text"
+              id="vatNumber"
+              value={formData.vatNumber}
+              onChange={(e) => setFormData({ ...formData, vatNumber: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="e.g., PL1234567890"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="invoiceAddress" className="block text-sm font-medium text-gray-700 mb-1">
+              Invoice Address *
+            </label>
+            <textarea
+              id="invoiceAddress"
+              required
+              rows={4}
+              value={formData.invoiceAddress}
+              onChange={(e) => setFormData({ ...formData, invoiceAddress: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Full address for invoices (street, city, postal code, country)"
+            />
+          </div>
+
+          {/* Invoice Summary */}
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mt-4">
+            <h4 className="text-xs font-semibold text-gray-900 mb-3">Invoice Summary</h4>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs font-medium text-gray-500">Billing Email</dt>
+                <dd className="mt-1 text-sm text-gray-900">{client.email || 'N/A'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-gray-500">Total Invoices</dt>
+                <dd className="mt-1 text-sm font-medium text-gray-900">{invoices.length}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-gray-500">Outstanding Balance</dt>
+                <dd className="mt-1 text-sm font-medium text-gray-900">
+                  €{invoices
+                    .filter((inv) => inv.status !== 'PAID')
+                    .reduce((sum, inv) => sum + (inv.amountEur || 0), 0)
+                    .toFixed(2)}
+                </dd>
+              </div>
+            </dl>
+          </div>
         </div>
 
         {/* Save Button */}

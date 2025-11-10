@@ -49,6 +49,10 @@ export interface Client {
   storageOvercharge: number
   deliveriesThisMonth: number
   lastInvoiceDate: string | null
+  invoiceName: string | null
+  businessName: string | null
+  vatNumber: string | null
+  invoiceAddress: string | null
   createdAt: string
   updatedAt: string
 }

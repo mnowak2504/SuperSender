@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
+import { sendInvoiceIssuedEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
 
@@ -99,6 +100,20 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Send invoice issued email notification (non-blocking)
+    sendInvoiceIssuedEmail(
+      clientId,
+      invoice.id,
+      invoice.invoiceNumber || null,
+      finalAmount,
+      'SUBSCRIPTION',
+      dueDate.toISOString(),
+      null // Payment link will be added after creation
+    ).catch((error) => {
+      console.error('Error sending invoice issued email:', error)
+      // Don't fail the request if email fails
+    })
 
     // Create payment link
     try {

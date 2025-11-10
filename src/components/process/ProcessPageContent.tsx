@@ -494,7 +494,7 @@ export default function ProcessPageContent() {
               {t('process_cta_button1')}
             </Link>
             <Link
-              href="mailto:info@makconsulting.pl"
+              href="mailto:info@supersender.eu"
               className="inline-block bg-transparent border-2 border-white text-white px-10 py-4 rounded-lg text-lg font-semibold hover:bg-white/10 transition"
             >
               {t('process_cta_button2')}

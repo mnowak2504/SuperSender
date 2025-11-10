@@ -64,7 +64,7 @@ export default function UpgradePage() {
 
     const selectedPlan = plans.find(p => p.id === selectedPlanId)
     if (selectedPlan?.name.toLowerCase() === 'enterprise') {
-      window.location.href = 'mailto:contact@makconsulting.com?subject=Enterprise Plan Inquiry'
+      window.location.href = 'mailto:info@supersender.eu?subject=Enterprise Plan Inquiry'
       return
     }
 
@@ -243,7 +243,7 @@ export default function UpgradePage() {
 
                   {isEnterprise && (
                     <a
-                      href="mailto:contact@makconsulting.com?subject=Enterprise Plan Inquiry"
+                      href="mailto:info@supersender.eu?subject=Enterprise Plan Inquiry"
                       onClick={(e) => e.stopPropagation()}
                       className="w-full mt-4 px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center justify-center gap-2"
                     >

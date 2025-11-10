@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Search, Filter, Edit, Shield, Mail, Phone, Calendar } from 'lucide-react'
+import { Users, Search, Filter, Edit, Shield, Mail, Phone, Calendar, X, Save } from 'lucide-react'
 
 interface User {
   id: string
@@ -18,18 +18,48 @@ interface User {
   } | null
 }
 
+interface Client {
+  id: string
+  displayName: string
+  clientCode: string
+}
+
 export default function UsersManagementContent() {
   const [users, setUsers] = useState<User[]>([])
+  const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<string>('ALL')
   const [searchTerm, setSearchTerm] = useState<string>('')
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [formData, setFormData] = useState({
+    email: '',
+    name: '',
+    phone: '',
+    role: 'CLIENT' as User['role'],
+    clientId: '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchUsers()
+    fetchClients()
     const interval = setInterval(fetchUsers, 60000) // Refresh every minute
     return () => clearInterval(interval)
   }, [roleFilter])
+
+  const fetchClients = async () => {
+    try {
+      const res = await fetch('/api/admin/clients')
+      if (res.ok) {
+        const data = await res.json()
+        setClients(data.clients || [])
+      }
+    } catch (err) {
+      console.error('Error fetching clients:', err)
+    }
+  }
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -66,6 +96,65 @@ export default function UsersManagementContent() {
         {role}
       </span>
     )
+  }
+
+  const handleEdit = (user: User) => {
+    setEditingUser(user)
+    setFormData({
+      email: user.email || '',
+      name: user.name || '',
+      phone: user.phone || '',
+      role: user.role,
+      clientId: user.clientId || '',
+    })
+    setSaveError(null)
+  }
+
+  const handleCancel = () => {
+    setEditingUser(null)
+    setFormData({
+      email: '',
+      name: '',
+      phone: '',
+      role: 'CLIENT',
+      clientId: '',
+    })
+    setSaveError(null)
+  }
+
+  const handleSave = async () => {
+    if (!editingUser) return
+
+    setSaving(true)
+    setSaveError(null)
+
+    try {
+      const res = await fetch(`/api/superadmin/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          name: formData.name || null,
+          phone: formData.phone || null,
+          role: formData.role,
+          clientId: formData.role === 'CLIENT' ? (formData.clientId || null) : null,
+        }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to update user')
+      }
+
+      // Refresh users list
+      await fetchUsers()
+      handleCancel()
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'An unknown error occurred')
+      console.error('Error updating user:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const filteredUsers = users.filter((user) => {
@@ -212,10 +301,7 @@ export default function UsersManagementContent() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => {
-                          // TODO: Implement edit user modal
-                          alert(`Edycja użytkownika ${user.email} (TODO)`)
-                        }}
+                        onClick={() => handleEdit(user)}
                         className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
                       >
                         <Edit className="w-4 h-4" />
@@ -226,6 +312,129 @@ export default function UsersManagementContent() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">Edytuj Użytkownika</h2>
+              <button
+                onClick={handleCancel}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-4">
+              {saveError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                  {saveError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Imię i Nazwisko
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Telefon
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Rola *
+                </label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => {
+                    const newRole = e.target.value as User['role']
+                    setFormData({
+                      ...formData,
+                      role: newRole,
+                      clientId: newRole !== 'CLIENT' ? '' : formData.clientId,
+                    })
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="CLIENT">Klient</option>
+                  <option value="WAREHOUSE">Magazyn</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="SUPERADMIN">Superadmin</option>
+                </select>
+              </div>
+
+              {formData.role === 'CLIENT' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Przypisany Klient
+                  </label>
+                  <select
+                    value={formData.clientId}
+                    onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Brak przypisania</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.displayName} ({client.clientCode})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3">
+              <button
+                onClick={handleCancel}
+                disabled={saving}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                {saving ? 'Zapisywanie...' : 'Zapisz'}
+              </button>
+            </div>
           </div>
         </div>
       )}
