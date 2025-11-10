@@ -54,6 +54,7 @@ interface Client {
     name: string | null
     phone: string | null
     role: string
+    clientId: string | null
   }>
   invoices: {
     total: number

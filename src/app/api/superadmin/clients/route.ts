@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
         salesOwner: salesOwnerId (id, name, email),
         plan: planId (id, name, operationsRateEur),
         warehouseCapacity: WarehouseCapacity (*),
-        users: User (id, email, name, phone, role),
+        users: User (id, email, name, phone, role, clientId),
         createdAt,
         updatedAt
       `)
