@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { auth, signOut } from '@/lib/auth'
 import MAKLogo from '@/components/MAKLogo'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -87,6 +87,17 @@ export default async function ClientHeader({
                 )}
               </div>
             </div>
+            <form action={async () => {
+              'use server'
+              await signOut({ redirectTo: '/landing/en' })
+            }}>
+              <button
+                type="submit"
+                className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2"
+              >
+                Sign Out
+              </button>
+            </form>
           </div>
         </div>
       </div>

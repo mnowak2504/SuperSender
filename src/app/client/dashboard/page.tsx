@@ -478,13 +478,6 @@ export default async function ClientDashboard() {
               <Package className="w-4 h-4" />
               <span>View All Deliveries</span>
             </Link>
-            <Link
-              href="/client/settings"
-              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium"
-            >
-              <Settings className="w-4 h-4" />
-              <span>Settings</span>
-            </Link>
           </div>
         </div>
 

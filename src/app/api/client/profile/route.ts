@@ -165,7 +165,19 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { displayName, phone, country, invoiceName, businessName, vatNumber, invoiceAddress } = body
+    const { 
+      displayName, 
+      phone, 
+      country, 
+      invoiceName, 
+      businessName, 
+      vatNumber, 
+      invoiceAddress,
+      invoiceAddressLine1,
+      invoiceAddressLine2,
+      invoiceCity,
+      invoicePostCode
+    } = body
 
     // Find client by email or clientId
     let clientId = (session.user as any)?.clientId
@@ -195,7 +207,11 @@ export async function PUT(req: NextRequest) {
         invoiceName: invoiceName || null,
         businessName: businessName || null,
         vatNumber: vatNumber || null,
-        invoiceAddress: invoiceAddress || null,
+        invoiceAddress: invoiceAddress || null, // Keep for backward compatibility
+        invoiceAddressLine1: invoiceAddressLine1 || null,
+        invoiceAddressLine2: invoiceAddressLine2 || null,
+        invoiceCity: invoiceCity || null,
+        invoicePostCode: invoicePostCode || null,
       })
       .eq('id', clientId)
       .select()

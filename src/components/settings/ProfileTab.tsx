@@ -17,7 +17,10 @@ export default function ProfileTab() {
     invoiceName: '',
     businessName: '',
     vatNumber: '',
-    invoiceAddress: '',
+    invoiceAddressLine1: '',
+    invoiceAddressLine2: '',
+    invoiceCity: '',
+    invoicePostCode: '',
   })
 
   useEffect(() => {
@@ -52,7 +55,10 @@ export default function ProfileTab() {
             invoiceName: data.client.invoiceName || '',
             businessName: data.client.businessName || '',
             vatNumber: data.client.vatNumber || '',
-            invoiceAddress: data.client.invoiceAddress || '',
+            invoiceAddressLine1: data.client.invoiceAddressLine1 || '',
+            invoiceAddressLine2: data.client.invoiceAddressLine2 || '',
+            invoiceCity: data.client.invoiceCity || '',
+            invoicePostCode: data.client.invoicePostCode || '',
           })
         } else {
           console.warn('[ProfileTab] Client data is missing in response:', data)
@@ -93,14 +99,18 @@ export default function ProfileTab() {
         body: JSON.stringify(formData),
       })
 
-      if (!res.ok) throw new Error('Failed to save')
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to save changes' }))
+        throw new Error(errorData.error || 'Failed to save changes')
+      }
 
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
       await fetchClientData()
     } catch (error) {
       console.error('Error saving:', error)
-      alert('Failed to save changes. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save changes. Please try again.'
+      alert(errorMessage)
     } finally {
       setSaving(false)
     }
@@ -226,12 +236,14 @@ export default function ProfileTab() {
             >
               <option value="">Select country</option>
               <option value="IE">Ireland</option>
-              <option value="PL">Poland</option>
-              <option value="DE">Germany</option>
-              <option value="FR">France</option>
-              <option value="IT">Italy</option>
               <option value="GB">United Kingdom</option>
               <option value="US">United States</option>
+              <option value="FR">France</option>
+              <option value="IT">Italy</option>
+              <option value="DE">Germany</option>
+              <option value="BE">Belgium</option>
+              <option value="NL">Netherlands</option>
+              <option value="AT">Austria</option>
             </select>
           </div>
         </div>
@@ -283,19 +295,68 @@ export default function ProfileTab() {
             />
           </div>
 
-          <div>
-            <label htmlFor="invoiceAddress" className="block text-sm font-medium text-gray-700 mb-1">
-              Invoice Address *
-            </label>
-            <textarea
-              id="invoiceAddress"
-              required
-              rows={4}
-              value={formData.invoiceAddress}
-              onChange={(e) => setFormData({ ...formData, invoiceAddress: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Full address for invoices (street, city, postal code, country)"
-            />
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium text-gray-900">Invoice Address *</h4>
+            
+            <div>
+              <label htmlFor="invoiceAddressLine1" className="block text-sm font-medium text-gray-700 mb-1">
+                Address Line 1 *
+              </label>
+              <input
+                type="text"
+                id="invoiceAddressLine1"
+                required
+                value={formData.invoiceAddressLine1}
+                onChange={(e) => setFormData({ ...formData, invoiceAddressLine1: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Street address, building number"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="invoiceAddressLine2" className="block text-sm font-medium text-gray-700 mb-1">
+                Address Line 2 (Optional)
+              </label>
+              <input
+                type="text"
+                id="invoiceAddressLine2"
+                value={formData.invoiceAddressLine2}
+                onChange={(e) => setFormData({ ...formData, invoiceAddressLine2: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Apartment, suite, unit, etc."
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="invoiceCity" className="block text-sm font-medium text-gray-700 mb-1">
+                  Town/City *
+                </label>
+                <input
+                  type="text"
+                  id="invoiceCity"
+                  required
+                  value={formData.invoiceCity}
+                  onChange={(e) => setFormData({ ...formData, invoiceCity: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="City or town"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="invoicePostCode" className="block text-sm font-medium text-gray-700 mb-1">
+                  Post Code (Optional)
+                </label>
+                <input
+                  type="text"
+                  id="invoicePostCode"
+                  value={formData.invoicePostCode}
+                  onChange={(e) => setFormData({ ...formData, invoicePostCode: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Postal/ZIP code"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Invoice Summary */}

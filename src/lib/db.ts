@@ -55,6 +55,10 @@ export interface Client {
   businessName: string | null
   vatNumber: string | null
   invoiceAddress: string | null
+  invoiceAddressLine1: string | null
+  invoiceAddressLine2: string | null
+  invoiceCity: string | null
+  invoicePostCode: string | null
   createdAt: string
   updatedAt: string
 }
