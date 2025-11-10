@@ -215,10 +215,15 @@ export async function POST(req: NextRequest) {
       console.warn('No sales rep assigned, keeping temp code')
     }
 
-    console.log('Registration completed successfully')
+    console.log('Registration completed successfully', {
+      userId: user.id,
+      email: user.email,
+      clientId,
+    })
 
     return NextResponse.json(
       {
+        success: true,
         id: user.id,
         email: user.email,
         name: user.name,

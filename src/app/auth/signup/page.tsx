@@ -88,42 +88,66 @@ export default function SignUpPage() {
         }),
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || t('signup_error'))
+      let data
+      try {
+        data = await response.json()
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError)
+        setError('Failed to register user. Please try again.')
         setLoading(false)
         return
       }
 
-      setSuccess(true)
-      // Auto-sign in after successful registration
+      if (!response.ok) {
+        console.error('Registration failed:', data)
+        setError(data.error || data.details || t('signup_error'))
+        setLoading(false)
+        return
+      }
+
+      // Registration successful - auto-sign in
+      console.log('Registration successful, attempting auto-sign in...', data)
+      
       try {
+        // Use signIn from next-auth/react
         const result = await signIn('credentials', {
           email,
           password,
           redirect: false,
+          callbackUrl: '/client/dashboard',
         })
 
         if (result?.error) {
-          // If auto-sign in fails, redirect to sign in page
+          console.error('Auto-sign in failed:', result.error)
+          // If auto-sign in fails, show success message and redirect to sign in
+          setSuccess(true)
           setTimeout(() => {
-            window.location.href = '/auth/signin'
+            window.location.href = '/auth/signin?registered=true'
           }, 2000)
-        } else {
+        } else if (result?.ok) {
+          console.log('Auto-sign in successful, redirecting to dashboard...')
           // Successfully signed in, wait a bit for cookie to be set
-          await new Promise(resolve => setTimeout(resolve, 100))
-          // Redirect to settings billing tab for onboarding
-          window.location.href = '/client/settings?tab=billing'
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
+          // Use window.location for full page reload to ensure session is loaded
+          window.location.href = '/client/dashboard'
+        } else {
+          // Unknown result, try redirecting anyway
+          console.warn('Unknown signIn result:', result)
+          await new Promise(resolve => setTimeout(resolve, 500))
+          window.location.href = '/client/dashboard'
         }
       } catch (err) {
-        // If auto-sign in fails, redirect to sign in page
+        console.error('Error during auto-sign in:', err)
+        // Show success message and redirect to sign in
+        setSuccess(true)
         setTimeout(() => {
-          window.location.href = '/auth/signin'
+          window.location.href = '/auth/signin?registered=true'
         }, 2000)
       }
     } catch (err) {
-      setError(t('signup_error'))
+      console.error('Registration error:', err)
+      setError(err instanceof Error ? err.message : t('signup_error'))
       setLoading(false)
     }
   }
