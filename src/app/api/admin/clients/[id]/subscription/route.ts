@@ -38,9 +38,9 @@ export async function POST(
 
     // Validate discounts based on role
     if (role === 'ADMIN') {
-      if (subscriptionDiscount && (subscriptionDiscount < 0 || subscriptionDiscount > 30)) {
+      if (subscriptionDiscount && (subscriptionDiscount < 0 || subscriptionDiscount > 35)) {
         return NextResponse.json(
-          { error: 'Subscription discount must be between 0% and 30%' },
+          { error: 'Subscription discount must be between 0% and 35%' },
           { status: 400 }
         )
       }

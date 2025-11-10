@@ -69,8 +69,8 @@ export default function SubscriptionManager({
     }
 
     if (!isSuperAdmin) {
-      if (subDiscount < 0 || subDiscount > 30) {
-        setError('Subscription discount must be between 0% and 30%')
+      if (subDiscount < 0 || subDiscount > 35) {
+        setError('Subscription discount must be between 0% and 35%')
         setSaving(false)
         return
       }
