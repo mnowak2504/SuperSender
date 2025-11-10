@@ -22,6 +22,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Generate CUID function
+    const generateCUID = () => {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+      let result = 'cl'
+      for (let i = 0; i < 22; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length))
+      }
+      return result
+    }
+
     const plans = [
       {
         name: 'Basic',
@@ -71,7 +81,10 @@ export async function POST(req: NextRequest) {
 
       const { data, error } = await supabase
         .from('Plan')
-        .insert(plan)
+        .insert({
+          id: generateCUID(),
+          ...plan,
+        })
         .select()
         .single()
 
