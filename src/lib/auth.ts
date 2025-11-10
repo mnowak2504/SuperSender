@@ -93,16 +93,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (shouldUpdateDb) {
             token.lastDbUpdate = now.toISOString()
             const { supabase } = await import('./db')
-            supabase
-              .from('User')
-              .update({ lastActivityAt: now.toISOString() })
-              .eq('id', token.id as string)
-              .then(() => {
-                // Silently update, don't log on every request
-              })
-              .catch((err) => {
-                console.error('[AUTH] Error updating lastActivityAt:', err)
-              })
+            // Update lastActivityAt in database (fire and forget)
+            ;(async () => {
+              const { error } = await supabase
+                .from('User')
+                .update({ lastActivityAt: now.toISOString() })
+                .eq('id', token.id as string)
+              
+              if (error) {
+                console.error('[AUTH] Error updating lastActivityAt:', error)
+              }
+            })()
           }
         }
 
