@@ -37,12 +37,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         console.log('[AUTH] User authorized successfully:', user.email)
+        
+        // Get lastActivityAt from database if available
+        const dbUser = await db.findUserById(user.id)
+        const lastActivityAt = dbUser?.lastActivityAt || new Date().toISOString()
+        
         return {
           id: user.id,
           email: user.email,
           name: user.name,
           role: user.role,
           clientId: user.clientId,
+          lastActivityAt,
         }
       },
     }),
@@ -72,7 +78,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.clientId = (user as any).clientId
         token.email = user.email
         token.name = user.name
+        token.lastActivityAt = new Date().toISOString()
       } else if (token.email) {
+        // Update lastActivityAt on each request
+        const now = new Date()
+        token.lastActivityAt = now.toISOString()
+
+        // Update lastActivityAt in database (async, don't block)
+        // Only update DB if it's been more than 1 minute to reduce writes
+        if (token.id) {
+          const lastDbUpdate = token.lastDbUpdate ? new Date(token.lastDbUpdate as string) : null
+          const shouldUpdateDb = !lastDbUpdate || (now.getTime() - lastDbUpdate.getTime()) > 60000 // 1 minute
+          
+          if (shouldUpdateDb) {
+            token.lastDbUpdate = now.toISOString()
+            const { supabase } = await import('./db')
+            supabase
+              .from('User')
+              .update({ lastActivityAt: now.toISOString() })
+              .eq('id', token.id as string)
+              .then(() => {
+                // Silently update, don't log on every request
+              })
+              .catch((err) => {
+                console.error('[AUTH] Error updating lastActivityAt:', err)
+              })
+          }
+        }
+
         // Refresh role from database on each request for superadmin email
         // This ensures role changes are reflected immediately
         if (token.email === 'm.nowak@makconsulting.pl') {
@@ -95,6 +128,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       console.log('[AUTH] Session callback - token exists:', !!token, 'session exists:', !!session)
+      
+      // Check for inactivity - auto sign out after 3 hours
+      // Check database value to get accurate last activity time
+      if (token.id) {
+        try {
+          const dbUser = await db.findUserById(token.id as string)
+          if (dbUser?.lastActivityAt) {
+            const lastActivity = new Date(dbUser.lastActivityAt)
+            const now = new Date()
+            const hoursSinceActivity = (now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60)
+            
+            if (hoursSinceActivity >= 3) {
+              console.log('[AUTH] User inactive for 3+ hours, invalidating session')
+              // Return null to invalidate session - NextAuth will handle redirect
+              return null as any
+            }
+          }
+        } catch (error) {
+          console.error('[AUTH] Error checking lastActivityAt:', error)
+          // On error, allow session to continue (fail open for availability)
+        }
+      }
+      
       if (session.user && token) {
         (session.user as any).id = token.id as string
         ;(session.user as any).role = token.role as Role

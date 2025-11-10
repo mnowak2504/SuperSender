@@ -28,6 +28,8 @@ export interface User {
   phone: string | null
   role: Role
   clientId: string | null
+  countries: string[] | null // Array of country codes for sales reps/admins
+  lastActivityAt: string | null
   createdAt: string
   updatedAt: string
 }

@@ -10,13 +10,32 @@ import { supabase } from './db'
 export async function autoAssignClient(clientId: string, country: string): Promise<string | null> {
   try {
     // Get all admins (sales owners) - these are the sales reps
+    // Filter by country assignment: only admins with no countries assigned OR admins with this country in their countries array
     const { data: admins, error: adminsError } = await supabase
       .from('User')
-      .select('id, email, role, createdAt')
+      .select('id, email, role, createdAt, countries')
       .in('role', ['ADMIN', 'SUPERADMIN'])
 
     if (adminsError || !admins || admins.length === 0) {
       console.error('No admins found for auto-assignment')
+      return null
+    }
+
+    // Filter admins by country assignment:
+    // - If admin has no countries assigned (null or empty array), they can handle any country
+    // - If admin has countries assigned, they must include this country
+    const eligibleAdmins = admins.filter(admin => {
+      if (!admin.countries || (Array.isArray(admin.countries) && admin.countries.length === 0)) {
+        // No country restrictions - can handle any country
+        return true
+      }
+      // Check if this country is in their assigned countries
+      const countries = Array.isArray(admin.countries) ? admin.countries : []
+      return countries.includes(country)
+    })
+
+    if (eligibleAdmins.length === 0) {
+      console.error(`No admins assigned to country ${country}`)
       return null
     }
 
@@ -29,8 +48,8 @@ export async function autoAssignClient(clientId: string, country: string): Promi
 
     if (countsError) {
       console.error('Error counting clients:', countsError)
-      // Fallback: assign to first admin (oldest)
-      const sortedAdmins = [...admins].sort((a, b) => 
+      // Fallback: assign to first eligible admin (oldest)
+      const sortedAdmins = [...eligibleAdmins].sort((a, b) => 
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       )
       return sortedAdmins[0]?.id || null
@@ -38,7 +57,7 @@ export async function autoAssignClient(clientId: string, country: string): Promi
 
     // Count clients per admin for this country
     const adminClientCounts: Record<string, number> = {}
-    admins.forEach(admin => {
+    eligibleAdmins.forEach(admin => {
       adminClientCounts[admin.id] = 0
     })
 
@@ -54,7 +73,7 @@ export async function autoAssignClient(clientId: string, country: string): Promi
     let assignedAdminId: string | null = null
     let assignedAdminCreatedAt: Date | null = null
 
-    for (const admin of admins) {
+    for (const admin of eligibleAdmins) {
       const count = adminClientCounts[admin.id] || 0
       const adminCreatedAt = new Date(admin.createdAt)
 

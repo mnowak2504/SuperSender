@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Search, Filter, Edit, Shield, Mail, Phone, Calendar, X, Save } from 'lucide-react'
+import { Users, Search, Filter, Edit, Shield, Mail, Phone, Calendar, X, Save, Trash2, Globe } from 'lucide-react'
+import { countries } from '@/lib/countries'
 
 interface User {
   id: string
@@ -10,11 +11,13 @@ interface User {
   phone: string | null
   role: 'CLIENT' | 'WAREHOUSE' | 'ADMIN' | 'SUPERADMIN'
   clientId: string | null
+  countries: string[] | null
   createdAt: string
   updatedAt: string
   Client?: {
     displayName: string
     clientCode: string
+    salesOwnerId: string | null
   } | null
 }
 
@@ -22,11 +25,19 @@ interface Client {
   id: string
   displayName: string
   clientCode: string
+  salesOwnerId: string | null
+}
+
+interface SalesRep {
+  id: string
+  name: string | null
+  email: string
 }
 
 export default function UsersManagementContent() {
   const [users, setUsers] = useState<User[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [salesReps, setSalesReps] = useState<SalesRep[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<string>('ALL')
@@ -38,13 +49,19 @@ export default function UsersManagementContent() {
     phone: '',
     role: 'CLIENT' as User['role'],
     clientId: '',
+    countries: [] as string[],
+    assignClientId: '', // For manually assigning a client to a sales rep
+    assignSalesRepId: '', // For manually assigning a client to a sales rep
   })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
+  const [showAssignClientModal, setShowAssignClientModal] = useState(false)
 
   useEffect(() => {
     fetchUsers()
     fetchClients()
+    fetchSalesReps()
     const interval = setInterval(fetchUsers, 60000) // Refresh every minute
     return () => clearInterval(interval)
   }, [roleFilter])
@@ -58,6 +75,25 @@ export default function UsersManagementContent() {
       }
     } catch (err) {
       console.error('Error fetching clients:', err)
+    }
+  }
+
+  const fetchSalesReps = async () => {
+    try {
+      const res = await fetch('/api/superadmin/users?role=ADMIN')
+      if (res.ok) {
+        const data = await res.json()
+        // Also include SUPERADMIN users as they can be sales reps too
+        const res2 = await fetch('/api/superadmin/users?role=SUPERADMIN')
+        if (res2.ok) {
+          const data2 = await res2.json()
+          setSalesReps([...(data.users || []), ...(data2.users || [])])
+        } else {
+          setSalesReps(data.users || [])
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching sales reps:', err)
     }
   }
 
@@ -106,20 +142,87 @@ export default function UsersManagementContent() {
       phone: user.phone || '',
       role: user.role,
       clientId: user.clientId || '',
+      countries: user.countries || [],
+      assignClientId: '',
+      assignSalesRepId: '',
     })
     setSaveError(null)
   }
 
   const handleCancel = () => {
     setEditingUser(null)
+    setShowAssignClientModal(false)
     setFormData({
       email: '',
       name: '',
       phone: '',
       role: 'CLIENT',
       clientId: '',
+      countries: [],
+      assignClientId: '',
+      assignSalesRepId: '',
     })
     setSaveError(null)
+  }
+
+  const handleDelete = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      return
+    }
+
+    setDeletingUserId(userId)
+    try {
+      const res = await fetch(`/api/superadmin/users/${userId}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to delete user')
+      }
+
+      await fetchUsers()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred')
+      console.error('Error deleting user:', err)
+    } finally {
+      setDeletingUserId(null)
+    }
+  }
+
+  const handleAssignClient = async () => {
+    if (!formData.assignClientId || !formData.assignSalesRepId) {
+      setSaveError('Please select both client and sales rep')
+      return
+    }
+
+    setSaving(true)
+    setSaveError(null)
+
+    try {
+      const res = await fetch(`/api/superadmin/clients/${formData.assignClientId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          salesOwnerId: formData.assignSalesRepId,
+        }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to assign client')
+      }
+
+      await fetchUsers()
+      await fetchClients()
+      setShowAssignClientModal(false)
+      setFormData({ ...formData, assignClientId: '', assignSalesRepId: '' })
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'An unknown error occurred')
+      console.error('Error assigning client:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSave = async () => {
@@ -138,6 +241,7 @@ export default function UsersManagementContent() {
           phone: formData.phone || null,
           role: formData.role,
           clientId: formData.role === 'CLIENT' ? (formData.clientId || null) : null,
+          countries: (formData.role === 'ADMIN' || formData.role === 'SUPERADMIN') ? formData.countries : undefined,
         }),
       })
 
@@ -182,6 +286,13 @@ export default function UsersManagementContent() {
             <p className="text-sm text-gray-500 mt-1">Zarządzaj wszystkimi użytkownikami systemu</p>
           </div>
         </div>
+        <button
+          onClick={() => setShowAssignClientModal(true)}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 inline-flex items-center gap-2"
+        >
+          <Shield className="w-4 h-4" />
+          Przypisz Klienta do Repa
+        </button>
       </div>
 
       {/* Filters */}
@@ -300,13 +411,23 @@ export default function UsersManagementContent() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEdit(user)}
-                        className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
-                      >
-                        <Edit className="w-4 h-4" />
-                        Edytuj
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleEdit(user)}
+                          className="text-blue-600 hover:text-blue-900 inline-flex items-center gap-1"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Edytuj
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user.id)}
+                          disabled={deletingUserId === user.id}
+                          className="text-red-600 hover:text-red-900 inline-flex items-center gap-1 disabled:opacity-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          {deletingUserId === user.id ? 'Usuwanie...' : 'Usuń'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -416,6 +537,43 @@ export default function UsersManagementContent() {
                   </select>
                 </div>
               )}
+
+              {(formData.role === 'ADMIN' || formData.role === 'SUPERADMIN') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <Globe className="w-4 h-4 inline mr-1" />
+                    Przypisane Kraje (pozostaw puste dla wszystkich krajów)
+                  </label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3">
+                    {countries.map((country) => (
+                      <label key={country.code} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.countries.includes(country.code)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({
+                                ...formData,
+                                countries: [...formData.countries, country.code],
+                              })
+                            } else {
+                              setFormData({
+                                ...formData,
+                                countries: formData.countries.filter((c) => c !== country.code),
+                              })
+                            }
+                          }}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="text-sm text-gray-700">{country.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Jeśli nie wybrano żadnego kraju, rep będzie obsługiwał wszystkie kraje
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3">
@@ -428,6 +586,85 @@ export default function UsersManagementContent() {
               </button>
               <button
                 onClick={handleSave}
+                disabled={saving}
+                className="px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                {saving ? 'Zapisywanie...' : 'Zapisz'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Client to Sales Rep Modal */}
+      {showAssignClientModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">Przypisz Klienta do Repa Sprzedaży</h2>
+              <button
+                onClick={() => setShowAssignClientModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 space-y-4">
+              {saveError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                  {saveError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Klient *
+                </label>
+                <select
+                  value={formData.assignClientId}
+                  onChange={(e) => setFormData({ ...formData, assignClientId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Wybierz klienta</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.displayName} ({client.clientCode})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Rep Sprzedaży / Admin *
+                </label>
+                <select
+                  value={formData.assignSalesRepId}
+                  onChange={(e) => setFormData({ ...formData, assignSalesRepId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Wybierz repa sprzedaży</option>
+                  {salesReps.map((rep) => (
+                    <option key={rep.id} value={rep.id}>
+                      {rep.name || rep.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowAssignClientModal(false)}
+                disabled={saving}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={handleAssignClient}
                 disabled={saving}
                 className="px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 inline-flex items-center gap-2"
               >

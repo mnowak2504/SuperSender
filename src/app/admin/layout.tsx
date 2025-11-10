@@ -80,7 +80,7 @@ export default async function AdminLayout({
               <span className="text-sm text-gray-700">{session.user?.email}</span>
               <form action={async () => {
                 'use server'
-                await signOut({ redirectTo: '/auth/signin' })
+                await signOut({ redirectTo: '/landing/en' })
               }}>
                 <button
                   type="submit"

@@ -29,9 +29,10 @@ export async function GET(req: NextRequest) {
         phone,
         role,
         clientId,
+        countries,
         createdAt,
         updatedAt,
-        Client:clientId(displayName, clientCode)
+        Client:clientId(displayName, clientCode, salesOwnerId)
       `)
       .order('createdAt', { ascending: false })
 
