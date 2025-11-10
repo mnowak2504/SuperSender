@@ -121,24 +121,56 @@ export async function POST(req: NextRequest) {
 
     console.log('Creating Client account with temp code:', tempClientCode)
     
+    // Check if email already exists in Client table
+    const { data: existingClientEmail } = await supabase
+      .from('Client')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle()
+    
+    if (existingClientEmail) {
+      console.error('Client with this email already exists:', email)
+      return NextResponse.json(
+        { error: 'An account with this email already exists' },
+        { status: 400 }
+      )
+    }
+    
+    const clientData = {
+      displayName,
+      email,
+      phone: phone || null,
+      country,
+      clientCode: tempClientCode,
+      salesOwnerCode: 'TBD',
+      status: 'ACTIVE',
+      spaceUsagePct: 0,
+      usedCbm: 0,
+      limitCbm: 0,
+    }
+    
+    console.log('Client data to insert:', { ...clientData, phone: clientData.phone ? '***' : null })
+    
     const { data: newClient, error: clientError } = await supabase
       .from('Client')
-      .insert({
-        displayName,
-        email,
-        phone: phone || null,
-        country,
-        clientCode: tempClientCode,
-        salesOwnerCode: 'TBD',
-        status: 'ACTIVE',
-      })
+      .insert(clientData)
       .select('id')
       .single()
 
     if (clientError || !newClient) {
-      console.error('Error creating Client:', clientError)
+      console.error('Error creating Client:', {
+        error: clientError,
+        code: clientError?.code,
+        message: clientError?.message,
+        details: clientError?.details,
+        hint: clientError?.hint,
+      })
       return NextResponse.json(
-        { error: 'Failed to create client account', details: clientError?.message },
+        { 
+          error: 'Failed to create client account', 
+          details: clientError?.message || 'Unknown error',
+          code: clientError?.code,
+        },
         { status: 500 }
       )
     }

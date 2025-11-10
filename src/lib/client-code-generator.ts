@@ -41,10 +41,12 @@ export async function generateClientCode(
 }
 
 /**
- * Generates a temporary client code: TBD-<COUNTRY>-TEMP
+ * Generates a temporary client code: TBD-<COUNTRY>-<TIMESTAMP>
+ * Uses timestamp to ensure uniqueness
  */
 export function generateTempClientCode(country: string): string {
-  return `TBD-${country}-TEMP`
+  const timestamp = Date.now()
+  return `TBD-${country}-${timestamp}`
 }
 
 /**
