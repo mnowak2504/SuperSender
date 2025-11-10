@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
+import { autoAssignClient } from '@/lib/auto-assign-client'
+import { generateTempClientCode } from '@/lib/client-code-generator'
 
 export const runtime = 'nodejs'
 
@@ -47,8 +49,77 @@ export async function GET(req: NextRequest) {
     }
 
     if (!clientId) {
-      console.error('[API /client/profile] Client not found for user:', session.user.email)
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+      console.log('[API /client/profile] No client found, creating new Client record for user:', session.user.email)
+      
+      // Generate CUID for new client
+      const generateCUID = () => {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+        let result = 'cl'
+        for (let i = 0; i < 22; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        return result
+      }
+      
+      const newClientId = generateCUID()
+      const tempClientCode = generateTempClientCode('Unknown')
+      const displayName = (session.user as any)?.name || session.user.email?.split('@')[0] || 'Client'
+      
+      // Create new Client record
+      const { data: newClient, error: createError } = await supabase
+        .from('Client')
+        .insert({
+          id: newClientId,
+          displayName,
+          email: session.user.email || '',
+          phone: (session.user as any)?.phone || null,
+          country: 'Unknown', // Default, can be updated later
+          clientCode: tempClientCode,
+          salesOwnerCode: 'TBD',
+          status: 'ACTIVE',
+        })
+        .select()
+        .single()
+      
+      if (createError || !newClient) {
+        console.error('[API /client/profile] Error creating Client:', createError)
+        return NextResponse.json(
+          { error: 'Failed to create client account', details: createError?.message },
+          { status: 500 }
+        )
+      }
+      
+      clientId = newClient.id
+      console.log('[API /client/profile] Created new Client:', clientId)
+      
+      // Update user with clientId
+      await supabase
+        .from('User')
+        .update({ clientId })
+        .eq('id', (session.user as any)?.id)
+      
+      // Auto-assign client to sales rep
+      await autoAssignClient(clientId, 'Unknown')
+      
+      // Fetch the newly created client
+      const { data: client, error } = await supabase
+        .from('Client')
+        .select('*')
+        .eq('id', clientId)
+        .single()
+      
+      if (error || !client) {
+        console.error('[API /client/profile] Error fetching newly created client:', error)
+        return NextResponse.json({ error: 'Failed to fetch client data' }, { status: 500 })
+      }
+      
+      console.log('[API /client/profile] Successfully fetched newly created client:', {
+        id: client.id,
+        displayName: client.displayName,
+        email: client.email,
+      })
+      
+      return NextResponse.json({ client })
     }
 
     const { data: client, error } = await supabase
