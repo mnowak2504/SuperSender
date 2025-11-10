@@ -44,7 +44,6 @@ export async function GET(req: NextRequest) {
         salesOwner: salesOwnerId (id, name, email),
         plan: planId (id, name, operationsRateEur),
         warehouseCapacity: WarehouseCapacity (*),
-        users: User (id, email, name, phone, role, clientId),
         createdAt,
         updatedAt
       `)
@@ -77,7 +76,7 @@ export async function GET(req: NextRequest) {
     const { data: invoices } = await supabase
       .from('Invoice')
       .select('clientId, amountEur, status, dueDate, createdAt')
-      .in('clientId', clientIds)
+      .in('clientId', clientIds.length > 0 ? clientIds : [''])
 
     const invoiceStats = (invoices || []).reduce((acc, inv) => {
       if (!acc[inv.clientId]) {
@@ -106,7 +105,7 @@ export async function GET(req: NextRequest) {
     const { data: deliveries } = await supabase
       .from('DeliveryExpected')
       .select('clientId, status, createdAt')
-      .in('clientId', clientIds)
+      .in('clientId', clientIds.length > 0 ? clientIds : [''])
 
     const deliveryStats = (deliveries || []).reduce((acc, del) => {
       if (!acc[del.clientId]) {
@@ -125,7 +124,7 @@ export async function GET(req: NextRequest) {
     const { data: shipments } = await supabase
       .from('ShipmentOrder')
       .select('clientId, status, createdAt')
-      .in('clientId', clientIds)
+      .in('clientId', clientIds.length > 0 ? clientIds : [''])
 
     const shipmentStats = (shipments || []).reduce((acc, ship) => {
       if (!acc[ship.clientId]) {
@@ -139,6 +138,22 @@ export async function GET(req: NextRequest) {
       }
       return acc
     }, {} as Record<string, any>)
+
+    // Get users for all clients
+    const { data: users } = await supabase
+      .from('User')
+      .select('id, email, name, phone, role, clientId')
+      .in('clientId', clientIds.length > 0 ? clientIds : [''])
+
+    const usersByClientId = (users || []).reduce((acc, user) => {
+      if (user.clientId) {
+        if (!acc[user.clientId]) {
+          acc[user.clientId] = []
+        }
+        acc[user.clientId].push(user)
+      }
+      return acc
+    }, {} as Record<string, any[]>)
 
     // Format clients with all statistics
     const formattedClients = (clients || []).map((client: any) => {
@@ -165,7 +180,7 @@ export async function GET(req: NextRequest) {
         limitCbm: capacity.limitCbm || 0,
         usagePercent: capacity.usagePercent || 0,
         isOverLimit: capacity.isOverLimit || false,
-        users: client.users || [],
+        users: usersByClientId[client.id] || [],
         invoices,
         deliveries,
         shipments,
