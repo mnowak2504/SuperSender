@@ -89,7 +89,7 @@ export default async function ClientHeader({
             </div>
             <form action={async () => {
               'use server'
-              await signOut({ redirectTo: '/landing/en' })
+              await signOut({ redirectTo: 'https://www.supersender.eu' })
             }}>
               <button
                 type="submit"

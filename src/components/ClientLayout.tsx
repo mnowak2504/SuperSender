@@ -75,7 +75,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 </div>
               </div>
               <button
-                onClick={() => signOut({ callbackUrl: '/landing/en' })}
+                onClick={() => signOut({ callbackUrl: 'https://www.supersender.eu' })}
                 className="text-sm text-gray-500 hover:text-gray-700"
               >
                 {t('client_sign_out')}

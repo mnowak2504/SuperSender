@@ -51,7 +51,7 @@ export default async function UnauthorizedPage() {
         <div className="space-y-3">
           <form action={async () => {
             'use server'
-            await signOut({ redirectTo: '/auth/signin' })
+            await signOut({ redirectTo: 'https://www.supersender.eu' })
           }}>
             <button
               type="submit"
