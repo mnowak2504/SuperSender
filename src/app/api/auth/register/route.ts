@@ -136,7 +136,20 @@ export async function POST(req: NextRequest) {
       )
     }
     
+    // Generate CUID for Client ID
+    const generateCUID = () => {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+      let result = 'cl'
+      for (let i = 0; i < 22; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length))
+      }
+      return result
+    }
+    
+    const clientId = generateCUID()
+    
     const clientData = {
+      id: clientId,
       displayName,
       email,
       phone: phone || null,
@@ -175,7 +188,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const clientId = newClient.id
+    // Use the generated clientId (should match newClient.id)
     console.log('Client created with ID:', clientId)
 
     // Link user to client
