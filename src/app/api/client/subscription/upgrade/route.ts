@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { planId } = body
+    const { planId, subscriptionPeriod = '1', paymentMethod = 'online', voucherCode } = body
 
     if (!planId) {
       return NextResponse.json({ error: 'Plan ID is required' }, { status: 400 })
@@ -89,10 +89,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
 
-    // Calculate subscription amount (apply discount if exists)
-    const baseAmount = plan.operationsRateEur || 0
+    // Calculate subscription amount
+    let baseAmount = plan.operationsRateEur || 0
+    
+    // Apply subscription period discount
+    if (subscriptionPeriod === '3') {
+      baseAmount = baseAmount * 3 * 0.9 // 10% discount for 3 months
+    } else if (subscriptionPeriod === '6') {
+      baseAmount = baseAmount * 6 * 0.85 // 15% discount for 6 months
+    } else {
+      baseAmount = baseAmount * 1 // 1 month
+    }
+
+    // Apply client discount if exists
     const discount = client.subscriptionDiscount || 0
-    const finalAmount = baseAmount * (1 - discount / 100)
+    let finalAmount = baseAmount * (1 - discount / 100)
+
+    // Get setup fee
+    const { data: setupFeeData } = await supabase
+      .from('SetupFee')
+      .select('*')
+      .order('createdAt', { ascending: false })
+      .limit(1)
+      .single()
+
+    const setupFee = setupFeeData?.currentAmountEur || 119.0
+    finalAmount += setupFee
+
+    // Apply voucher discount if provided
+    let voucherId = null
+    if (voucherCode) {
+      const { data: voucher, error: voucherError } = await supabase
+        .from('Voucher')
+        .select('*')
+        .eq('code', voucherCode.trim().toUpperCase())
+        .single()
+
+      if (!voucherError && voucher) {
+        // Validate voucher
+        if (!voucher.usedByClientId && (!voucher.expiresAt || new Date(voucher.expiresAt) > new Date())) {
+          finalAmount = Math.max(0, finalAmount - voucher.amountEur)
+          voucherId = voucher.id
+        }
+      }
+    }
 
     // Create invoice
     const dueDate = new Date()
@@ -150,6 +190,17 @@ export async function POST(req: NextRequest) {
 
       const paymentData = await paymentLinkRes.json()
 
+      // Mark voucher as used if applicable
+      if (voucherId) {
+        await supabase
+          .from('Voucher')
+          .update({
+            usedByClientId: clientId,
+            usedAt: new Date().toISOString(),
+          })
+          .eq('id', voucherId)
+      }
+
       // Update client with new plan (but don't activate until payment)
       // We'll update the plan after payment is confirmed via webhook
       // For now, just return the payment link
@@ -157,13 +208,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         invoiceId: invoice.id,
-        paymentLink: paymentData.link,
+        paymentLink: paymentMethod === 'online' ? paymentData.link : null,
         amount: finalAmount,
         planId,
         planName: plan.name,
+        paymentMethod,
       })
     } catch (paymentError) {
       console.error('Error creating payment link:', paymentError)
+      
+      // Mark voucher as used if applicable (even if payment link creation failed)
+      if (voucherId) {
+        await supabase
+          .from('Voucher')
+          .update({
+            usedByClientId: clientId,
+            usedAt: new Date().toISOString(),
+          })
+          .eq('id', voucherId)
+      }
+      
       // Still return invoice, user can pay later
       return NextResponse.json({
         success: true,
@@ -172,7 +236,10 @@ export async function POST(req: NextRequest) {
         amount: finalAmount,
         planId,
         planName: plan.name,
-        message: 'Invoice created. Payment link will be available shortly.',
+        paymentMethod,
+        message: paymentMethod === 'online' 
+          ? 'Invoice created. Payment link will be available shortly.'
+          : 'Invoice created. Bank transfer instructions will be provided.',
       })
     }
   } catch (error) {

@@ -16,6 +16,13 @@ interface Plan {
   operationsRateEur: number
 }
 
+interface SetupFee {
+  suggestedAmountEur: number
+  currentAmountEur: number
+  validUntil: string | null
+  isPromotional: boolean
+}
+
 export default function UpgradePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -23,6 +30,7 @@ export default function UpgradePage() {
   const [plans, setPlans] = useState<Plan[]>([])
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null)
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
+  const [setupFee, setSetupFee] = useState<SetupFee | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -31,9 +39,10 @@ export default function UpgradePage() {
 
   const fetchData = async () => {
     try {
-      const [plansRes, profileRes] = await Promise.all([
+      const [plansRes, profileRes, setupFeeRes] = await Promise.all([
         fetch('/api/client/plans'),
         fetch('/api/client/profile'),
+        fetch('/api/client/setup-fee'),
       ])
 
       if (plansRes.ok) {
@@ -47,6 +56,11 @@ export default function UpgradePage() {
         if (profileData.client?.planId) {
           setSelectedPlanId(profileData.client.planId)
         }
+      }
+
+      if (setupFeeRes.ok) {
+        const setupFeeData = await setupFeeRes.json()
+        setSetupFee(setupFeeData.setupFee)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -73,35 +87,8 @@ export default function UpgradePage() {
       return
     }
 
-    setProcessing(true)
-    setError('')
-
-    try {
-      const res = await fetch('/api/client/subscription/upgrade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: selectedPlanId }),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to upgrade subscription')
-      }
-
-      // Redirect to payment if payment link is available
-      if (data.paymentLink) {
-        window.location.href = data.paymentLink
-      } else {
-        // Redirect to invoices page
-        router.push('/client/invoices')
-      }
-    } catch (error) {
-      console.error('Error upgrading:', error)
-      setError(error instanceof Error ? error.message : 'Failed to upgrade subscription')
-    } finally {
-      setProcessing(false)
-    }
+    // Redirect to checkout page with plan selection
+    router.push(`/client/checkout?planId=${selectedPlanId}`)
   }
 
   if (loading) {
@@ -188,9 +175,26 @@ export default function UpgradePage() {
                         <span className="text-2xl font-bold text-gray-900">Custom Pricing</span>
                       </div>
                     ) : (
-                      <div className="flex items-baseline">
-                        <span className="text-3xl font-bold text-gray-900">€{plan.operationsRateEur.toFixed(2)}</span>
-                        <span className="text-gray-500 ml-2">/month</span>
+                      <div className="flex flex-col">
+                        <div className="flex items-baseline">
+                          <span className="text-3xl font-bold text-gray-900">€{plan.operationsRateEur.toFixed(2)}</span>
+                          <span className="text-gray-500 ml-2">/month</span>
+                        </div>
+                        {setupFee && (
+                          <div className="mt-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-500">Setup fee:</span>
+                              {setupFee.isPromotional ? (
+                                <>
+                                  <span className="line-through text-gray-400">€{setupFee.suggestedAmountEur.toFixed(2)}</span>
+                                  <span className="font-semibold text-green-600">€{setupFee.currentAmountEur.toFixed(2)}</span>
+                                </>
+                              ) : (
+                                <span className="font-semibold">€{setupFee.currentAmountEur.toFixed(2)}</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
