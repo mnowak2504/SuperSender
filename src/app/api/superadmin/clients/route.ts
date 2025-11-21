@@ -41,9 +41,8 @@ export async function GET(req: NextRequest) {
         subscriptionDiscount,
         additionalServicesDiscount,
         salesOwnerId,
-        salesOwner: salesOwnerId (id, name, email),
-        plan: planId (id, name, operationsRateEur),
-        warehouseCapacity: WarehouseCapacity (*),
+        salesOwner:salesOwnerId(id, name, email),
+        plan:planId(id, name, operationsRateEur),
         createdAt,
         updatedAt
       `)
@@ -68,17 +67,85 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error('Error fetching clients:', error)
-      return NextResponse.json({ error: 'Failed to fetch clients' }, { status: 500 })
+      return NextResponse.json({ 
+        error: 'Failed to fetch clients',
+        details: error.message 
+      }, { status: 500 })
     }
 
     // Get invoice statistics
     const clientIds = clients?.map(c => c.id) || []
-    const { data: invoices } = await supabase
-      .from('Invoice')
-      .select('clientId, amountEur, status, dueDate, createdAt')
-      .in('clientId', clientIds.length > 0 ? clientIds : [''])
+    
+    // Get warehouse capacity for all clients
+    let warehouseCapacityMap: Record<string, any> = {}
+    if (clientIds.length > 0) {
+      const { data: capacities, error: capacityError } = await supabase
+        .from('WarehouseCapacity')
+        .select('*')
+        .in('clientId', clientIds)
+      
+      if (capacityError) {
+        console.error('Error fetching warehouse capacity:', capacityError)
+      } else {
+        (capacities || []).forEach((cap: any) => {
+          warehouseCapacityMap[cap.clientId] = cap
+        })
+      }
+    }
+    
+    // Only query related data if we have clients
+    let invoices: any[] = []
+    let deliveries: any[] = []
+    let shipments: any[] = []
+    let users: any[] = []
+    
+    if (clientIds.length > 0) {
+      const { data: invoicesData, error: invoicesError } = await supabase
+        .from('Invoice')
+        .select('clientId, amountEur, status, dueDate, createdAt')
+        .in('clientId', clientIds)
+      
+      if (invoicesError) {
+        console.error('Error fetching invoices:', invoicesError)
+      } else {
+        invoices = invoicesData || []
+      }
 
-    const invoiceStats = (invoices || []).reduce((acc, inv) => {
+      const { data: deliveriesData, error: deliveriesError } = await supabase
+        .from('DeliveryExpected')
+        .select('clientId, status, createdAt')
+        .in('clientId', clientIds)
+      
+      if (deliveriesError) {
+        console.error('Error fetching deliveries:', deliveriesError)
+      } else {
+        deliveries = deliveriesData || []
+      }
+
+      const { data: shipmentsData, error: shipmentsError } = await supabase
+        .from('ShipmentOrder')
+        .select('clientId, status, createdAt')
+        .in('clientId', clientIds)
+      
+      if (shipmentsError) {
+        console.error('Error fetching shipments:', shipmentsError)
+      } else {
+        shipments = shipmentsData || []
+      }
+
+      const { data: usersData, error: usersError } = await supabase
+        .from('User')
+        .select('id, email, name, phone, role, clientId')
+        .in('clientId', clientIds)
+      
+      if (usersError) {
+        console.error('Error fetching users:', usersError)
+      } else {
+        users = usersData || []
+      }
+    }
+
+    const invoiceStats = invoices.reduce((acc, inv) => {
       if (!acc[inv.clientId]) {
         acc[inv.clientId] = {
           total: 0,
@@ -101,13 +168,7 @@ export async function GET(req: NextRequest) {
       return acc
     }, {} as Record<string, any>)
 
-    // Get delivery statistics
-    const { data: deliveries } = await supabase
-      .from('DeliveryExpected')
-      .select('clientId, status, createdAt')
-      .in('clientId', clientIds.length > 0 ? clientIds : [''])
-
-    const deliveryStats = (deliveries || []).reduce((acc, del) => {
+    const deliveryStats = deliveries.reduce((acc, del) => {
       if (!acc[del.clientId]) {
         acc[del.clientId] = { total: 0, received: 0, expected: 0 }
       }
@@ -120,13 +181,7 @@ export async function GET(req: NextRequest) {
       return acc
     }, {} as Record<string, any>)
 
-    // Get shipment statistics
-    const { data: shipments } = await supabase
-      .from('ShipmentOrder')
-      .select('clientId, status, createdAt')
-      .in('clientId', clientIds.length > 0 ? clientIds : [''])
-
-    const shipmentStats = (shipments || []).reduce((acc, ship) => {
+    const shipmentStats = shipments.reduce((acc, ship) => {
       if (!acc[ship.clientId]) {
         acc[ship.clientId] = { total: 0, delivered: 0, inTransit: 0 }
       }
@@ -139,13 +194,7 @@ export async function GET(req: NextRequest) {
       return acc
     }, {} as Record<string, any>)
 
-    // Get users for all clients
-    const { data: users } = await supabase
-      .from('User')
-      .select('id, email, name, phone, role, clientId')
-      .in('clientId', clientIds.length > 0 ? clientIds : [''])
-
-    const usersByClientId = (users || []).reduce((acc, user) => {
+    const usersByClientId = users.reduce((acc, user) => {
       if (user.clientId) {
         if (!acc[user.clientId]) {
           acc[user.clientId] = []
@@ -157,7 +206,7 @@ export async function GET(req: NextRequest) {
 
     // Format clients with all statistics
     const formattedClients = (clients || []).map((client: any) => {
-      const capacity = client.warehouseCapacity?.[0] || {}
+      const capacity = warehouseCapacityMap[client.id] || {}
       const invoices = invoiceStats[client.id] || { total: 0, paid: 0, outstanding: 0, overdue: 0, count: 0 }
       const deliveries = deliveryStats[client.id] || { total: 0, received: 0, expected: 0 }
       const shipments = shipmentStats[client.id] || { total: 0, delivered: 0, inTransit: 0 }
