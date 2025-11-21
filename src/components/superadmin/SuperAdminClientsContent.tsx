@@ -126,6 +126,12 @@ export default function SuperAdminClientsContent() {
     businessName: '',
     vatNumber: '',
     invoiceAddress: '',
+    individualCbm: null as number | null,
+    individualDeliveriesPerMonth: null as number | null,
+    individualShipmentsPerMonth: null as number | null,
+    individualOperationsRateEur: null as number | null,
+    individualOverSpaceRateEur: null as number | null,
+    individualAdditionalServicesRateEur: null as number | null,
   })
   const [userFormData, setUserFormData] = useState({
     email: '',
@@ -198,6 +204,12 @@ export default function SuperAdminClientsContent() {
       businessName: (client as any).businessName || '',
       vatNumber: (client as any).vatNumber || '',
       invoiceAddress: (client as any).invoiceAddress || '',
+      individualCbm: (client as any).individualCbm || null,
+      individualDeliveriesPerMonth: (client as any).individualDeliveriesPerMonth || null,
+      individualShipmentsPerMonth: (client as any).individualShipmentsPerMonth || null,
+      individualOperationsRateEur: (client as any).individualOperationsRateEur || null,
+      individualOverSpaceRateEur: (client as any).individualOverSpaceRateEur || null,
+      individualAdditionalServicesRateEur: (client as any).individualAdditionalServicesRateEur || null,
     })
     setSaveError(null)
   }
@@ -221,14 +233,20 @@ export default function SuperAdminClientsContent() {
     setSaveError(null)
 
     try {
-      // If plan is being changed and skipPayment is true, use subscription endpoint
-      if (clientFormData.planId && clientFormData.planId !== editingClient.planId && skipPayment) {
+      // If plan is being changed, use subscription endpoint
+      const planChanged = clientFormData.planId !== editingClient.planId
+      const discountsChanged = 
+        clientFormData.subscriptionDiscount !== (editingClient.subscriptionDiscount || 0) ||
+        clientFormData.additionalServicesDiscount !== (editingClient.additionalServicesDiscount || 0)
+      
+      // Use subscription endpoint if plan changed or if we need to update discounts with skipPayment
+      if (planChanged || (skipPayment && discountsChanged)) {
         const subRes = await fetch(`/api/admin/clients/${editingClient.id}/subscription`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            planId: clientFormData.planId,
-            skipPayment: true,
+            planId: clientFormData.planId || editingClient.planId, // Use new plan or keep current
+            skipPayment: skipPayment && planChanged, // Only skip payment when changing plan
             subscriptionDiscount: clientFormData.subscriptionDiscount || 0,
             additionalServicesDiscount: clientFormData.additionalServicesDiscount || 0,
           }),
@@ -258,6 +276,12 @@ export default function SuperAdminClientsContent() {
           businessName: clientFormData.businessName || null,
           vatNumber: clientFormData.vatNumber || null,
           invoiceAddress: clientFormData.invoiceAddress || null,
+          individualCbm: clientFormData.individualCbm || null,
+          individualDeliveriesPerMonth: clientFormData.individualDeliveriesPerMonth || null,
+          individualShipmentsPerMonth: clientFormData.individualShipmentsPerMonth || null,
+          individualOperationsRateEur: clientFormData.individualOperationsRateEur || null,
+          individualOverSpaceRateEur: clientFormData.individualOverSpaceRateEur || null,
+          individualAdditionalServicesRateEur: clientFormData.individualAdditionalServicesRateEur || null,
         }),
       })
 
@@ -829,6 +853,109 @@ export default function SuperAdminClientsContent() {
                   </select>
                 </div>
               </div>
+
+              {/* Individual Plan Settings */}
+              {(() => {
+                const selectedPlan = plans.find(p => p.id === clientFormData.planId)
+                const isIndividualPlan = selectedPlan?.name === 'Individual'
+                
+                if (!isIndividualPlan) return null
+                
+                return (
+                  <div className="border-t border-gray-200 pt-4 mt-4">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4">Warunki Indywidualne</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Limit CBM
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={clientFormData.individualCbm || ''}
+                          onChange={(e) => setClientFormData({ ...clientFormData, individualCbm: e.target.value ? parseFloat(e.target.value) : null })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="np. 10.5"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Dostawy na miesiąc
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={clientFormData.individualDeliveriesPerMonth || ''}
+                          onChange={(e) => setClientFormData({ ...clientFormData, individualDeliveriesPerMonth: e.target.value ? parseInt(e.target.value) : null })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="np. 10"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Wysyłki na miesiąc
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={clientFormData.individualShipmentsPerMonth || ''}
+                          onChange={(e) => setClientFormData({ ...clientFormData, individualShipmentsPerMonth: e.target.value ? parseInt(e.target.value) : null })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="np. 5"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Stawka operacyjna (€/miesiąc)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={clientFormData.individualOperationsRateEur || ''}
+                          onChange={(e) => setClientFormData({ ...clientFormData, individualOperationsRateEur: e.target.value ? parseFloat(e.target.value) : null })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="np. 150.00"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Stawka za przekroczenie CBM (€/CBM)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={clientFormData.individualOverSpaceRateEur || ''}
+                          onChange={(e) => setClientFormData({ ...clientFormData, individualOverSpaceRateEur: e.target.value ? parseFloat(e.target.value) : null })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="np. 25.00"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Stawka usług dodatkowych (€)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={clientFormData.individualAdditionalServicesRateEur || ''}
+                          onChange={(e) => setClientFormData({ ...clientFormData, individualAdditionalServicesRateEur: e.target.value ? parseFloat(e.target.value) : null })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="np. 15.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Invoice Information */}
               <div className="border-t border-gray-200 pt-4">

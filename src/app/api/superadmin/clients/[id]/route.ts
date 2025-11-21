@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
+import { logChange, formatDiscountChange, formatIndividualPlanChange } from '@/lib/change-log'
 
 export const runtime = 'nodejs'
 
@@ -84,7 +85,24 @@ export async function PUT(
       businessName,
       vatNumber,
       invoiceAddress,
+      individualCbm,
+      individualDeliveriesPerMonth,
+      individualShipmentsPerMonth,
+      individualOperationsRateEur,
+      individualOverSpaceRateEur,
+      individualAdditionalServicesRateEur,
     } = body
+
+    // Get current client data for change logging
+    const { data: currentClient, error: fetchError } = await supabase
+      .from('Client')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !currentClient) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+    }
 
     // Build update object
     const updateData: any = {
@@ -104,6 +122,13 @@ export async function PUT(
     if (businessName !== undefined) updateData.businessName = businessName || null
     if (vatNumber !== undefined) updateData.vatNumber = vatNumber || null
     if (invoiceAddress !== undefined) updateData.invoiceAddress = invoiceAddress || null
+    // Individual plan fields
+    if (individualCbm !== undefined) updateData.individualCbm = individualCbm || null
+    if (individualDeliveriesPerMonth !== undefined) updateData.individualDeliveriesPerMonth = individualDeliveriesPerMonth || null
+    if (individualShipmentsPerMonth !== undefined) updateData.individualShipmentsPerMonth = individualShipmentsPerMonth || null
+    if (individualOperationsRateEur !== undefined) updateData.individualOperationsRateEur = individualOperationsRateEur || null
+    if (individualOverSpaceRateEur !== undefined) updateData.individualOverSpaceRateEur = individualOverSpaceRateEur || null
+    if (individualAdditionalServicesRateEur !== undefined) updateData.individualAdditionalServicesRateEur = individualAdditionalServicesRateEur || null
 
     // Update client
     const { data: updatedClient, error } = await supabase
@@ -124,6 +149,70 @@ export async function PUT(
         { error: 'Failed to update client', details: error.message },
         { status: 500 }
       )
+    }
+
+    // Log changes
+    const userId = (session.user as any)?.id
+    const changes: string[] = []
+
+    // Log discount changes
+    if (subscriptionDiscount !== undefined || additionalServicesDiscount !== undefined) {
+      const discountDetails = formatDiscountChange(
+        currentClient.subscriptionDiscount || null,
+        subscriptionDiscount !== undefined ? subscriptionDiscount : currentClient.subscriptionDiscount || null,
+        currentClient.additionalServicesDiscount || null,
+        additionalServicesDiscount !== undefined ? additionalServicesDiscount : currentClient.additionalServicesDiscount || null
+      )
+      if (discountDetails) {
+        changes.push(discountDetails)
+      }
+    }
+
+    // Log individual plan changes
+    if (individualCbm !== undefined || individualDeliveriesPerMonth !== undefined || 
+        individualShipmentsPerMonth !== undefined || individualOperationsRateEur !== undefined ||
+        individualOverSpaceRateEur !== undefined || individualAdditionalServicesRateEur !== undefined) {
+      const individualDetails = formatIndividualPlanChange(
+        {
+          cbm: currentClient.individualCbm,
+          deliveries: currentClient.individualDeliveriesPerMonth,
+          shipments: currentClient.individualShipmentsPerMonth,
+          operationsRate: currentClient.individualOperationsRateEur,
+          overSpaceRate: currentClient.individualOverSpaceRateEur,
+          additionalServicesRate: currentClient.individualAdditionalServicesRateEur,
+        },
+        {
+          cbm: individualCbm !== undefined ? individualCbm : currentClient.individualCbm,
+          deliveries: individualDeliveriesPerMonth !== undefined ? individualDeliveriesPerMonth : currentClient.individualDeliveriesPerMonth,
+          shipments: individualShipmentsPerMonth !== undefined ? individualShipmentsPerMonth : currentClient.individualShipmentsPerMonth,
+          operationsRate: individualOperationsRateEur !== undefined ? individualOperationsRateEur : currentClient.individualOperationsRateEur,
+          overSpaceRate: individualOverSpaceRateEur !== undefined ? individualOverSpaceRateEur : currentClient.individualOverSpaceRateEur,
+          additionalServicesRate: individualAdditionalServicesRateEur !== undefined ? individualAdditionalServicesRateEur : currentClient.individualAdditionalServicesRateEur,
+        }
+      )
+      if (individualDetails) {
+        changes.push(individualDetails)
+      }
+    }
+
+    // Log plan change
+    if (planId !== undefined && planId !== currentClient.planId) {
+      const { data: newPlan } = await supabase
+        .from('Plan')
+        .select('name')
+        .eq('id', planId)
+        .single()
+      changes.push(`Plan: ${currentClient.planId ? 'zmieniony' : 'przypisany'} → ${newPlan?.name || planId}`)
+    }
+
+    if (changes.length > 0) {
+      await logChange({
+        actorId: userId,
+        entityType: 'CLIENT',
+        entityId: id,
+        action: 'Zaktualizowano klienta',
+        details: changes.join('; '),
+      })
     }
 
     return NextResponse.json({ client: updatedClient })

@@ -125,6 +125,13 @@ model Client {
   businessName               String?   // Business/company name (optional)
   vatNumber                  String?   // EU VAT Number (optional)
   invoiceAddress             String?   // Full invoice address
+  // Individual plan custom conditions
+  individualCbm                      Float?    // Custom CBM limit for Individual plan
+  individualDeliveriesPerMonth      Int?      // Custom deliveries per month for Individual plan
+  individualShipmentsPerMonth       Int?      // Custom shipments per month for Individual plan
+  individualOperationsRateEur       Float?    // Custom operations rate in EUR for Individual plan
+  individualOverSpaceRateEur        Float?    // Custom over-space rate in EUR for Individual plan
+  individualAdditionalServicesRateEur Float? // Custom additional services rate in EUR for Individual plan
 
   users              User[]
   addresses          Address[]

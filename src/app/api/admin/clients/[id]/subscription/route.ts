@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
+import { logChange, formatDiscountChange } from '@/lib/change-log'
 
 export const runtime = 'nodejs'
 
@@ -64,7 +65,7 @@ export async function POST(
     // Verify client exists and check assignment (for regular admin)
     const { data: client, error: clientError } = await supabase
       .from('Client')
-      .select('id, salesOwnerId, planId')
+      .select('id, salesOwnerId, planId, subscriptionDiscount, additionalServicesDiscount')
       .eq('id', clientId)
       .single()
 
@@ -124,6 +125,26 @@ export async function POST(
         { status: 500 }
       )
     }
+
+    // Log the change
+    const discountDetails = formatDiscountChange(
+      client.subscriptionDiscount || null,
+      subscriptionDiscount !== undefined ? subscriptionDiscount : client.subscriptionDiscount || null,
+      client.additionalServicesDiscount || null,
+      additionalServicesDiscount !== undefined ? additionalServicesDiscount : client.additionalServicesDiscount || null
+    )
+    
+    const action = planId && planId !== client.planId 
+      ? `Przypisano plan ${plan?.name || planId}${skipPayment ? ' (bez płatności)' : ''}`
+      : 'Zaktualizowano zniżki'
+    
+    await logChange({
+      actorId: userId,
+      entityType: 'CLIENT',
+      entityId: clientId,
+      action,
+      details: discountDetails || (planId ? `Plan: ${plan?.name || planId}` : ''),
+    })
 
     // If skipPayment is true (superadmin only), create a "manual" invoice marked as paid
     if (skipPayment && role === 'SUPERADMIN' && plan) {
