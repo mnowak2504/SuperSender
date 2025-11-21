@@ -28,21 +28,60 @@ export async function GET(
 
     const { data: client, error } = await supabase
       .from('Client')
-      .select(`
-        *,
-        plan: planId (*),
-        salesOwner: salesOwnerId (*),
-        users: User (*),
-        warehouseCapacity: WarehouseCapacity (*)
-      `)
+      .select('*')
       .eq('id', id)
       .single()
 
     if (error || !client) {
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+      console.error('Error fetching client:', error)
+      return NextResponse.json({ 
+        error: 'Client not found',
+        details: error?.message 
+      }, { status: 404 })
     }
 
-    return NextResponse.json({ client })
+    // Fetch related data separately
+    let plan = null
+    if (client.planId) {
+      const { data: planData } = await supabase
+        .from('Plan')
+        .select('*')
+        .eq('id', client.planId)
+        .single()
+      plan = planData
+    }
+
+    let salesOwner = null
+    if (client.salesOwnerId) {
+      const { data: ownerData } = await supabase
+        .from('User')
+        .select('id, name, email')
+        .eq('id', client.salesOwnerId)
+        .single()
+      salesOwner = ownerData
+    }
+
+    const { data: users } = await supabase
+      .from('User')
+      .select('id, email, name, phone, role, clientId')
+      .eq('clientId', id)
+
+    const { data: warehouseCapacity } = await supabase
+      .from('WarehouseCapacity')
+      .select('*')
+      .eq('clientId', id)
+      .single()
+
+    // Format response
+    const formattedClient = {
+      ...client,
+      plan: plan,
+      salesOwner: salesOwner,
+      users: users || [],
+      warehouseCapacity: warehouseCapacity,
+    }
+
+    return NextResponse.json({ client: formattedClient })
   } catch (error) {
     console.error('Error in GET /api/superadmin/clients/[id]:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
