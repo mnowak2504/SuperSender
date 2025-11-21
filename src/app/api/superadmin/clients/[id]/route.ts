@@ -133,3 +133,71 @@ export async function PUT(
   }
 }
 
+/**
+ * DELETE /api/superadmin/clients/[id]
+ * Delete client (only SUPERADMIN)
+ */
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth()
+    const { id } = await params
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const role = (session.user as any)?.role
+    if (role !== 'SUPERADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // Check if client exists
+    const { data: client, error: fetchError } = await supabase
+      .from('Client')
+      .select('id, displayName')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !client) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+    }
+
+    // Delete client (cascade should handle related records, but we'll delete explicitly if needed)
+    // First, delete related records that might not cascade
+    const { error: deleteUsersError } = await supabase
+      .from('User')
+      .delete()
+      .eq('clientId', id)
+
+    if (deleteUsersError) {
+      console.error('Error deleting client users:', deleteUsersError)
+      // Continue anyway, might be no users
+    }
+
+    // Delete the client
+    const { error: deleteError } = await supabase
+      .from('Client')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) {
+      console.error('Error deleting client:', deleteError)
+      return NextResponse.json(
+        { error: 'Failed to delete client', details: deleteError.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Client deleted successfully' 
+    })
+  } catch (error) {
+    console.error('Error in DELETE /api/superadmin/clients/[id]:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+

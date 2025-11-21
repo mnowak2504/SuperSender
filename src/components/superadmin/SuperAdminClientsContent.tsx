@@ -20,6 +20,7 @@ import {
   Building,
   Globe,
   CreditCard,
+  Trash2,
 } from 'lucide-react'
 
 interface Client {
@@ -136,6 +137,7 @@ export default function SuperAdminClientsContent() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [skipPayment, setSkipPayment] = useState(false)
+  const [deletingClientId, setDeletingClientId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -305,6 +307,31 @@ export default function SuperAdminClientsContent() {
       console.error('Error updating user:', err)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDeleteClient = async (clientId: string, clientName: string) => {
+    if (!confirm(`Czy na pewno chcesz usunąć klienta "${clientName}"? Ta operacja jest nieodwracalna i usunie również wszystkich powiązanych użytkowników.`)) {
+      return
+    }
+
+    setDeletingClientId(clientId)
+    try {
+      const res = await fetch(`/api/superadmin/clients/${clientId}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to delete client')
+      }
+
+      await fetchData()
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'An unknown error occurred')
+      console.error('Error deleting client:', err)
+    } finally {
+      setDeletingClientId(null)
     }
   }
 
@@ -498,6 +525,17 @@ export default function SuperAdminClientsContent() {
                       >
                         <Edit className="w-4 h-4" />
                         Edytuj
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteClient(client.id, client.displayName)
+                        }}
+                        disabled={deletingClientId === client.id}
+                        className="text-red-600 hover:text-red-900 inline-flex items-center gap-1 text-sm disabled:opacity-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {deletingClientId === client.id ? 'Usuwanie...' : 'Usuń'}
                       </button>
                       {expandedClient === client.id ? (
                         <ChevronUp className="w-5 h-5 text-gray-400" />

@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
         updatedAt,
         Client:clientId(displayName, clientCode, salesOwnerId)
       `)
+      .in('role', ['SUPERADMIN', 'ADMIN', 'WAREHOUSE'])
       .order('createdAt', { ascending: false })
 
     if (roleFilter && roleFilter !== 'ALL') {

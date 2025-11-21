@@ -17,8 +17,30 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Get all clients with capacity and invoice info
-    const { data: clients, error } = await supabase
+    const userId = (session.user as any)?.id
+
+    // For ADMIN: get their assigned countries, for SUPERADMIN: no filter
+    let countryFilter: string[] | null = null
+    if (role === 'ADMIN') {
+      const { data: adminUser, error: adminError } = await supabase
+        .from('User')
+        .select('countries')
+        .eq('id', userId)
+        .single()
+
+      if (adminError) {
+        console.error('Error fetching admin user:', adminError)
+        return NextResponse.json({ error: 'Failed to fetch admin data' }, { status: 500 })
+      }
+
+      // If admin has countries assigned, filter by them. If null/empty, they see all clients.
+      if (adminUser?.countries && Array.isArray(adminUser.countries) && adminUser.countries.length > 0) {
+        countryFilter = adminUser.countries
+      }
+    }
+
+    // Build query
+    let query = supabase
       .from('Client')
       .select(`
         id,
@@ -26,10 +48,18 @@ export async function GET(req: NextRequest) {
         email,
         clientCode,
         status,
+        country,
         salesOwnerId,
         salesOwner: salesOwnerId (name, email),
         warehouseCapacity: WarehouseCapacity (*)
       `)
+
+    // Apply country filter for ADMIN
+    if (countryFilter && countryFilter.length > 0) {
+      query = query.in('country', countryFilter)
+    }
+
+    const { data: clients, error } = await query
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

@@ -32,8 +32,9 @@ export async function POST(
     const body = await req.json()
     const { planId, skipPayment, subscriptionDiscount, additionalServicesDiscount } = body
 
-    if (!planId) {
-      return NextResponse.json({ error: 'Plan ID is required' }, { status: 400 })
+    // Allow updating discounts without changing plan (planId can be same as current or omitted)
+    if (!planId && subscriptionDiscount === undefined && additionalServicesDiscount === undefined) {
+      return NextResponse.json({ error: 'Plan ID or discount values are required' }, { status: 400 })
     }
 
     // Validate discounts based on role
@@ -79,21 +80,28 @@ export async function POST(
       )
     }
 
-    // Verify plan exists
-    const { data: plan, error: planError } = await supabase
-      .from('Plan')
-      .select('id, name, operationsRateEur')
-      .eq('id', planId)
-      .single()
+    // Verify plan exists if planId is provided
+    let plan = null
+    if (planId) {
+      const { data: planData, error: planError } = await supabase
+        .from('Plan')
+        .select('id, name, operationsRateEur')
+        .eq('id', planId)
+        .single()
 
-    if (planError || !plan) {
-      return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
+      if (planError || !planData) {
+        return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
+      }
+      plan = planData
     }
 
-    // Update client with plan
+    // Update client with plan (if provided) and/or discounts
     const updateData: any = {
-      planId,
       updatedAt: new Date().toISOString(),
+    }
+
+    if (planId) {
+      updateData.planId = planId
     }
 
     // Store discounts if provided
@@ -118,7 +126,7 @@ export async function POST(
     }
 
     // If skipPayment is true (superadmin only), create a "manual" invoice marked as paid
-    if (skipPayment && role === 'SUPERADMIN') {
+    if (skipPayment && role === 'SUPERADMIN' && plan) {
       const subscriptionAmount = plan.operationsRateEur || 0
       
       const { error: invoiceError } = await supabase
