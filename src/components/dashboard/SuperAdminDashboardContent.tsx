@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { DollarSign, TrendingUp, Package, AlertTriangle, Users, Settings, FileText, Euro } from 'lucide-react'
+import { DollarSign, TrendingUp, Package, AlertTriangle, Users, Settings, FileText, Euro, Tag } from 'lucide-react'
 import KPICard from './KPICard'
 import AlertBanner from './AlertBanner'
 import Link from 'next/link'
@@ -291,6 +291,13 @@ export default function SuperAdminDashboardContent() {
           >
             <Euro className="w-5 h-5 text-gray-600" />
             <span className="text-sm font-medium">Pricing</span>
+          </Link>
+          <Link
+            href="/superadmin/pricing/setup-fee"
+            className="flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Tag className="w-5 h-5 text-gray-600" />
+            <span className="text-sm font-medium">Setup Fee & Vouchers</span>
           </Link>
           <Link
             href="/superadmin/users"
