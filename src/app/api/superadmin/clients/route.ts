@@ -41,8 +41,6 @@ export async function GET(req: NextRequest) {
         subscriptionDiscount,
         additionalServicesDiscount,
         salesOwnerId,
-        salesOwner:salesOwnerId(id, name, email),
-        plan:planId(id, name, operationsRateEur),
         createdAt,
         updatedAt
       `)
@@ -75,6 +73,42 @@ export async function GET(req: NextRequest) {
 
     // Get invoice statistics
     const clientIds = clients?.map(c => c.id) || []
+    
+    // Get sales owners and plans separately
+    const salesOwnerIds = [...new Set((clients || []).map((c: any) => c.salesOwnerId).filter(Boolean))]
+    const planIds = [...new Set((clients || []).map((c: any) => c.planId).filter(Boolean))]
+    
+    let salesOwnerMap: Record<string, any> = {}
+    if (salesOwnerIds.length > 0) {
+      const { data: salesOwners, error: salesOwnerError } = await supabase
+        .from('User')
+        .select('id, name, email')
+        .in('id', salesOwnerIds)
+      
+      if (salesOwnerError) {
+        console.error('Error fetching sales owners:', salesOwnerError)
+      } else {
+        (salesOwners || []).forEach((owner: any) => {
+          salesOwnerMap[owner.id] = owner
+        })
+      }
+    }
+    
+    let planMap: Record<string, any> = {}
+    if (planIds.length > 0) {
+      const { data: plansData, error: plansError } = await supabase
+        .from('Plan')
+        .select('id, name, operationsRateEur')
+        .in('id', planIds)
+      
+      if (plansError) {
+        console.error('Error fetching plans:', plansError)
+      } else {
+        (plansData || []).forEach((plan: any) => {
+          planMap[plan.id] = plan
+        })
+      }
+    }
     
     // Get warehouse capacity for all clients
     let warehouseCapacityMap: Record<string, any> = {}
@@ -210,6 +244,8 @@ export async function GET(req: NextRequest) {
       const invoices = invoiceStats[client.id] || { total: 0, paid: 0, outstanding: 0, overdue: 0, count: 0 }
       const deliveries = deliveryStats[client.id] || { total: 0, received: 0, expected: 0 }
       const shipments = shipmentStats[client.id] || { total: 0, delivered: 0, inTransit: 0 }
+      const salesOwner = client.salesOwnerId ? salesOwnerMap[client.salesOwnerId] : null
+      const plan = client.planId ? planMap[client.planId] : null
 
       return {
         id: client.id,
@@ -220,10 +256,10 @@ export async function GET(req: NextRequest) {
         clientCode: client.clientCode,
         status: client.status,
         planId: client.planId,
-        plan: client.plan,
+        plan: plan,
         subscriptionDiscount: client.subscriptionDiscount || 0,
         additionalServicesDiscount: client.additionalServicesDiscount || 0,
-        salesOwner: client.salesOwner,
+        salesOwner: salesOwner,
         salesOwnerId: client.salesOwnerId,
         usedCbm: capacity.usedCbm || 0,
         limitCbm: capacity.limitCbm || 0,
