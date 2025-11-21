@@ -29,21 +29,7 @@ export async function GET(req: NextRequest) {
     // Get all clients with full details
     let query = supabase
       .from('Client')
-      .select(`
-        id,
-        displayName,
-        email,
-        phone,
-        country,
-        clientCode,
-        status,
-        planId,
-        subscriptionDiscount,
-        additionalServicesDiscount,
-        salesOwnerId,
-        createdAt,
-        updatedAt
-      `)
+      .select('*')
       .order('createdAt', { ascending: false })
 
     // Apply filters
@@ -64,10 +50,25 @@ export async function GET(req: NextRequest) {
     const { data: clients, error } = await query
 
     if (error) {
-      console.error('Error fetching clients:', error)
+      console.error('Error fetching clients:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        fullError: JSON.stringify(error, null, 2)
+      })
       return NextResponse.json({ 
         error: 'Failed to fetch clients',
-        details: error.message 
+        details: error.message || 'Unknown error',
+        code: error.code
+      }, { status: 500 })
+    }
+
+    if (!clients) {
+      console.error('Clients data is null or undefined')
+      return NextResponse.json({ 
+        error: 'Failed to fetch clients',
+        details: 'No data returned from query'
       }, { status: 500 })
     }
 
@@ -289,8 +290,15 @@ export async function GET(req: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Error in GET /api/superadmin/clients:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in GET /api/superadmin/clients:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      fullError: JSON.stringify(error, null, 2)
+    })
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
