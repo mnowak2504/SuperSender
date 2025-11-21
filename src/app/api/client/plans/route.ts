@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     const { data: plans, error } = await supabase
       .from('Plan')
       .select('*')
+      .neq('name', 'Individual') // Hide Individual plan from clients
       .order('operationsRateEur', { ascending: true })
 
     if (error) {

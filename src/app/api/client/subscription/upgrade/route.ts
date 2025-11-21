@@ -26,20 +26,38 @@ export async function POST(req: NextRequest) {
     // Find client by email or clientId
     let clientId = (session.user as any)?.clientId
     
+    console.log('[API /client/subscription/upgrade] Session info:', {
+      userId: (session.user as any)?.id,
+      email: session.user.email,
+      clientId: clientId,
+    })
+    
     if (!clientId) {
-      const { data: clientByEmail } = await supabase
+      console.log('[API /client/subscription/upgrade] No clientId in session, searching by email:', session.user.email)
+      const { data: clientByEmail, error: emailError } = await supabase
         .from('Client')
         .select('id')
         .eq('email', session.user.email)
         .single()
       
+      if (emailError) {
+        console.error('[API /client/subscription/upgrade] Error searching client by email:', emailError)
+      }
+      
       if (clientByEmail) {
         clientId = clientByEmail.id
+        console.log('[API /client/subscription/upgrade] Found client by email:', clientId)
+      } else {
+        console.warn('[API /client/subscription/upgrade] No client found by email')
       }
     }
 
     if (!clientId) {
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+      console.error('[API /client/subscription/upgrade] Client not found for user:', session.user.email)
+      return NextResponse.json({ 
+        error: 'Client not found',
+        details: 'Please complete your profile first'
+      }, { status: 404 })
     }
 
     const body = await req.json()

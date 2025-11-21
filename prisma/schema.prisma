@@ -82,6 +82,7 @@ model User {
   salesClients Client[] @relation("SalesOwner")
   quotedShipments ShipmentOrder[]
   settings     UserSettings?
+  createdVouchers Voucher[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -140,6 +141,7 @@ model Client {
   shipmentOrders     ShipmentOrder[]
   invoices           Invoice[]
   warehouseCapacity  WarehouseCapacity?
+  usedVouchers        Voucher[]
 
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -367,4 +369,28 @@ model TranslationCache {
   createdAt     DateTime @default(now())
 
   @@unique([originalText, sourceLang, targetLang])
+}
+
+model SetupFee {
+  id                String   @id @default(cuid())
+  suggestedAmountEur Float    @default(119.0) // Suggested setup fee (€119)
+  currentAmountEur   Float    @default(119.0) // Current promotional amount
+  validUntil         DateTime? // Date until which current amount is valid (null = no expiration)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Voucher {
+  id            String   @id @default(cuid())
+  code          String   @unique // Voucher code (e.g., "BOOK20")
+  amountEur     Float    // Discount amount in EUR
+  isOneTime     Boolean  @default(true) // Can only be used once
+  usedBy        Client?  @relation(fields: [usedByClientId], references: [id])
+  usedByClientId String? // Client who used this voucher (null if unused)
+  usedAt        DateTime? // When voucher was used
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  createdById   String
+  expiresAt     DateTime? // Optional expiration date
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
