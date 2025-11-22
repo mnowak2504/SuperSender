@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
 import { sendInvoiceIssuedEmail } from '@/lib/email'
+import { BANK_TRANSFER_INFO, formatBankTransferInstructions, getBankTransferTitle } from '@/lib/bank-transfer-info'
 
 export const runtime = 'nodejs'
 
@@ -70,12 +71,31 @@ export async function POST(req: NextRequest) {
     // Get client with current plan
     const { data: client, error: clientError } = await supabase
       .from('Client')
-      .select('id, planId, subscriptionDiscount')
+      .select('id, planId, subscriptionDiscount, clientCode, email')
       .eq('id', clientId)
       .single()
 
-    if (clientError || !client) {
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+    if (clientError) {
+      console.error('[API /client/subscription/upgrade] Client fetch error:', {
+        error: clientError,
+        clientId,
+        email: session.user.email,
+      })
+      return NextResponse.json({ 
+        error: 'Client not found',
+        details: clientError.message || 'Client record not found'
+      }, { status: 404 })
+    }
+
+    if (!client) {
+      console.error('[API /client/subscription/upgrade] Client is null:', {
+        clientId,
+        email: session.user.email,
+      })
+      return NextResponse.json({ 
+        error: 'Client not found',
+        details: 'Client record is null'
+      }, { status: 404 })
     }
 
     // Verify plan exists
@@ -201,9 +221,27 @@ export async function POST(req: NextRequest) {
           .eq('id', voucherId)
       }
 
-      // Update client with new plan (but don't activate until payment)
-      // We'll update the plan after payment is confirmed via webhook
-      // For now, just return the payment link
+      // If bank transfer, activate account immediately
+      if (paymentMethod === 'bank_transfer') {
+        const { error: updatePlanError } = await supabase
+          .from('Client')
+          .update({
+            planId: planId,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', clientId)
+
+        if (updatePlanError) {
+          console.error('[API /client/subscription/upgrade] Error updating client plan for bank transfer:', updatePlanError)
+        }
+      }
+
+      // Prepare bank transfer info if applicable
+      const bankTransferInfo = paymentMethod === 'bank_transfer' ? {
+        instructions: formatBankTransferInstructions(client.clientCode || 'N/A', invoice.invoiceNumber || undefined, finalAmount),
+        transferTitle: getBankTransferTitle(client.clientCode || 'N/A', invoice.invoiceNumber || undefined),
+        accountDetails: BANK_TRANSFER_INFO,
+      } : null
 
       return NextResponse.json({
         success: true,
@@ -213,6 +251,8 @@ export async function POST(req: NextRequest) {
         planId,
         planName: plan.name,
         paymentMethod,
+        bankTransferInfo,
+        clientCode: client.clientCode,
       })
     } catch (paymentError) {
       console.error('Error creating payment link:', paymentError)
@@ -227,6 +267,28 @@ export async function POST(req: NextRequest) {
           })
           .eq('id', voucherId)
       }
+
+      // If bank transfer, activate account immediately
+      if (paymentMethod === 'bank_transfer') {
+        const { error: updatePlanError } = await supabase
+          .from('Client')
+          .update({
+            planId: planId,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', clientId)
+
+        if (updatePlanError) {
+          console.error('[API /client/subscription/upgrade] Error updating client plan for bank transfer:', updatePlanError)
+        }
+      }
+
+      // Prepare bank transfer info if applicable
+      const bankTransferInfo = paymentMethod === 'bank_transfer' ? {
+        instructions: formatBankTransferInstructions(client.clientCode || 'N/A', invoice.invoiceNumber || undefined, finalAmount),
+        transferTitle: getBankTransferTitle(client.clientCode || 'N/A', invoice.invoiceNumber || undefined),
+        accountDetails: BANK_TRANSFER_INFO,
+      } : null
       
       // Still return invoice, user can pay later
       return NextResponse.json({
@@ -237,6 +299,8 @@ export async function POST(req: NextRequest) {
         planId,
         planName: plan.name,
         paymentMethod,
+        bankTransferInfo,
+        clientCode: client.clientCode,
         message: paymentMethod === 'online' 
           ? 'Invoice created. Payment link will be available shortly.'
           : 'Invoice created. Bank transfer instructions will be provided.',

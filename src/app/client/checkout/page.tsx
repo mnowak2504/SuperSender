@@ -150,14 +150,14 @@ export default function CheckoutPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to process checkout')
+        throw new Error(data.error || data.details || 'Failed to process checkout')
       }
 
       if (paymentMethod === 'online' && data.paymentLink) {
         window.location.href = data.paymentLink
       } else if (paymentMethod === 'bank_transfer') {
-        // Redirect to invoice page with bank transfer instructions
-        router.push(`/client/invoices?invoiceId=${data.invoiceId}`)
+        // Redirect to invoice details page with bank transfer info
+        router.push(`/client/invoices/${data.invoiceId}?paymentMethod=bank_transfer`)
       } else {
         router.push('/client/invoices')
       }
@@ -403,7 +403,7 @@ export default function CheckoutPage() {
                       <Building2 className="w-5 h-5 text-gray-600" />
                       <div>
                         <p className="font-medium text-gray-900">Bank Transfer</p>
-                        <p className="text-sm text-gray-500">Pay via bank transfer (instructions will be provided)</p>
+                        <p className="text-sm text-gray-500">Pay via bank transfer. Account activated immediately. Payment processing: 1-2 business days.</p>
                       </div>
                     </div>
                   </button>

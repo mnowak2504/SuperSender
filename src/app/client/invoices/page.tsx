@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import ClientLayout from '@/components/ClientLayout'
 import ClientHeader from '@/components/ClientHeader'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import BankTransferInfo from '@/components/invoices/BankTransferInfo'
+import { getBankTransferTitle } from '@/lib/bank-transfer-info'
 
 export const runtime = 'nodejs'
 
@@ -37,6 +39,13 @@ export default async function InvoicesPage() {
   if (!clientId) {
     redirect('/auth/signin')
   }
+
+  // Fetch client data for bank transfer info
+  const { data: client } = await supabase
+    .from('Client')
+    .select('clientCode')
+    .eq('id', clientId)
+    .single()
 
   // Fetch all invoices, ordered by createdAt descending (latest first)
   const { data: invoices, error } = await supabase
