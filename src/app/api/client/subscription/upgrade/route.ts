@@ -56,15 +56,22 @@ export async function POST(req: NextRequest) {
         .single()
       
       if (emailError) {
-        console.error('[API /client/subscription/upgrade] Error searching client by email:', emailError)
+        console.error('[API /client/subscription/upgrade] Error searching client by email:', {
+          error: emailError,
+          code: emailError.code,
+          message: emailError.message,
+          details: emailError.details,
+        })
       }
       
       if (clientByEmail) {
         clientId = clientByEmail.id
         console.log('[API /client/subscription/upgrade] Found client by email:', clientId)
       } else {
-        console.warn('[API /client/subscription/upgrade] No client found by email')
+        console.warn('[API /client/subscription/upgrade] No client found by email, will create new one')
       }
+    } else {
+      console.log('[API /client/subscription/upgrade] Using clientId from session:', clientId)
     }
 
     let wasClientCreated = false
@@ -131,13 +138,21 @@ export async function POST(req: NextRequest) {
     }
 
     // Ensure clientId is set at this point
+    console.log('[API /client/subscription/upgrade] Final clientId check:', {
+      clientId,
+      wasClientCreated,
+      email: session.user.email,
+    })
+    
     if (!clientId) {
-      console.error('[API /client/subscription/upgrade] clientId is still null after all attempts')
+      console.error('[API /client/subscription/upgrade] clientId is still null after all attempts - returning 404')
       return NextResponse.json({ 
         error: 'Client not found',
         details: 'Could not find or create client record'
       }, { status: 404 })
     }
+    
+    console.log('[API /client/subscription/upgrade] clientId is set, proceeding with request body parsing')
 
     let body
     try {
