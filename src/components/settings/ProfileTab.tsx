@@ -101,7 +101,10 @@ export default function ProfileTab() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Failed to save changes' }))
-        throw new Error(errorData.error || 'Failed to save changes')
+        const errorMessage = errorData.details 
+          ? `${errorData.error}: ${errorData.details}`
+          : errorData.error || 'Failed to save changes'
+        throw new Error(errorMessage)
       }
 
       setSaveSuccess(true)

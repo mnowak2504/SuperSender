@@ -285,10 +285,33 @@ export async function PUT(req: NextRequest) {
         code: error.code,
         clientId,
         updateData,
+        fullError: JSON.stringify(error, null, 2),
       })
+      
+      // Check if error is about missing columns
+      if (error.message?.includes('column') && (error.message?.includes('does not exist') || error.code === '42703')) {
+        return NextResponse.json({ 
+          error: 'Database schema outdated',
+          details: 'Please run the migration for invoice address fields. The columns invoiceAddressLine1, invoiceAddressLine2, invoiceCity, or invoicePostCode may not exist in the database.',
+          migrationRequired: true,
+          errorCode: error.code,
+        }, { status: 500 })
+      }
+      
+      // Check for RLS (Row Level Security) issues
+      if (error.code === '42501' || error.message?.includes('permission denied')) {
+        return NextResponse.json({ 
+          error: 'Permission denied',
+          details: 'You do not have permission to update this client. Please check Row Level Security settings.',
+          errorCode: error.code,
+        }, { status: 403 })
+      }
+      
       return NextResponse.json({ 
         error: 'Failed to update client data',
-        details: error.message || 'Database error occurred'
+        details: error.message || error.details || 'Database error occurred',
+        errorCode: error.code,
+        hint: error.hint,
       }, { status: 500 })
     }
 
