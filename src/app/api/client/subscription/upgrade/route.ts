@@ -312,9 +312,22 @@ export async function POST(req: NextRequest) {
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + 7) // 7 days payment term
 
+    // Generate invoice ID (CUID format)
+    const generateCUID = () => {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+      let result = 'cl'
+      for (let i = 0; i < 22; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length))
+      }
+      return result
+    }
+    
+    const invoiceId = generateCUID()
+
     const { data: invoice, error: invoiceError } = await supabase
       .from('Invoice')
       .insert({
+        id: invoiceId,
         clientId,
         type: 'SUBSCRIPTION',
         amountEur: finalAmount,
