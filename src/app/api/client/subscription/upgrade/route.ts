@@ -105,10 +105,14 @@ export async function POST(req: NextRequest) {
       console.log('[API /client/subscription/upgrade] Created new Client:', clientId)
       
       // Update user with clientId
-      await supabase
+      const { error: updateUserError } = await supabase
         .from('User')
         .update({ clientId })
         .eq('id', (session.user as any)?.id)
+      
+      if (updateUserError) {
+        console.error('[API /client/subscription/upgrade] Error updating User with clientId:', updateUserError)
+      }
       
       // Auto-assign client to sales rep
       await autoAssignClient(clientId, 'Unknown')
@@ -131,41 +135,83 @@ export async function POST(req: NextRequest) {
     }
 
     // Get client with current plan
-    // If we just created the client, add a small delay to ensure it's fully committed
+    // If we just created the client, use the data we already have
+    let client
     if (wasClientCreated) {
-      // Small delay to ensure database consistency
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Use the client data from the creation response
+      // We need to fetch it again to get all required fields
+      const { data: fetchedClient, error: fetchError } = await supabase
+        .from('Client')
+        .select('id, planId, subscriptionDiscount, clientCode, email')
+        .eq('id', clientId)
+        .single()
+      
+      if (fetchError) {
+        console.error('[API /client/subscription/upgrade] Error fetching newly created client:', {
+          error: fetchError,
+          clientId,
+          email: session.user.email,
+        })
+        // Try one more time after a short delay
+        await new Promise(resolve => setTimeout(resolve, 200))
+        const { data: retryClient, error: retryError } = await supabase
+          .from('Client')
+          .select('id, planId, subscriptionDiscount, clientCode, email')
+          .eq('id', clientId)
+          .single()
+        
+        if (retryError || !retryClient) {
+          console.error('[API /client/subscription/upgrade] Retry also failed:', retryError)
+          return NextResponse.json({ 
+            error: 'Client not found',
+            details: retryError?.message || 'Could not fetch newly created client'
+          }, { status: 500 })
+        }
+        
+        client = retryClient
+      } else {
+        client = fetchedClient
+      }
+    } else {
+      // Fetch existing client
+      const { data: fetchedClient, error: clientError } = await supabase
+        .from('Client')
+        .select('id, planId, subscriptionDiscount, clientCode, email')
+        .eq('id', clientId)
+        .single()
+
+      if (clientError) {
+        console.error('[API /client/subscription/upgrade] Client fetch error:', {
+          error: clientError,
+          clientId,
+          email: session.user.email,
+        })
+        return NextResponse.json({ 
+          error: 'Client not found',
+          details: clientError.message || 'Client record not found'
+        }, { status: 404 })
+      }
+
+      if (!fetchedClient) {
+        console.error('[API /client/subscription/upgrade] Client is null:', {
+          clientId,
+          email: session.user.email,
+        })
+        return NextResponse.json({ 
+          error: 'Client not found',
+          details: 'Client record is null'
+        }, { status: 404 })
+      }
+      
+      client = fetchedClient
     }
     
-    const { data: client, error: clientError } = await supabase
-      .from('Client')
-      .select('id, planId, subscriptionDiscount, clientCode, email')
-      .eq('id', clientId)
-      .single()
-
-    if (clientError) {
-      console.error('[API /client/subscription/upgrade] Client fetch error:', {
-        error: clientError,
-        clientId,
-        email: session.user.email,
-        wasClientCreated,
-      })
-      return NextResponse.json({ 
-        error: 'Client not found',
-        details: clientError.message || 'Client record not found'
-      }, { status: 404 })
-    }
-
     if (!client) {
-      console.error('[API /client/subscription/upgrade] Client is null:', {
-        clientId,
-        email: session.user.email,
-        wasClientCreated,
-      })
+      console.error('[API /client/subscription/upgrade] Client is still null after all attempts')
       return NextResponse.json({ 
         error: 'Client not found',
-        details: 'Client record is null'
-      }, { status: 404 })
+        details: 'Client record could not be retrieved'
+      }, { status: 500 })
     }
 
     // Verify plan exists
