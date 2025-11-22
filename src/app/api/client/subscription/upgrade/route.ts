@@ -14,15 +14,27 @@ export const runtime = 'nodejs'
  * Creates an invoice and payment link
  */
 export async function POST(req: NextRequest) {
+  console.log('[API /client/subscription/upgrade] POST request received')
+  
   try {
     const session = await auth()
+    
+    console.log('[API /client/subscription/upgrade] Session check:', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userEmail: session?.user?.email,
+    })
 
     if (!session?.user) {
+      console.error('[API /client/subscription/upgrade] No session or user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const role = (session.user as any)?.role
+    console.log('[API /client/subscription/upgrade] User role:', role)
+    
     if (role !== 'CLIENT') {
+      console.error('[API /client/subscription/upgrade] Invalid role:', role)
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
