@@ -195,11 +195,57 @@ export async function PUT(req: NextRequest) {
     }
 
     if (!clientId) {
-      console.error('[API /client/profile PUT] Client not found for user:', session.user.email)
-      return NextResponse.json({ 
-        error: 'Client not found',
-        details: 'Please complete your profile first'
-      }, { status: 404 })
+      console.log('[API /client/profile PUT] No client found, creating new Client record for user:', session.user.email)
+      
+      // Generate CUID for new client
+      const generateCUID = () => {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+        let result = 'cl'
+        for (let i = 0; i < 22; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        return result
+      }
+      
+      const newClientId = generateCUID()
+      const tempClientCode = generateTempClientCode(country || 'Unknown')
+      const displayNameValue = displayName || (session.user as any)?.name || session.user.email?.split('@')[0] || 'Client'
+      
+      // Create new Client record
+      const { data: newClient, error: createError } = await supabase
+        .from('Client')
+        .insert({
+          id: newClientId,
+          displayName: displayNameValue,
+          email: session.user.email || '',
+          phone: phone || (session.user as any)?.phone || null,
+          country: country || 'Unknown',
+          clientCode: tempClientCode,
+          salesOwnerCode: 'TBD',
+          status: 'ACTIVE',
+        })
+        .select()
+        .single()
+      
+      if (createError || !newClient) {
+        console.error('[API /client/profile PUT] Error creating Client:', createError)
+        return NextResponse.json({ 
+          error: 'Failed to create client account',
+          details: createError?.message || 'Could not create client record'
+        }, { status: 500 })
+      }
+      
+      clientId = newClient.id
+      console.log('[API /client/profile PUT] Created new Client:', clientId)
+      
+      // Update user with clientId
+      await supabase
+        .from('User')
+        .update({ clientId })
+        .eq('id', (session.user as any)?.id)
+      
+      // Auto-assign client to sales rep
+      await autoAssignClient(clientId, country || 'Unknown')
     }
 
     // Build update object only with provided fields
