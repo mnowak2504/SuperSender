@@ -195,31 +195,62 @@ export async function PUT(req: NextRequest) {
     }
 
     if (!clientId) {
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+      console.error('[API /client/profile PUT] Client not found for user:', session.user.email)
+      return NextResponse.json({ 
+        error: 'Client not found',
+        details: 'Please complete your profile first'
+      }, { status: 404 })
     }
+
+    // Build update object only with provided fields
+    const updateData: any = {}
+    
+    if (displayName !== undefined) updateData.displayName = displayName || null
+    if (phone !== undefined) updateData.phone = phone || null
+    if (country !== undefined) updateData.country = country || null
+    if (invoiceName !== undefined) updateData.invoiceName = invoiceName || null
+    if (businessName !== undefined) updateData.businessName = businessName || null
+    if (vatNumber !== undefined) updateData.vatNumber = vatNumber || null
+    if (invoiceAddress !== undefined) updateData.invoiceAddress = invoiceAddress || null
+    if (invoiceAddressLine1 !== undefined) updateData.invoiceAddressLine1 = invoiceAddressLine1 || null
+    if (invoiceAddressLine2 !== undefined) updateData.invoiceAddressLine2 = invoiceAddressLine2 || null
+    if (invoiceCity !== undefined) updateData.invoiceCity = invoiceCity || null
+    if (invoicePostCode !== undefined) updateData.invoicePostCode = invoicePostCode || null
+
+    console.log('[API /client/profile PUT] Updating client:', {
+      clientId,
+      updateData,
+    })
 
     const { data: updatedClient, error } = await supabase
       .from('Client')
-      .update({
-        displayName: displayName || null,
-        phone: phone || null,
-        country: country || null,
-        invoiceName: invoiceName || null,
-        businessName: businessName || null,
-        vatNumber: vatNumber || null,
-        invoiceAddress: invoiceAddress || null, // Keep for backward compatibility
-        invoiceAddressLine1: invoiceAddressLine1 || null,
-        invoiceAddressLine2: invoiceAddressLine2 || null,
-        invoiceCity: invoiceCity || null,
-        invoicePostCode: invoicePostCode || null,
-      })
+      .update(updateData)
       .eq('id', clientId)
       .select()
       .single()
 
     if (error) {
-      console.error('Error updating client:', error)
-      return NextResponse.json({ error: 'Failed to update client data' }, { status: 500 })
+      console.error('[API /client/profile PUT] Error updating client:', {
+        error,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        clientId,
+        updateData,
+      })
+      return NextResponse.json({ 
+        error: 'Failed to update client data',
+        details: error.message || 'Database error occurred'
+      }, { status: 500 })
+    }
+
+    if (!updatedClient) {
+      console.error('[API /client/profile PUT] Updated client is null')
+      return NextResponse.json({ 
+        error: 'Failed to update client data',
+        details: 'Client record not found after update'
+      }, { status: 500 })
     }
 
     return NextResponse.json({ client: updatedClient })

@@ -125,7 +125,11 @@ model Client {
   invoiceName                String?   // Name for invoice purposes
   businessName               String?   // Business/company name (optional)
   vatNumber                  String?   // EU VAT Number (optional)
-  invoiceAddress             String?   // Full invoice address
+  invoiceAddress             String?   // Full invoice address (backward compatibility)
+  invoiceAddressLine1        String?   // Invoice address line 1
+  invoiceAddressLine2        String?   // Invoice address line 2
+  invoiceCity                String?   // Invoice city
+  invoicePostCode            String?   // Invoice postal code
   // Individual plan custom conditions
   individualCbm                      Float?    // Custom CBM limit for Individual plan
   individualDeliveriesPerMonth      Int?      // Custom deliveries per month for Individual plan
