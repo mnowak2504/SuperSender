@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
 import { sendInvoiceIssuedEmail } from '@/lib/email'
 import { BANK_TRANSFER_INFO, formatBankTransferInstructions, getBankTransferTitle } from '@/lib/bank-transfer-info'
+import { generateTempClientCode } from '@/lib/client-code-generator'
+import { autoAssignClient } from '@/lib/auto-assign-client'
 
 export const runtime = 'nodejs'
 
@@ -54,11 +56,59 @@ export async function POST(req: NextRequest) {
     }
 
     if (!clientId) {
-      console.error('[API /client/subscription/upgrade] Client not found for user:', session.user.email)
-      return NextResponse.json({ 
-        error: 'Client not found',
-        details: 'Please complete your profile first'
-      }, { status: 404 })
+      console.log('[API /client/subscription/upgrade] No client found, creating Client record for user:', session.user.email)
+      
+      // Create client if doesn't exist (similar to profile endpoint)
+      const generateCUID = () => {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+        let result = 'cl'
+        for (let i = 0; i < 22; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        return result
+      }
+      
+      const newClientId = generateCUID()
+      const displayName = (session.user as any)?.name || session.user.email?.split('@')[0] || 'Client'
+      
+      // Generate temp client code
+      const tempClientCode = generateTempClientCode('Unknown')
+      
+      // Create new Client record
+      const { data: newClient, error: createError } = await supabase
+        .from('Client')
+        .insert({
+          id: newClientId,
+          displayName,
+          email: session.user.email || '',
+          phone: (session.user as any)?.phone || null,
+          country: 'Unknown', // Default, can be updated later
+          clientCode: tempClientCode,
+          salesOwnerCode: 'TBD',
+          status: 'ACTIVE',
+        })
+        .select()
+        .single()
+      
+      if (createError || !newClient) {
+        console.error('[API /client/subscription/upgrade] Error creating Client:', createError)
+        return NextResponse.json({ 
+          error: 'Failed to create client account',
+          details: createError?.message || 'Could not create client record'
+        }, { status: 500 })
+      }
+      
+      clientId = newClient.id
+      console.log('[API /client/subscription/upgrade] Created new Client:', clientId)
+      
+      // Update user with clientId
+      await supabase
+        .from('User')
+        .update({ clientId })
+        .eq('id', (session.user as any)?.id)
+      
+      // Auto-assign client to sales rep
+      await autoAssignClient(clientId, 'Unknown')
     }
 
     const body = await req.json()
