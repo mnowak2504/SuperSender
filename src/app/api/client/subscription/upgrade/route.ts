@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    let wasClientCreated = false
+    
     if (!clientId) {
       console.log('[API /client/subscription/upgrade] No client found, creating Client record for user:', session.user.email)
       
@@ -99,6 +101,7 @@ export async function POST(req: NextRequest) {
       }
       
       clientId = newClient.id
+      wasClientCreated = true
       console.log('[API /client/subscription/upgrade] Created new Client:', clientId)
       
       // Update user with clientId
@@ -111,6 +114,15 @@ export async function POST(req: NextRequest) {
       await autoAssignClient(clientId, 'Unknown')
     }
 
+    // Ensure clientId is set at this point
+    if (!clientId) {
+      console.error('[API /client/subscription/upgrade] clientId is still null after all attempts')
+      return NextResponse.json({ 
+        error: 'Client not found',
+        details: 'Could not find or create client record'
+      }, { status: 404 })
+    }
+
     const body = await req.json()
     const { planId, subscriptionPeriod = '1', paymentMethod = 'online', voucherCode } = body
 
@@ -119,6 +131,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Get client with current plan
+    // If we just created the client, add a small delay to ensure it's fully committed
+    if (wasClientCreated) {
+      // Small delay to ensure database consistency
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    
     const { data: client, error: clientError } = await supabase
       .from('Client')
       .select('id, planId, subscriptionDiscount, clientCode, email')
@@ -130,6 +148,7 @@ export async function POST(req: NextRequest) {
         error: clientError,
         clientId,
         email: session.user.email,
+        wasClientCreated,
       })
       return NextResponse.json({ 
         error: 'Client not found',
@@ -141,6 +160,7 @@ export async function POST(req: NextRequest) {
       console.error('[API /client/subscription/upgrade] Client is null:', {
         clientId,
         email: session.user.email,
+        wasClientCreated,
       })
       return NextResponse.json({ 
         error: 'Client not found',
