@@ -127,10 +127,21 @@ export async function POST(req: NextRequest) {
       }, { status: 404 })
     }
 
-    const body = await req.json()
-    const { planId, subscriptionPeriod = '1', paymentMethod = 'online', voucherCode } = body
+    let body
+    try {
+      body = await req.json()
+    } catch (parseError) {
+      console.error('[API /client/subscription/upgrade] Error parsing request body:', parseError)
+      return NextResponse.json({ 
+        error: 'Invalid request body',
+        details: 'Request body is missing or invalid'
+      }, { status: 400 })
+    }
+    
+    const { planId, subscriptionPeriod = '1', paymentMethod = 'online', voucherCode } = body || {}
 
     if (!planId) {
+      console.error('[API /client/subscription/upgrade] Missing planId in request body')
       return NextResponse.json({ error: 'Plan ID is required' }, { status: 400 })
     }
 
