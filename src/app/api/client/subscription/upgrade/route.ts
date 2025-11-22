@@ -326,9 +326,30 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (invoiceError) {
-      console.error('Error creating invoice:', invoiceError)
+      console.error('[API /client/subscription/upgrade] Error creating invoice:', {
+        error: invoiceError,
+        code: invoiceError.code,
+        message: invoiceError.message,
+        details: invoiceError.details,
+        hint: invoiceError.hint,
+        clientId,
+        finalAmount,
+        invoiceData: {
+          clientId,
+          type: 'SUBSCRIPTION',
+          amountEur: finalAmount,
+          currency: 'EUR',
+          status: 'ISSUED',
+          dueDate: dueDate.toISOString(),
+        },
+      })
       return NextResponse.json(
-        { error: 'Failed to create invoice', details: invoiceError.message },
+        { 
+          error: 'Failed to create invoice', 
+          details: invoiceError.message || invoiceError.details || 'Unknown error',
+          code: invoiceError.code,
+          hint: invoiceError.hint,
+        },
         { status: 500 }
       )
     }
