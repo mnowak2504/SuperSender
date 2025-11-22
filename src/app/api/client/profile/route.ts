@@ -249,19 +249,20 @@ export async function PUT(req: NextRequest) {
     }
 
     // Build update object only with provided fields
+    // Convert empty strings to null for optional fields
     const updateData: any = {}
     
-    if (displayName !== undefined) updateData.displayName = displayName || null
-    if (phone !== undefined) updateData.phone = phone || null
-    if (country !== undefined) updateData.country = country || null
-    if (invoiceName !== undefined) updateData.invoiceName = invoiceName || null
-    if (businessName !== undefined) updateData.businessName = businessName || null
-    if (vatNumber !== undefined) updateData.vatNumber = vatNumber || null
-    if (invoiceAddress !== undefined) updateData.invoiceAddress = invoiceAddress || null
-    if (invoiceAddressLine1 !== undefined) updateData.invoiceAddressLine1 = invoiceAddressLine1 || null
-    if (invoiceAddressLine2 !== undefined) updateData.invoiceAddressLine2 = invoiceAddressLine2 || null
-    if (invoiceCity !== undefined) updateData.invoiceCity = invoiceCity || null
-    if (invoicePostCode !== undefined) updateData.invoicePostCode = invoicePostCode || null
+    if (displayName !== undefined) updateData.displayName = displayName?.trim() || null
+    if (phone !== undefined) updateData.phone = phone?.trim() || null
+    if (country !== undefined) updateData.country = country?.trim() || null
+    if (invoiceName !== undefined) updateData.invoiceName = invoiceName?.trim() || null
+    if (businessName !== undefined) updateData.businessName = businessName?.trim() || null
+    if (vatNumber !== undefined) updateData.vatNumber = vatNumber?.trim() || null
+    if (invoiceAddress !== undefined) updateData.invoiceAddress = invoiceAddress?.trim() || null
+    if (invoiceAddressLine1 !== undefined) updateData.invoiceAddressLine1 = invoiceAddressLine1?.trim() || null
+    if (invoiceAddressLine2 !== undefined) updateData.invoiceAddressLine2 = invoiceAddressLine2?.trim() || null
+    if (invoiceCity !== undefined) updateData.invoiceCity = invoiceCity?.trim() || null
+    if (invoicePostCode !== undefined) updateData.invoicePostCode = invoicePostCode?.trim() || null
 
     console.log('[API /client/profile PUT] Updating client:', {
       clientId,
