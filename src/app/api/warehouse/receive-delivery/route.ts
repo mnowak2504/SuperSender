@@ -237,6 +237,12 @@ export async function POST(req: NextRequest) {
             .getPublicUrl(fileName)
 
           const photoUrl = urlData.publicUrl
+          
+          console.log(`[API /warehouse/receive-delivery] Photo ${i} uploaded:`, {
+            fileName,
+            photoUrl,
+            deliveryId,
+          })
 
           // Generate ID for Media record
           const photoId = 'cl' + Math.random().toString(36).substring(2, 24)
