@@ -72,16 +72,23 @@ export default async function DeliveryDetailsPage({
     .single()
 
   // Fetch photos for this delivery
+  // Try to fetch all photos related to this delivery (not just delivery_received)
   const { data: photos, error: photosError } = await supabase
     .from('Media')
     .select('id, url, kind, createdAt')
     .eq('deliveryExpectedId', id)
-    .eq('kind', 'delivery_received')
     .order('createdAt', { ascending: true })
 
   if (photosError) {
-    console.error('Error fetching photos:', photosError)
+    console.error('[Client Delivery Details] Error fetching photos:', photosError)
   }
+
+  console.log('[Client Delivery Details] Photos fetched:', {
+    deliveryId: id,
+    photosCount: photos?.length || 0,
+    photos: photos,
+    photosError: photosError,
+  })
 
   if (error || !delivery) {
     return (
@@ -267,10 +274,10 @@ export default async function DeliveryDetailsPage({
             </div>
           )}
 
-          {/* Photos Gallery */}
-          {photos && photos.length > 0 && (
-            <div className="mt-6 bg-white shadow rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Delivery Photos</h2>
+          {/* Photos Gallery - Always show section */}
+          <div className="mt-6 bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Delivery Photos</h2>
+            {photos && photos.length > 0 ? (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                 {photos.map((photo: any) => (
                   <div key={photo.id} className="relative group">
@@ -280,7 +287,9 @@ export default async function DeliveryDetailsPage({
                       className="w-full h-48 object-cover rounded-lg border border-gray-300 hover:border-blue-500 transition cursor-pointer"
                       onClick={() => window.open(photo.url, '_blank')}
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/placeholder-image.png'
+                        console.error('[Client Delivery Details] Error loading image:', photo.url)
+                        const target = e.target as HTMLImageElement
+                        target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EFailed to load%3C/text%3E%3C/svg%3E'
                       }}
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition rounded-lg flex items-center justify-center">
@@ -288,11 +297,30 @@ export default async function DeliveryDetailsPage({
                         Click to enlarge
                       </span>
                     </div>
+                    {photo.kind && (
+                      <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                        {photo.kind === 'delivery_received' ? 'Received' : photo.kind}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p className="text-sm">No photos available for this delivery.</p>
+                {delivery.status === 'EXPECTED' && (
+                  <p className="text-xs mt-2 text-gray-400">Photos will appear here once the delivery is received by the warehouse.</p>
+                )}
+              </div>
+            )}
+            {photosError && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-800">
+                  There was an error loading photos. Please refresh the page or contact support if the problem persists.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </ClientLayout>
