@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     // Find warehouse orders related to these shipments
     const { data: warehouseOrders, error: woError } = await supabase
       .from('WarehouseOrder')
-      .select('id, sourceDeliveryId')
+      .select('id, sourceDeliveryId, clientId')
       .in('clientId', oldShipments?.map(s => s.clientId) || [])
 
     if (woError) {
