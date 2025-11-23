@@ -39,7 +39,6 @@ export async function PUT(
     // Build update object
     const updateData: any = {
       status,
-      updatedAt: new Date().toISOString(),
     }
 
     // If marking as paid, set paidAt
@@ -50,6 +49,12 @@ export async function PUT(
       updateData.paidAt = null
     }
 
+    console.log('[API /superadmin/invoices/[id] PUT] Updating invoice:', {
+      invoiceId: id,
+      updateData,
+      userId: (session.user as any)?.id,
+    })
+
     const { data: updatedInvoice, error } = await supabase
       .from('Invoice')
       .update(updateData)
@@ -58,10 +63,20 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('[API /superadmin/invoices/[id] PUT] Error updating invoice:', error)
+      console.error('[API /superadmin/invoices/[id] PUT] Error updating invoice:', {
+        error,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        invoiceId: id,
+        updateData,
+      })
       return NextResponse.json({ 
         error: 'Failed to update invoice',
-        details: error.message || 'Database error occurred'
+        details: error.message || error.details || 'Database error occurred',
+        code: error.code,
+        hint: error.hint,
       }, { status: 500 })
     }
 
