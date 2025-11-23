@@ -29,6 +29,8 @@ export async function POST(req: NextRequest) {
     console.log('[API /superadmin/data-management/cleanup-old-photos] Cleaning up photos older than:', twoMonthsAgo.toISOString())
 
     // Find all delivered shipments older than 2 months
+    // Note: We use createdAt as proxy for delivery date since there's no deliveredAt field
+    // In production, you might want to add a deliveredAt field to ShipmentOrder
     const { data: oldShipments, error: shipmentsError } = await supabase
       .from('ShipmentOrder')
       .select('id, clientId, createdAt')
