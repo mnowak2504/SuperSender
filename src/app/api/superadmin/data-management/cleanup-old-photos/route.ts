@@ -173,11 +173,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Delete media records from database
-    const { count, error: deleteError } = await supabase
+    const { data: deletedMedia, error: deleteError } = await supabase
       .from('Media')
       .delete()
       .in('id', mediaToDelete)
-      .select('*', { count: 'exact', head: false })
+      .select()
+
+    const deletedCount = deletedMedia?.length || 0
 
     if (deleteError) {
       console.error('[API /superadmin/data-management/cleanup-old-photos] Error deleting media:', deleteError)
@@ -186,8 +188,6 @@ export async function POST(req: NextRequest) {
         details: deleteError.message
       }, { status: 500 })
     }
-
-    const deletedCount = count || 0
 
     console.log(`[API /superadmin/data-management/cleanup-old-photos] Successfully deleted ${deletedCount} media records`)
 
