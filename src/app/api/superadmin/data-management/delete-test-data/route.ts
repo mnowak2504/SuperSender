@@ -35,12 +35,12 @@ export async function DELETE(req: NextRequest) {
       // Delete related data first (due to foreign key constraints)
       
       // Delete invoices for test clients
-      const { count: invoicesCount } = await supabase
+      const { data: deletedInvoices } = await supabase
         .from('Invoice')
         .delete()
         .in('clientId', testClientIds)
-        .select('*', { count: 'exact', head: false })
-      deletedCounts.invoices = invoicesCount || 0
+        .select()
+      deletedCounts.invoices = deletedInvoices?.length || 0
 
       // Delete media for test clients' deliveries
       const { data: testDeliveries } = await supabase
@@ -74,12 +74,12 @@ export async function DELETE(req: NextRequest) {
         }
 
         // Delete media records
-        const { count: mediaCount } = await supabase
+        const { data: deletedMedia } = await supabase
           .from('Media')
           .delete()
           .in('deliveryExpectedId', testDeliveryIds)
-          .select('*', { count: 'exact', head: false })
-        deletedCounts.media = mediaCount || 0
+          .select()
+        deletedCounts.media = deletedMedia?.length || 0
 
         // Delete warehouse orders for test deliveries
         const { data: testWarehouseOrders } = await supabase
@@ -118,54 +118,54 @@ export async function DELETE(req: NextRequest) {
             .or(`warehouseOrderBeforeId.in.(${testWarehouseOrderIds.join(',')}),warehouseOrderAfterId.in.(${testWarehouseOrderIds.join(',')})`)
 
           // Delete shipment orders
-          const { count: shipmentOrdersCount } = await supabase
+          const { data: deletedShipmentOrders } = await supabase
             .from('ShipmentOrder')
             .delete()
             .in('clientId', testClientIds)
-            .select('*', { count: 'exact', head: false })
-          deletedCounts.shipmentOrders = shipmentOrdersCount || 0
+            .select()
+          deletedCounts.shipmentOrders = deletedShipmentOrders?.length || 0
 
           // Delete warehouse orders
-          const { count: warehouseOrdersCount } = await supabase
+          const { data: deletedWarehouseOrders } = await supabase
             .from('WarehouseOrder')
             .delete()
             .in('id', testWarehouseOrderIds)
-            .select('*', { count: 'exact', head: false })
-          deletedCounts.warehouseOrders = warehouseOrdersCount || 0
+            .select()
+          deletedCounts.warehouseOrders = deletedWarehouseOrders?.length || 0
         }
 
         // Delete deliveries
-        const { count: deliveriesCount } = await supabase
+        const { data: deletedDeliveries } = await supabase
           .from('DeliveryExpected')
           .delete()
           .in('id', testDeliveryIds)
-          .select('*', { count: 'exact', head: false })
-        deletedCounts.deliveries = deliveriesCount || 0
+          .select()
+        deletedCounts.deliveries = deletedDeliveries?.length || 0
       }
 
       // Delete addresses
-      const { count: addressesCount } = await supabase
+      const { data: deletedAddresses } = await supabase
         .from('Address')
         .delete()
         .in('clientId', testClientIds)
-        .select('*', { count: 'exact', head: false })
-      deletedCounts.addresses = addressesCount || 0
+        .select()
+      deletedCounts.addresses = deletedAddresses?.length || 0
 
       // Delete users with test emails (but keep non-CLIENT roles)
-      const { count: usersCount } = await supabase
+      const { data: deletedUsers } = await supabase
         .from('User')
         .delete()
         .in('clientId', testClientIds)
-        .select('*', { count: 'exact', head: false })
-      deletedCounts.users = usersCount || 0
+        .select()
+      deletedCounts.users = deletedUsers?.length || 0
 
       // Finally, delete test clients
-      const { count: clientsCount } = await supabase
+      const { data: deletedClients } = await supabase
         .from('Client')
         .delete()
         .in('id', testClientIds)
-        .select('*', { count: 'exact', head: false })
-      deletedCounts.clients = clientsCount || 0
+        .select()
+      deletedCounts.clients = deletedClients?.length || 0
     }
 
     // Also delete any standalone test data (deliveries, etc. with "test" in name)
@@ -205,13 +205,13 @@ export async function DELETE(req: NextRequest) {
         .delete()
         .in('deliveryExpectedId', standaloneDeliveryIds)
 
-      const { count: standaloneDeliveriesCount } = await supabase
+      const { data: deletedStandaloneDeliveries } = await supabase
         .from('DeliveryExpected')
         .delete()
         .in('id', standaloneDeliveryIds)
-        .select('*', { count: 'exact', head: false })
+        .select()
       
-      deletedCounts.standaloneDeliveries = (deletedCounts.standaloneDeliveries || 0) + (standaloneDeliveriesCount || 0)
+      deletedCounts.standaloneDeliveries = (deletedCounts.standaloneDeliveries || 0) + (deletedStandaloneDeliveries?.length || 0)
     }
 
     return NextResponse.json({ 
