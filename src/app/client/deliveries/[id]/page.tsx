@@ -73,21 +73,48 @@ export default async function DeliveryDetailsPage({
 
   // Fetch photos for this delivery
   // Try to fetch all photos related to this delivery (not just delivery_received)
+  console.log('[Client Delivery Details] Fetching photos for delivery:', id)
+  
   const { data: photos, error: photosError } = await supabase
     .from('Media')
-    .select('id, url, kind, createdAt')
+    .select('id, url, kind, createdAt, deliveryExpectedId')
     .eq('deliveryExpectedId', id)
     .order('createdAt', { ascending: true })
 
   if (photosError) {
-    console.error('[Client Delivery Details] Error fetching photos:', photosError)
+    console.error('[Client Delivery Details] Error fetching photos:', {
+      error: photosError,
+      deliveryId: id,
+      code: photosError.code,
+      message: photosError.message,
+      details: photosError.details,
+      hint: photosError.hint,
+    })
   }
 
   console.log('[Client Delivery Details] Photos fetched:', {
     deliveryId: id,
     photosCount: photos?.length || 0,
     photos: photos,
-    photosError: photosError,
+    photosError: photosError ? {
+      code: photosError.code,
+      message: photosError.message,
+    } : null,
+  })
+
+  // Also try to fetch without filter to debug
+  const { data: allMedia, error: allMediaError } = await supabase
+    .from('Media')
+    .select('id, url, kind, createdAt, deliveryExpectedId')
+    .limit(10)
+  
+  console.log('[Client Delivery Details] Sample Media records (first 10):', {
+    allMediaCount: allMedia?.length || 0,
+    allMedia: allMedia,
+    allMediaError: allMediaError ? {
+      code: allMediaError.code,
+      message: allMediaError.message,
+    } : null,
   })
 
   if (error || !delivery) {

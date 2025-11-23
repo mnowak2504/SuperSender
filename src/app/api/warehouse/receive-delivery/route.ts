@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
           const photoId = 'cl' + Math.random().toString(36).substring(2, 24)
           
           // Save to Media table
-          const { error: mediaError } = await supabase
+          const { data: insertedMedia, error: mediaError } = await supabase
             .from('Media')
             .insert({
               id: photoId,
@@ -256,15 +256,32 @@ export async function POST(req: NextRequest) {
               kind: 'delivery_received',
               deliveryExpectedId: deliveryId,
             })
+            .select()
 
           if (mediaError) {
-            console.error(`Error saving photo ${i} to database:`, mediaError)
+            console.error(`[API /warehouse/receive-delivery] Error saving photo ${i} to database:`, {
+              error: mediaError,
+              code: mediaError.code,
+              message: mediaError.message,
+              details: mediaError.details,
+              hint: mediaError.hint,
+              photoId,
+              photoUrl,
+              deliveryId,
+              kind: 'delivery_received',
+            })
             // Try to delete uploaded file
             await supabase.storage
               .from('delivery-photos')
               .remove([fileName])
             continue
           }
+
+          console.log(`[API /warehouse/receive-delivery] Photo ${i} saved to database:`, {
+            photoId,
+            insertedMedia,
+            deliveryId,
+          })
 
           uploadedPhotos.push({ id: photoId, url: photoUrl })
         }
