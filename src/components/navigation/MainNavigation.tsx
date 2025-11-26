@@ -85,6 +85,9 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
                 {translations.nav_pricing}
               </Link>
             )}
+            <Link href={`/landing/${currentLang}/transport-costs`} className="text-gray-700 hover:text-blue-600 transition">
+              {translations.nav_transport_costs}
+            </Link>
             
               {/* Language Selector */}
               <div className="relative">
@@ -170,6 +173,13 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
                   {translations.nav_pricing}
                 </Link>
               )}
+              <Link 
+                href={`/landing/${currentLang}/transport-costs`} 
+                className="block px-3 py-2 text-gray-700 hover:bg-gray-50"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                {translations.nav_transport_costs}
+              </Link>
               
               <div className="px-3 py-2">
                 <select
