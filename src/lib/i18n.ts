@@ -680,6 +680,34 @@ const translations: Record<Language, Record<string, string>> = {
     transport_costs_faq_a3: 'Yes. You will receive complete dimensions and weight. Goods are released only after verification of registration number and driver details.',
     transport_costs_disclaimer_title: '8. Disclaimer',
     transport_costs_disclaimer: 'This price list is indicative and may change depending on season, fuel prices, fleet availability and cargo parameters. Supersender reserves the right to update prices without prior notice.',
+    
+    // Transport Costs - Hero & USP
+    transport_costs_hero_title: 'Transparent Transport Pricing Across Europe',
+    transport_costs_hero_subtitle: 'One-stop consolidation & transport from Poland to Europe',
+    transport_costs_hero_tagline: 'Consolidate shipments from multiple suppliers • Transparent pricing • CMR insurance included',
+    transport_costs_cta_request_quote: 'Request a Quote',
+    transport_costs_cta_contact: 'Contact Us',
+    transport_costs_cta_get_started: 'Get Started',
+    
+    // Transport Costs - Why Supersender
+    transport_costs_why_title: 'Why Choose Supersender?',
+    transport_costs_why_consolidation: 'Pallet Consolidation',
+    transport_costs_why_consolidation_desc: 'Combine shipments from multiple suppliers to reduce costs',
+    transport_costs_why_transparency: 'Transparent Pricing',
+    transport_costs_why_transparency_desc: 'Clear net and gross prices with no hidden fees',
+    transport_costs_why_security: 'Secure & Insured',
+    transport_costs_why_security_desc: 'CMR insurance included • Verified carriers • Safe handling',
+    transport_costs_why_experience: '10+ Years Experience',
+    transport_costs_why_experience_desc: 'Serving hundreds of EU businesses with reliable logistics',
+    
+    // Transport Costs - Simplified intro
+    transport_costs_intro_short: 'Indicative net prices for transport. 23% VAT added — shown as net and gross in tables.',
+    transport_costs_intro_benefits_title: 'We can offer lower prices when:',
+    transport_costs_pricing_short: 'Carriers price by actual shipment outline. If goods protrude beyond the pallet, costs are calculated by the furthest points.',
+    transport_costs_show_more: 'Show {count} more countries',
+    transport_costs_show_less: 'Show less',
+    transport_costs_cta_ready: 'Ready to get started?',
+    transport_costs_cta_subtitle: 'Get a personalized quote for your transport needs',
   },
   de: {
     nav_home: 'Startseite',
@@ -1343,6 +1371,34 @@ const translations: Record<Language, Record<string, string>> = {
     transport_costs_faq_a3: 'Ja. Sie erhalten vollständige Abmessungen und Gewicht. Die Waren werden nur nach Überprüfung der Kennzeichennummer und der Fahrerdaten freigegeben.',
     transport_costs_disclaimer_title: '8. Haftungsausschluss',
     transport_costs_disclaimer: 'Diese Preisliste ist unverbindlich und kann je nach Saison, Kraftstoffpreisen, Flottenverfügbarkeit und Ladungsparametern geändert werden. Supersender behält sich das Recht vor, Preise ohne vorherige Ankündigung zu aktualisieren.',
+    
+    // Transport Costs - Hero & USP
+    transport_costs_hero_title: 'Transparente Transportpreise in ganz Europa',
+    transport_costs_hero_subtitle: 'Alles aus einer Hand: Konsolidierung & Transport von Polen nach Europa',
+    transport_costs_hero_tagline: 'Sendungen von mehreren Lieferanten konsolidieren • Transparente Preise • CMR-Versicherung inklusive',
+    transport_costs_cta_request_quote: 'Angebot anfordern',
+    transport_costs_cta_contact: 'Kontakt',
+    transport_costs_cta_get_started: 'Jetzt starten',
+    
+    // Transport Costs - Why Supersender
+    transport_costs_why_title: 'Warum Supersender?',
+    transport_costs_why_consolidation: 'Palettenkonsolidierung',
+    transport_costs_why_consolidation_desc: 'Sendungen von mehreren Lieferanten kombinieren, um Kosten zu senken',
+    transport_costs_why_transparency: 'Transparente Preise',
+    transport_costs_why_transparency_desc: 'Klare Nettopreise und Bruttopreise ohne versteckte Gebühren',
+    transport_costs_why_security: 'Sicher & Versichert',
+    transport_costs_why_security_desc: 'CMR-Versicherung inklusive • Verifizierte Spediteure • Sichere Handhabung',
+    transport_costs_why_experience: '10+ Jahre Erfahrung',
+    transport_costs_why_experience_desc: 'Hunderte von EU-Unternehmen mit zuverlässiger Logistik',
+    
+    // Transport Costs - Simplified intro
+    transport_costs_intro_short: 'Unverbindliche Nettopreise für den Transport. 23% MwSt. hinzugefügt — als Netto- und Bruttowerte in den Tabellen angezeigt.',
+    transport_costs_intro_benefits_title: 'Wir können niedrigere Preise anbieten, wenn:',
+    transport_costs_pricing_short: 'Spediteure berechnen nach tatsächlichem Sendungsumriss. Wenn Waren über die Palette hinausragen, werden die Kosten nach den äußersten Punkten berechnet.',
+    transport_costs_show_more: '{count} weitere Länder anzeigen',
+    transport_costs_show_less: 'Weniger anzeigen',
+    transport_costs_cta_ready: 'Bereit zu starten?',
+    transport_costs_cta_subtitle: 'Erhalten Sie ein personalisiertes Angebot für Ihre Transportbedürfnisse',
   },
   fr: {
     nav_home: 'Accueil',
@@ -2005,6 +2061,34 @@ const translations: Record<Language, Record<string, string>> = {
     transport_costs_faq_a3: 'Oui. Vous recevrez les dimensions complètes et le poids. La libération des marchandises n\'a lieu qu\'après vérification du numéro d\'immatriculation et des données du conducteur.',
     transport_costs_disclaimer_title: '8. Avertissement',
     transport_costs_disclaimer: 'Cette liste de prix est indicative et peut changer en fonction de la saison, des prix du carburant, de la disponibilité de la flotte et des paramètres de cargaison. Supersender se réserve le droit de mettre à jour les prix sans préavis.',
+    
+    // Transport Costs - Hero & USP
+    transport_costs_hero_title: 'Tarification de transport transparente à travers l\'Europe',
+    transport_costs_hero_subtitle: 'Consolidation et transport tout-en-un de la Pologne vers l\'Europe',
+    transport_costs_hero_tagline: 'Consolider les envois de plusieurs fournisseurs • Tarification transparente • Assurance CMR incluse',
+    transport_costs_cta_request_quote: 'Demander un devis',
+    transport_costs_cta_contact: 'Nous contacter',
+    transport_costs_cta_get_started: 'Commencer',
+    
+    // Transport Costs - Why Supersender
+    transport_costs_why_title: 'Pourquoi choisir Supersender?',
+    transport_costs_why_consolidation: 'Consolidation de palettes',
+    transport_costs_why_consolidation_desc: 'Combiner les envois de plusieurs fournisseurs pour réduire les coûts',
+    transport_costs_why_transparency: 'Tarification transparente',
+    transport_costs_why_transparency_desc: 'Prix nets et bruts clairs sans frais cachés',
+    transport_costs_why_security: 'Sécurisé et assuré',
+    transport_costs_why_security_desc: 'Assurance CMR incluse • Transporteurs vérifiés • Manipulation sûre',
+    transport_costs_why_experience: '10+ ans d\'expérience',
+    transport_costs_why_experience_desc: 'Servir des centaines d\'entreprises européennes avec une logistique fiable',
+    
+    // Transport Costs - Simplified intro
+    transport_costs_intro_short: 'Prix nets indicatifs pour le transport. 23% de TVA ajoutée — affichés comme net et brut dans les tableaux.',
+    transport_costs_intro_benefits_title: 'Nous pouvons proposer des prix inférieurs lorsque:',
+    transport_costs_pricing_short: 'Les transporteurs tarifent selon le contour réel de l\'envoi. Si les marchandises dépassent la palette, les coûts sont calculés selon les points les plus éloignés.',
+    transport_costs_show_more: 'Afficher {count} autres pays',
+    transport_costs_show_less: 'Afficher moins',
+    transport_costs_cta_ready: 'Prêt à commencer?',
+    transport_costs_cta_subtitle: 'Obtenez un devis personnalisé pour vos besoins de transport',
   },
   it: {
     nav_home: 'Home',
@@ -2670,6 +2754,34 @@ const translations: Record<Language, Record<string, string>> = {
     transport_costs_faq_a3: 'Sì. Riceverai dimensioni complete e peso. Il rilascio delle merci avviene solo dopo la verifica del numero di targa e dei dati del conducente.',
     transport_costs_disclaimer_title: '8. Disclaimer',
     transport_costs_disclaimer: 'Questo listino prezzi è indicativo e può cambiare a seconda della stagione, dei prezzi del carburante, della disponibilità della flotta e dei parametri del carico. Supersender si riserva il diritto di aggiornare i prezzi senza preavviso.',
+    
+    // Transport Costs - Hero & USP
+    transport_costs_hero_title: 'Prezzi di trasporto trasparenti in tutta Europa',
+    transport_costs_hero_subtitle: 'Consolidazione e trasporto tutto-in-uno dalla Polonia all\'Europa',
+    transport_costs_hero_tagline: 'Consolidare le spedizioni da più fornitori • Prezzi trasparenti • Assicurazione CMR inclusa',
+    transport_costs_cta_request_quote: 'Richiedi un preventivo',
+    transport_costs_cta_contact: 'Contattaci',
+    transport_costs_cta_get_started: 'Inizia',
+    
+    // Transport Costs - Why Supersender
+    transport_costs_why_title: 'Perché scegliere Supersender?',
+    transport_costs_why_consolidation: 'Consolidazione pallet',
+    transport_costs_why_consolidation_desc: 'Combina spedizioni da più fornitori per ridurre i costi',
+    transport_costs_why_transparency: 'Prezzi trasparenti',
+    transport_costs_why_transparency_desc: 'Prezzi netti e lordi chiari senza costi nascosti',
+    transport_costs_why_security: 'Sicuro e assicurato',
+    transport_costs_why_security_desc: 'Assicurazione CMR inclusa • Corrieri verificati • Gestione sicura',
+    transport_costs_why_experience: '10+ anni di esperienza',
+    transport_costs_why_experience_desc: 'Servire centinaia di aziende UE con logistica affidabile',
+    
+    // Transport Costs - Simplified intro
+    transport_costs_intro_short: 'Prezzi netti indicativi per il trasporto. 23% IVA aggiunta — mostrati come netto e lordo nelle tabelle.',
+    transport_costs_intro_benefits_title: 'Possiamo offrire prezzi inferiori quando:',
+    transport_costs_pricing_short: 'I vettori tariffano secondo il contorno effettivo della spedizione. Se le merci sporgono oltre il pallet, i costi sono calcolati secondo i punti più lontani.',
+    transport_costs_show_more: 'Mostra {count} altri paesi',
+    transport_costs_show_less: 'Mostra meno',
+    transport_costs_cta_ready: 'Pronto per iniziare?',
+    transport_costs_cta_subtitle: 'Ottieni un preventivo personalizzato per le tue esigenze di trasporto',
   },
   pl: {
     nav_home: 'Strona główna',
@@ -3333,6 +3445,34 @@ const translations: Record<Language, Record<string, string>> = {
     transport_costs_faq_a3: 'Tak. Otrzymasz komplet wymiarów i wagę. Wydanie towaru następuje wyłącznie po weryfikacji numeru rejestracyjnego i danych kierowcy.',
     transport_costs_disclaimer_title: '8. Disclaimer',
     transport_costs_disclaimer: 'Cennik ma charakter orientacyjny i może ulec zmianie w zależności od sezonu, cen paliwa, dostępności floty oraz parametrów ładunku. Supersender zastrzega możliwość aktualizacji cen bez wcześniejszego powiadomienia.',
+    
+    // Transport Costs - Hero & USP
+    transport_costs_hero_title: 'Przejrzyste ceny transportu w całej Europie',
+    transport_costs_hero_subtitle: 'Konsolidacja i transport w jednym miejscu — z Polski do Europy',
+    transport_costs_hero_tagline: 'Konsoliduj przesyłki od wielu dostawców • Przejrzyste ceny • Ubezpieczenie CMR w cenie',
+    transport_costs_cta_request_quote: 'Poproś o wycenę',
+    transport_costs_cta_contact: 'Skontaktuj się',
+    transport_costs_cta_get_started: 'Zacznij',
+    
+    // Transport Costs - Why Supersender
+    transport_costs_why_title: 'Dlaczego Supersender?',
+    transport_costs_why_consolidation: 'Konsolidacja palet',
+    transport_costs_why_consolidation_desc: 'Łącz przesyłki od wielu dostawców, aby obniżyć koszty',
+    transport_costs_why_transparency: 'Przejrzyste ceny',
+    transport_costs_why_transparency_desc: 'Jasne ceny netto i brutto bez ukrytych opłat',
+    transport_costs_why_security: 'Bezpieczeństwo i ubezpieczenie',
+    transport_costs_why_security_desc: 'Ubezpieczenie CMR w cenie • Zweryfikowani przewoźnicy • Bezpieczna obsługa',
+    transport_costs_why_experience: '10+ lat doświadczenia',
+    transport_costs_why_experience_desc: 'Obsługujemy setki firm z UE niezawodną logistyką',
+    
+    // Transport Costs - Simplified intro
+    transport_costs_intro_short: 'Orientacyjne ceny netto za transport. Do stawek doliczamy 23% VAT — w tabelach pokazujemy wartości netto i brutto.',
+    transport_costs_intro_benefits_title: 'Możemy zaproponować niższą cenę, gdy:',
+    transport_costs_pricing_short: 'Przewoźnicy wyceniają według rzeczywistego obrysu przesyłki. Jeśli towar wystaje poza paletę, koszt obliczany jest według najdalszych punktów obrysu.',
+    transport_costs_show_more: 'Pokaż {count} więcej krajów',
+    transport_costs_show_less: 'Pokaż mniej',
+    transport_costs_cta_ready: 'Gotowy, aby zacząć?',
+    transport_costs_cta_subtitle: 'Otrzymaj spersonalizowaną wycenę dla swoich potrzeb transportowych',
   },
 }
 

@@ -1,8 +1,20 @@
 'use client'
 
 import React, { useState } from 'react'
+import Link from 'next/link'
 import MainNavigation from '@/components/navigation/MainNavigation'
 import type { Language } from '@/lib/i18n'
+import { 
+  Package, 
+  Shield, 
+  TrendingDown, 
+  Award, 
+  AlertCircle, 
+  Truck, 
+  CheckCircle,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react'
 
 interface TransportCostsContentProps {
   lang: Language
@@ -13,13 +25,16 @@ type PaletteSize = 'standard' | 'large'
 
 interface PricingData {
   country: string
+  flag: string
   '1-4': { net: string; gross: string }
   '5+': { net: string; gross: string }
   note?: string
+  isMain?: boolean
 }
 
 interface VolumePricing {
   direction: string
+  flag: string
   net: string
   gross: string
 }
@@ -27,52 +42,64 @@ interface VolumePricing {
 const standardPrices: PricingData[] = [
   {
     country: 'germany',
+    flag: '🇩🇪',
     '1-4': { net: '100–140 €', gross: '123–172 €' },
     '5+': { net: '80–120 €', gross: '98–148 €' },
+    isMain: true,
   },
   {
     country: 'netherlands',
+    flag: '🇳🇱',
     '1-4': { net: '130–180 €', gross: '160–221 €' },
     '5+': { net: '110–150 €', gross: '135–184 €' },
+    isMain: true,
   },
   {
     country: 'france',
+    flag: '🇫🇷',
     '1-4': { net: '150–210 €', gross: '184–258 €' },
     '5+': { net: '130–180 €', gross: '160–221 €' },
+    isMain: true,
   },
   {
     country: 'uk',
+    flag: '🇬🇧',
     '1-4': { net: '280–350 €', gross: '344–430 €' },
     '5+': { net: '240–300 €', gross: '295–369 €' },
     note: 'uk_note',
+    isMain: true,
   },
   {
     country: 'ireland',
+    flag: '🇮🇪',
     '1-4': { net: '310–390 €', gross: '381–480 €' },
     '5+': { net: '270–360 €', gross: '332–443 €' },
+    isMain: false,
   },
   {
     country: 'scandinavia',
+    flag: '🇸🇪',
     '1-4': { net: '170–260 €', gross: '209–320 €' },
     '5+': { net: '140–220 €', gross: '172–271 €' },
     note: 'scandinavia_note',
+    isMain: false,
   },
 ]
 
 const halfTruckPrices: VolumePricing[] = [
-  { direction: 'germany', net: '1000–1500 €', gross: '1230–1845 €' },
-  { direction: 'netherlands', net: '1300–1900 €', gross: '1599–2337 €' },
-  { direction: 'france', net: '1600–2500 €', gross: '1968–3075 €' },
-  { direction: 'uk', net: '1800–2600 €', gross: '2214–3198 €' },
-  { direction: 'ireland', net: '2600–3400 €', gross: '3198–4182 €' },
+  { direction: 'germany', flag: '🇩🇪', net: '1000–1500 €', gross: '1230–1845 €' },
+  { direction: 'netherlands', flag: '🇳🇱', net: '1300–1900 €', gross: '1599–2337 €' },
+  { direction: 'france', flag: '🇫🇷', net: '1600–2500 €', gross: '1968–3075 €' },
+  { direction: 'uk', flag: '🇬🇧', net: '1800–2600 €', gross: '2214–3198 €' },
+  { direction: 'ireland', flag: '🇮🇪', net: '2600–3400 €', gross: '3198–4182 €' },
 ]
 
 const fullTruckPrices: VolumePricing[] = [
-  { direction: 'germany', net: '1800–2400 €', gross: '2214–2952 €' },
-  { direction: 'netherlands', net: '2200–3000 €', gross: '2706–3690 €' },
-  { direction: 'france', net: '2600–3800 €', gross: '3198–4674 €' },
-  { direction: 'uk', net: '3200–4200 €', gross: '3936–5166 €' },
-  { direction: 'ireland', net: '4500–5500 €', gross: '5535–6765 €' },
+  { direction: 'germany', flag: '🇩🇪', net: '1800–2400 €', gross: '2214–2952 €' },
+  { direction: 'netherlands', flag: '🇳🇱', net: '2200–3000 €', gross: '2706–3690 €' },
+  { direction: 'france', flag: '🇫🇷', net: '2600–3800 €', gross: '3198–4674 €' },
+  { direction: 'uk', flag: '🇬🇧', net: '3200–4200 €', gross: '3936–5166 €' },
+  { direction: 'ireland', flag: '🇮🇪', net: '4500–5500 €', gross: '5535–6765 €' },
 ]
 
 function calculatePriceWithMultiplier(priceRange: string, multiplier: number): string {
@@ -82,15 +109,10 @@ function calculatePriceWithMultiplier(priceRange: string, multiplier: number): s
   return `${newMin}–${newMax} €`
 }
 
-function calculateGrossPrice(netRange: string): string {
-  const [min, max] = netRange.split('–').map((p) => parseFloat(p.replace(/[^\d.]/g, '')))
-  const grossMin = Math.round(min * 1.23)
-  const grossMax = Math.round(max * 1.23)
-  return `${grossMin}–${grossMax} €`
-}
-
 export default function TransportCostsContent({ lang, translations }: TransportCostsContentProps) {
   const [paletteSize, setPaletteSize] = useState<PaletteSize>('standard')
+  const [showAllCountries, setShowAllCountries] = useState(false)
+  const [showVolumes, setShowVolumes] = useState(false)
   const t = translations
 
   const getCountryName = (countryKey: string): string => {
@@ -98,83 +120,164 @@ export default function TransportCostsContent({ lang, translations }: TransportC
   }
 
   const getPrices = (): PricingData[] => {
-    if (paletteSize === 'standard') {
-      return standardPrices
-    }
-    // For large pallets, add 15% to prices
-    return standardPrices.map((price) => ({
-      ...price,
-      '1-4': {
-        net: calculatePriceWithMultiplier(price['1-4'].net, 1.15),
-        gross: calculatePriceWithMultiplier(price['1-4'].gross, 1.15),
-      },
-      '5+': {
-        net: calculatePriceWithMultiplier(price['5+'].net, 1.15),
-        gross: calculatePriceWithMultiplier(price['5+'].gross, 1.15),
-      },
-    }))
+    const prices = paletteSize === 'standard' 
+      ? standardPrices 
+      : standardPrices.map((price) => ({
+          ...price,
+          '1-4': {
+            net: calculatePriceWithMultiplier(price['1-4'].net, 1.15),
+            gross: calculatePriceWithMultiplier(price['1-4'].gross, 1.15),
+          },
+          '5+': {
+            net: calculatePriceWithMultiplier(price['5+'].net, 1.15),
+            gross: calculatePriceWithMultiplier(price['5+'].gross, 1.15),
+          },
+        }))
+    
+    return showAllCountries ? prices : prices.filter(p => p.isMain)
   }
 
+  const mainCountries = standardPrices.filter(p => p.isMain)
+  const otherCountries = standardPrices.filter(p => !p.isMain)
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <MainNavigation currentLang={lang} useLanguageContext={false} />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
-        <div className="bg-white shadow rounded-lg p-6 md:p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">{t.transport_costs_title}</h1>
+      {/* Hero Section with USP */}
+      <section className="bg-gradient-to-br from-blue-50 to-indigo-100 pt-24 pb-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              {t.transport_costs_hero_title}
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-700 mb-6">
+              {t.transport_costs_hero_subtitle}
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 text-sm md:text-base text-gray-600 mb-8">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-blue-600" />
+                <span>{t.transport_costs_hero_tagline.split(' • ')[0]}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <TrendingDown className="w-5 h-5 text-blue-600" />
+                <span>{t.transport_costs_hero_tagline.split(' • ')[1]}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
+                <span>{t.transport_costs_hero_tagline.split(' • ')[2]}</span>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/auth/signup"
+                className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 transition shadow-lg"
+              >
+                {t.transport_costs_cta_get_started}
+              </Link>
+              <Link
+                href={`/landing/${lang}#pricing`}
+                className="bg-white text-blue-600 px-8 py-3 rounded-lg text-lg font-semibold hover:bg-gray-50 transition shadow-lg border-2 border-blue-600"
+              >
+                {t.transport_costs_cta_request_quote}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
 
-          {/* 1. Wprowadzenie */}
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t.transport_costs_intro_title}</h2>
-            <div className="prose max-w-none text-gray-700 space-y-4">
-              <p>{t.transport_costs_intro_p1}</p>
-              <p>{t.transport_costs_intro_p2}</p>
-              <ul className="list-disc pl-6 space-y-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Why Supersender Section */}
+        <section className="mb-12 bg-white rounded-lg shadow-lg p-6 md:p-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 text-center">
+            {t.transport_costs_why_title}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="text-center p-4">
+              <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Package className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">{t.transport_costs_why_consolidation}</h3>
+              <p className="text-sm text-gray-600">{t.transport_costs_why_consolidation_desc}</p>
+            </div>
+            <div className="text-center p-4">
+              <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <TrendingDown className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">{t.transport_costs_why_transparency}</h3>
+              <p className="text-sm text-gray-600">{t.transport_costs_why_transparency_desc}</p>
+            </div>
+            <div className="text-center p-4">
+              <div className="bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8 text-purple-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">{t.transport_costs_why_security}</h3>
+              <p className="text-sm text-gray-600">{t.transport_costs_why_security_desc}</p>
+            </div>
+            <div className="text-center p-4">
+              <div className="bg-orange-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Award className="w-8 h-8 text-orange-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">{t.transport_costs_why_experience}</h3>
+              <p className="text-sm text-gray-600">{t.transport_costs_why_experience_desc}</p>
+            </div>
+          </div>
+        </section>
+
+        <div className="bg-white shadow rounded-lg p-6 md:p-8">
+          {/* Quick Intro */}
+          <section className="mb-8 pb-8 border-b border-gray-200">
+            <p className="text-lg text-gray-700 mb-4">{t.transport_costs_intro_short}</p>
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                {t.transport_costs_intro_benefits_title}
+              </h3>
+              <ul className="list-disc pl-6 space-y-2 text-gray-700">
                 <li>{t.transport_costs_intro_li1}</li>
                 <li>{t.transport_costs_intro_li2}</li>
                 <li>{t.transport_costs_intro_li3}</li>
               </ul>
-              <p>{t.transport_costs_intro_p3}</p>
-              <p>{t.transport_costs_intro_p4}</p>
             </div>
           </section>
 
-          {/* 2. Ważna informacja o wycenie */}
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              {t.transport_costs_pricing_title}
-            </h2>
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-              <p className="text-gray-700">{t.transport_costs_pricing_p1}</p>
-              <p className="text-gray-700 mt-2">{t.transport_costs_pricing_p2}</p>
-            </div>
-          </section>
-
-          {/* 3. Własny transport */}
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t.transport_costs_own_title}</h2>
-            <div className="prose max-w-none text-gray-700 space-y-4">
-              <p>{t.transport_costs_own_p1}</p>
-              <div className="bg-red-50 border-l-4 border-red-400 p-4">
-                <p className="font-semibold text-gray-900 mb-2">
-                  {t.transport_costs_own_warning}
-                </p>
+          {/* Important Pricing Info - Compact */}
+          <section className="mb-8 pb-8 border-b border-gray-200">
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">{t.transport_costs_pricing_title}</h3>
+                  <p className="text-gray-700 text-sm">{t.transport_costs_pricing_short}</p>
+                </div>
               </div>
-              <p>{t.transport_costs_own_p2}</p>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>{t.transport_costs_own_li1}</li>
-                <li>{t.transport_costs_own_li2}</li>
-                <li>{t.transport_costs_own_li3}</li>
-              </ul>
-              <p>{t.transport_costs_own_p3}</p>
             </div>
           </section>
 
-          {/* 4. Wybór rodzaju palety */}
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t.transport_costs_palette_title}</h2>
-            <div className="flex items-center gap-4 mb-6">
-              <label className="flex items-center cursor-pointer">
+          {/* Own Transport - Compact */}
+          <section className="mb-8 pb-8 border-b border-gray-200">
+            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <Truck className="w-5 h-5 text-blue-600" />
+              {t.transport_costs_own_title}
+            </h3>
+            <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r mb-4">
+              <p className="font-semibold text-gray-900 text-sm">
+                {t.transport_costs_own_warning}
+              </p>
+            </div>
+            <p className="text-sm text-gray-700 mb-2">{t.transport_costs_own_p2}</p>
+            <ul className="list-disc pl-6 space-y-1 text-sm text-gray-700">
+              <li>{t.transport_costs_own_li1}</li>
+              <li>{t.transport_costs_own_li2}</li>
+              <li>{t.transport_costs_own_li3}</li>
+            </ul>
+          </section>
+
+          {/* Palette Selection */}
+          <section className="mb-8 pb-8 border-b border-gray-200">
+            <h3 className="font-semibold text-gray-900 mb-4">{t.transport_costs_palette_title}</h3>
+            <div className="flex flex-wrap items-center gap-4 mb-4">
+              <label className="flex items-center cursor-pointer bg-gray-50 px-4 py-2 rounded-lg hover:bg-gray-100 transition">
                 <input
                   type="radio"
                   name="palette"
@@ -183,9 +286,9 @@ export default function TransportCostsContent({ lang, translations }: TransportC
                   onChange={(e) => setPaletteSize(e.target.value as PaletteSize)}
                   className="mr-2"
                 />
-                <span className="text-gray-700">{t.transport_costs_palette_standard}</span>
+                <span className="text-gray-700 font-medium">{t.transport_costs_palette_standard}</span>
               </label>
-              <label className="flex items-center cursor-pointer">
+              <label className="flex items-center cursor-pointer bg-gray-50 px-4 py-2 rounded-lg hover:bg-gray-100 transition">
                 <input
                   type="radio"
                   name="palette"
@@ -194,197 +297,246 @@ export default function TransportCostsContent({ lang, translations }: TransportC
                   onChange={(e) => setPaletteSize(e.target.value as PaletteSize)}
                   className="mr-2"
                 />
-                <span className="text-gray-700">{t.transport_costs_palette_large}</span>
+                <span className="text-gray-700 font-medium">{t.transport_costs_palette_large}</span>
               </label>
             </div>
-            <p className="text-sm text-gray-600">
-              {t.transport_costs_palette_note}
-            </p>
+            <p className="text-sm text-gray-600">{t.transport_costs_palette_note}</p>
           </section>
 
-          {/* 5. Cennik palet – Europa */}
+          {/* Pricing Tables */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t.transport_costs_europe_title}</h2>
-            <p className="text-gray-700 mb-4">
-              {t.transport_costs_europe_note}
-            </p>
-            <ul className="list-disc pl-6 text-gray-700 mb-6 space-y-1">
-              <li>{t.transport_costs_europe_li1}</li>
-              <li>{t.transport_costs_europe_li2}</li>
-              <li>{t.transport_costs_europe_li3}</li>
-              <li>{t.transport_costs_europe_li4}</li>
-            </ul>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">{t.transport_costs_europe_title}</h2>
+              <Link
+                href="/auth/signup"
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition text-sm"
+              >
+                {t.transport_costs_cta_request_quote}
+              </Link>
+            </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                      {t.transport_costs_table_range}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                      {t.transport_costs_table_net}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t.transport_costs_table_gross}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {getPrices().map((price, idx) => (
-                    <React.Fragment key={idx}>
-                      <tr className="bg-gray-50">
-                        <td colSpan={3} className="px-6 py-3 font-semibold text-gray-900">
-                          {idx + 1}. {getCountryName(price.country)}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
-                          {t.transport_costs_europe_li1}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
-                          {price['1-4'].net}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-700">{price['1-4'].gross}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
-                          {t.transport_costs_europe_li2}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
-                          {price['5+'].net}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-700">{price['5+'].gross}</td>
-                      </tr>
-                      {price.note && (
-                        <tr>
-                          <td colSpan={3} className="px-6 py-2 text-xs text-gray-600 italic bg-yellow-50">
-                            {t[`transport_costs_country_${price.note}`] || ''}
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                        {t.transport_costs_table_range}
+                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                        {t.transport_costs_table_net}
+                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {t.transport_costs_table_gross}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {getPrices().map((price, idx) => (
+                      <React.Fragment key={idx}>
+                        <tr className="bg-gray-50">
+                          <td colSpan={3} className="px-4 sm:px-6 py-3 font-semibold text-gray-900">
+                            <span className="text-xl mr-2">{price.flag}</span>
+                            {getCountryName(price.country)}
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* 6. Transport większych wolumenów */}
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              {t.transport_costs_volumes_title}
-            </h2>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                {t.transport_costs_half_truck_title}
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                        {t.transport_costs_table_direction}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                        {t.transport_costs_table_net}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t.transport_costs_table_gross}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {halfTruckPrices.map((price, idx) => (
-                      <tr key={idx}>
-                        <td className="px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
-                          {getCountryName(price.direction)}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
-                          {price.net}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-700">{price.gross}</td>
-                      </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 sm:px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
+                            {t.transport_costs_europe_li1}
+                          </td>
+                          <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">
+                            {price['1-4'].net}
+                          </td>
+                          <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-900">
+                            {price['1-4'].gross}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 sm:px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
+                            {t.transport_costs_europe_li2}
+                          </td>
+                          <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">
+                            {price['5+'].net}
+                          </td>
+                          <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-900">
+                            {price['5+'].gross}
+                          </td>
+                        </tr>
+                        {price.note && (
+                          <tr>
+                            <td colSpan={3} className="px-4 sm:px-6 py-2 text-xs text-gray-600 italic bg-yellow-50">
+                              {t[`transport_costs_country_${price.note}`] || ''}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
               </div>
             </div>
 
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                {t.transport_costs_full_truck_title}
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                        {t.transport_costs_table_direction}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
-                        {t.transport_costs_table_net}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t.transport_costs_table_gross}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {fullTruckPrices.map((price, idx) => (
-                      <tr key={idx}>
-                        <td className="px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
-                          {getCountryName(price.direction)}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
-                          {price.net}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-700">{price.gross}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {otherCountries.length > 0 && !showAllCountries && (
+              <button
+                onClick={() => setShowAllCountries(true)}
+                className="mt-4 w-full flex items-center justify-center gap-2 text-blue-600 hover:text-blue-700 font-medium py-2"
+              >
+                <span>{t.transport_costs_show_more.replace('{count}', otherCountries.length.toString())}</span>
+                <ChevronDown className="w-5 h-5" />
+              </button>
+            )}
+
+            {showAllCountries && otherCountries.length > 0 && (
+              <button
+                onClick={() => setShowAllCountries(false)}
+                className="mt-4 w-full flex items-center justify-center gap-2 text-blue-600 hover:text-blue-700 font-medium py-2"
+              >
+                <span>{t.transport_costs_show_less}</span>
+                <ChevronUp className="w-5 h-5" />
+              </button>
+            )}
+          </section>
+
+          {/* Larger Volumes - Accordion */}
+          <section className="mb-8">
+            <button
+              onClick={() => setShowVolumes(!showVolumes)}
+              className="w-full flex items-center justify-between text-left mb-4"
+            >
+              <h2 className="text-2xl font-bold text-gray-900">{t.transport_costs_volumes_title}</h2>
+              {showVolumes ? (
+                <ChevronUp className="w-6 h-6 text-gray-600" />
+              ) : (
+                <ChevronDown className="w-6 h-6 text-gray-600" />
+              )}
+            </button>
+
+            {showVolumes && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    {t.transport_costs_half_truck_title}
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                            {t.transport_costs_table_direction}
+                          </th>
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                            {t.transport_costs_table_net}
+                          </th>
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {t.transport_costs_table_gross}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {halfTruckPrices.map((price, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-4 sm:px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
+                              <span className="text-lg mr-2">{price.flag}</span>
+                              {getCountryName(price.direction)}
+                            </td>
+                            <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">
+                              {price.net}
+                            </td>
+                            <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-900">
+                              {price.gross}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    {t.transport_costs_full_truck_title}
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                            {t.transport_costs_table_direction}
+                          </th>
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                            {t.transport_costs_table_net}
+                          </th>
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {t.transport_costs_table_gross}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {fullTruckPrices.map((price, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-4 sm:px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
+                              <span className="text-lg mr-2">{price.flag}</span>
+                              {getCountryName(price.direction)}
+                            </td>
+                            <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">
+                              {price.net}
+                            </td>
+                            <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-900">
+                              {price.gross}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* FAQ - Compact */}
+          <section className="mb-8 pb-8 border-b border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t.transport_costs_faq_title}</h2>
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-2">{t.transport_costs_faq_q1}</h3>
+                <p className="text-sm text-gray-700">{t.transport_costs_faq_a1}</p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-2">{t.transport_costs_faq_q2}</h3>
+                <p className="text-sm text-gray-700">{t.transport_costs_faq_a2}</p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-2">{t.transport_costs_faq_q3}</h3>
+                <p className="text-sm text-gray-700">{t.transport_costs_faq_a3}</p>
               </div>
             </div>
           </section>
 
-          {/* 7. FAQ */}
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t.transport_costs_faq_title}</h2>
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {t.transport_costs_faq_q1}
-                </h3>
-                <p className="text-gray-700">
-                  {t.transport_costs_faq_a1}
-                </p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {t.transport_costs_faq_q2}
-                </h3>
-                <p className="text-gray-700">
-                  {t.transport_costs_faq_a2}
-                </p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {t.transport_costs_faq_q3}
-                </h3>
-                <p className="text-gray-700">
-                  {t.transport_costs_faq_a3}
-                </p>
-              </div>
+          {/* CTA Section */}
+          <section className="mb-8 text-center bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">{t.transport_costs_cta_ready}</h2>
+            <p className="text-gray-700 mb-6">{t.transport_costs_cta_subtitle}</p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/auth/signup"
+                className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 transition shadow-lg"
+              >
+                {t.transport_costs_cta_get_started}
+              </Link>
+              <Link
+                href={`/landing/${lang}#pricing`}
+                className="bg-white text-blue-600 px-8 py-3 rounded-lg text-lg font-semibold hover:bg-gray-50 transition shadow-lg border-2 border-blue-600"
+              >
+                {t.transport_costs_cta_request_quote}
+              </Link>
             </div>
           </section>
 
-          {/* 8. Disclaimer */}
-          <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t.transport_costs_disclaimer_title}</h2>
-            <div className="bg-gray-50 border-l-4 border-gray-400 p-4">
-              <p className="text-gray-700">
+          {/* Disclaimer */}
+          <section>
+            <div className="bg-gray-50 border-l-4 border-gray-400 p-4 rounded-r">
+              <p className="text-sm text-gray-700">
                 {t.transport_costs_disclaimer}
               </p>
             </div>
@@ -394,4 +546,3 @@ export default function TransportCostsContent({ lang, translations }: TransportC
     </div>
   )
 }
-
