@@ -26,18 +26,28 @@ interface DashboardData {
   }
 }
 
+interface SystemSettings {
+  dimensionBufferPercent: number
+  defaultClientLimitCbm: number
+  translationServiceEnabled: boolean
+  photoRetentionDays: number
+}
+
 export default function SuperAdminDashboardContent() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [pricingRules, setPricingRules] = useState<any[]>([])
+  const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null)
 
   useEffect(() => {
     fetchKPI()
     fetchPricingRules()
+    fetchSystemSettings()
     // Refresh every 60 seconds
     const interval = setInterval(() => {
       fetchKPI()
       fetchPricingRules()
+      fetchSystemSettings()
     }, 60000)
     return () => clearInterval(interval)
   }, [])
@@ -51,6 +61,20 @@ export default function SuperAdminDashboardContent() {
       }
     } catch (error) {
       console.error('Error fetching pricing rules:', error)
+    }
+  }
+
+  const fetchSystemSettings = async () => {
+    try {
+      const res = await fetch('/api/superadmin/system-settings')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.settings) {
+          setSystemSettings(data.settings)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching system settings:', error)
     }
   }
 
@@ -263,19 +287,27 @@ export default function SuperAdminDashboardContent() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Dimension buffer:</span>
-              <span className="font-medium">+5%</span>
+              <span className="font-medium">
+                {systemSettings ? `+${systemSettings.dimensionBufferPercent}%` : '+5%'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Default client limit:</span>
-              <span className="font-medium">5.0 m³</span>
+              <span className="font-medium">
+                {systemSettings ? `${systemSettings.defaultClientLimitCbm} m³` : '5.0 m³'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Translation service:</span>
-              <span className="font-medium">Enabled</span>
+              <span className="font-medium">
+                {systemSettings ? (systemSettings.translationServiceEnabled ? 'Enabled' : 'Disabled') : 'Enabled'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Photo retention:</span>
-              <span className="font-medium">90 days</span>
+              <span className="font-medium">
+                {systemSettings ? `${systemSettings.photoRetentionDays} days` : '90 days'}
+              </span>
             </div>
           </div>
         </div>

@@ -395,6 +395,18 @@ model SetupFee {
   updatedAt          DateTime @updatedAt
 }
 
+model SystemSettings {
+  id                    String   @id @default(cuid())
+  dimensionBufferPercent Float    @default(5.0) // Dimension buffer percentage (default 5%)
+  defaultClientLimitCbm  Float    @default(5.0) // Default client space limit in m³
+  translationServiceEnabled Boolean @default(true) // Translation service enabled/disabled
+  photoRetentionDays    Int      @default(90) // Photo retention period in days
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([id]) // Only one system settings record
+}
+
 model Voucher {
   id            String   @id @default(cuid())
   code          String   @unique // Voucher code (e.g., "BOOK20")

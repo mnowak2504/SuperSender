@@ -10,6 +10,7 @@ import {
   FileText, 
   Database, 
   BarChart3,
+  Settings,
   Menu,
   X
 } from 'lucide-react'
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Faktury', href: '/superadmin/invoices', icon: FileText },
   { name: 'Zarządzanie danymi', href: '/superadmin/data-management', icon: Database },
   { name: 'Analytics', href: '/superadmin/analytics', icon: BarChart3 },
+  { name: 'Ustawienia', href: '/superadmin/settings', icon: Settings },
 ]
 
 export default function SuperAdminSidebar() {
