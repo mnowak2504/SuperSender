@@ -25,12 +25,20 @@ export async function GET(req: NextRequest) {
     const countryFilter = searchParams.get('country')
     const statusFilter = searchParams.get('status')
     const planIdFilter = searchParams.get('planId')
+    const sortBy = searchParams.get('sortBy') || 'createdAt'
+    const sortOrder = searchParams.get('sortOrder') || 'desc'
 
     // Get all clients with full details
     let query = supabase
       .from('Client')
       .select('*')
-      .order('createdAt', { ascending: false })
+    
+    // Apply sorting
+    if (sortBy === 'subscriptionEndDate') {
+      query = query.order('subscriptionEndDate', { ascending: sortOrder === 'asc', nullsFirst: false })
+    } else {
+      query = query.order(sortBy as any, { ascending: sortOrder === 'asc' })
+    }
 
     // Apply filters
     if (countryFilter && countryFilter !== 'ALL') {
@@ -260,6 +268,8 @@ export async function GET(req: NextRequest) {
         plan: plan,
         subscriptionDiscount: client.subscriptionDiscount || 0,
         additionalServicesDiscount: client.additionalServicesDiscount || 0,
+        subscriptionStartDate: client.subscriptionStartDate || null,
+        subscriptionEndDate: client.subscriptionEndDate || null,
         salesOwner: salesOwner,
         salesOwnerId: client.salesOwnerId,
         usedCbm: capacity.usedCbm || 0,

@@ -406,6 +406,15 @@ export default async function ClientDashboard() {
             <div>
               <p className="text-2xl font-bold text-gray-900">{planName}</p>
               <p className="text-xs text-gray-500 mt-1">Current subscription</p>
+              {subscriptionEndDate && (
+                <p className="text-xs text-gray-600 mt-2">
+                  Expires: {subscriptionEndDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </p>
+              )}
             </div>
           </div>
         </div>

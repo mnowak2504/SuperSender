@@ -39,6 +39,8 @@ interface Client {
   } | null
   subscriptionDiscount: number
   additionalServicesDiscount: number
+  subscriptionStartDate: string | null
+  subscriptionEndDate: string | null
   salesOwner: {
     id: string
     name: string
@@ -110,6 +112,8 @@ export default function SuperAdminClientsContent() {
   const [planFilter, setPlanFilter] = useState<string>('ALL')
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [countries, setCountries] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<string>('createdAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   // Form data
   const [clientFormData, setClientFormData] = useState({
@@ -147,7 +151,7 @@ export default function SuperAdminClientsContent() {
 
   useEffect(() => {
     fetchData()
-  }, [countryFilter, statusFilter, planFilter])
+  }, [countryFilter, statusFilter, planFilter, sortBy, sortOrder])
 
   const fetchData = async () => {
     setLoading(true)
@@ -157,6 +161,8 @@ export default function SuperAdminClientsContent() {
       if (countryFilter !== 'ALL') queryParams.append('country', countryFilter)
       if (statusFilter !== 'ALL') queryParams.append('status', statusFilter)
       if (planFilter !== 'ALL') queryParams.append('planId', planFilter)
+      queryParams.append('sortBy', sortBy)
+      queryParams.append('sortOrder', sortOrder)
 
       const res = await fetch(`/api/superadmin/clients?${queryParams.toString()}`)
       if (!res.ok) {
@@ -422,7 +428,7 @@ export default function SuperAdminClientsContent() {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -471,6 +477,23 @@ export default function SuperAdminClientsContent() {
             ))}
             <option value="NO_PLAN">Bez planu</option>
           </select>
+
+          <select
+            value={`${sortBy}-${sortOrder}`}
+            onChange={(e) => {
+              const [newSortBy, newSortOrder] = e.target.value.split('-')
+              setSortBy(newSortBy)
+              setSortOrder(newSortOrder as 'asc' | 'desc')
+            }}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="createdAt-desc">Sortuj: Data utworzenia (najnowsze)</option>
+            <option value="createdAt-asc">Sortuj: Data utworzenia (najstarsze)</option>
+            <option value="subscriptionEndDate-asc">Sortuj: Wygaśnięcie subskrypcji (najbliższe)</option>
+            <option value="subscriptionEndDate-desc">Sortuj: Wygaśnięcie subskrypcji (najdalsze)</option>
+            <option value="displayName-asc">Sortuj: Nazwa (A-Z)</option>
+            <option value="displayName-desc">Sortuj: Nazwa (Z-A)</option>
+          </select>
         </div>
       </div>
 
@@ -492,7 +515,7 @@ export default function SuperAdminClientsContent() {
                   onClick={() => setExpandedClient(expandedClient === client.id ? null : client.id)}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-6 gap-4">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{client.displayName}</div>
                         <div className="text-xs text-gray-500">{client.clientCode}</div>
@@ -520,6 +543,31 @@ export default function SuperAdminClientsContent() {
                           <div className="text-xs text-green-600">
                             Zniżka: {client.subscriptionDiscount}%
                           </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">Wygaśnięcie subskrypcji</div>
+                        {client.subscriptionEndDate ? (
+                          <div className="text-sm text-gray-900">
+                            {new Date(client.subscriptionEndDate).toLocaleDateString('pl-PL', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                            {(() => {
+                              const endDate = new Date(client.subscriptionEndDate)
+                              const now = new Date()
+                              const daysUntilExpiry = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                              if (daysUntilExpiry < 0) {
+                                return <div className="text-xs text-red-600 mt-1">Wygasła</div>
+                              } else if (daysUntilExpiry <= 30) {
+                                return <div className="text-xs text-yellow-600 mt-1">Wygasa za {daysUntilExpiry} dni</div>
+                              }
+                              return null
+                            })()}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">Brak daty</span>
                         )}
                       </div>
                       <div>
