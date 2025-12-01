@@ -30,15 +30,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true })
     }
 
-    // Find invoice by Revolut payment ID or metadata
-    const { data: invoice } = await supabase
+    // Find invoice by Revolut payment ID or order ID
+    let invoice
+    const { data: invoiceByPaymentId } = await supabase
       .from('Invoice')
       .select('*')
       .eq('revolutPaymentId', payment_id)
       .single()
+    
+    if (invoiceByPaymentId) {
+      invoice = invoiceByPaymentId
+    } else {
+      // Try by order_id
+      const { data: invoiceByOrderId } = await supabase
+        .from('Invoice')
+        .select('*')
+        .eq('revolutOrderId', order_id)
+        .single()
+      
+      if (invoiceByOrderId) {
+        invoice = invoiceByOrderId
+      }
+    }
 
     if (!invoice) {
-      console.warn('Invoice not found for payment_id:', payment_id)
+      console.warn('Invoice not found for payment_id:', payment_id, 'order_id:', order_id)
       return NextResponse.json({ received: true })
     }
 
@@ -49,9 +65,31 @@ export async function POST(req: NextRequest) {
         .update({
           status: 'PAID',
           paidAt: new Date().toISOString(),
-          paymentWebhookReceivedAt: new Date().toISOString(),
+          revolutState: 'COMPLETED',
         })
         .eq('id', invoice.id)
+
+      // If subscription invoice, activate subscription
+      if (invoice.type === 'SUBSCRIPTION' && invoice.subscriptionStartDate && invoice.subscriptionPeriod && invoice.subscriptionPlanId) {
+        const startDate = new Date(invoice.subscriptionStartDate)
+        startDate.setHours(0, 0, 0, 0)
+        
+        const endDate = new Date(startDate)
+        const months = parseInt(invoice.subscriptionPeriod) || 1
+        endDate.setMonth(endDate.getMonth() + months)
+        endDate.setHours(23, 59, 59, 999)
+        
+        // Update client with plan and subscription dates
+        await supabase
+          .from('Client')
+          .update({
+            planId: invoice.subscriptionPlanId,
+            subscriptionStartDate: startDate.toISOString(),
+            subscriptionEndDate: endDate.toISOString(),
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', invoice.clientId)
+      }
 
       // If transport invoice, update shipment status
       if (invoice.type === 'TRANSPORT') {
@@ -74,6 +112,14 @@ export async function POST(req: NextRequest) {
 
       // TODO: Send confirmation email to client
     } else if (event === 'payment.failed') {
+      // Update invoice status
+      await supabase
+        .from('Invoice')
+        .update({
+          revolutState: 'DECLINED',
+        })
+        .eq('id', invoice.id)
+      
       // TODO: Send notification to client about failed payment
       console.log('Payment failed for invoice:', invoice.id)
     }

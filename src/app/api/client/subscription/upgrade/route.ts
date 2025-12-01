@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
     
-    const { planId, subscriptionPeriod = '1', paymentMethod = 'online', voucherCode } = body || {}
+    const { planId, subscriptionPeriod = '1', paymentMethod = 'online', voucherCode, subscriptionStartDate } = body || {}
 
     if (!planId) {
       console.error('[API /client/subscription/upgrade] Missing planId in request body')
@@ -324,6 +324,14 @@ export async function POST(req: NextRequest) {
     
     const invoiceId = generateCUID()
 
+    // Prepare subscription dates for invoice metadata
+    const startDate = subscriptionStartDate ? new Date(subscriptionStartDate) : new Date()
+    startDate.setHours(0, 0, 0, 0)
+    
+    // Store planId in invoice metadata (we'll add a planId field to Invoice or use metadata JSON)
+    // For now, we'll store it in a way that webhook can access it
+    // Note: We need to update Client with planId after payment, so we'll get it from invoice.clientId -> Client.planId
+    
     const { data: invoice, error: invoiceError } = await supabase
       .from('Invoice')
       .insert({
@@ -334,6 +342,9 @@ export async function POST(req: NextRequest) {
         currency: 'EUR',
         status: 'ISSUED',
         dueDate: dueDate.toISOString(),
+        subscriptionStartDate: startDate.toISOString(),
+        subscriptionPeriod: subscriptionPeriod,
+        subscriptionPlanId: planId,
       })
       .select()
       .single()
@@ -411,10 +422,21 @@ export async function POST(req: NextRequest) {
 
       // If bank transfer, activate account immediately
       if (paymentMethod === 'bank_transfer') {
+        // Calculate subscription dates
+        const startDate = subscriptionStartDate ? new Date(subscriptionStartDate) : new Date()
+        startDate.setHours(0, 0, 0, 0)
+        
+        const endDate = new Date(startDate)
+        const months = parseInt(subscriptionPeriod) || 1
+        endDate.setMonth(endDate.getMonth() + months)
+        endDate.setHours(23, 59, 59, 999)
+        
         const { error: updatePlanError } = await supabase
           .from('Client')
           .update({
             planId: planId,
+            subscriptionStartDate: startDate.toISOString(),
+            subscriptionEndDate: endDate.toISOString(),
             updatedAt: new Date().toISOString(),
           })
           .eq('id', clientId)
@@ -458,10 +480,21 @@ export async function POST(req: NextRequest) {
 
       // If bank transfer, activate account immediately
       if (paymentMethod === 'bank_transfer') {
+        // Calculate subscription dates
+        const startDate = subscriptionStartDate ? new Date(subscriptionStartDate) : new Date()
+        startDate.setHours(0, 0, 0, 0)
+        
+        const endDate = new Date(startDate)
+        const months = parseInt(subscriptionPeriod) || 1
+        endDate.setMonth(endDate.getMonth() + months)
+        endDate.setHours(23, 59, 59, 999)
+        
         const { error: updatePlanError } = await supabase
           .from('Client')
           .update({
             planId: planId,
+            subscriptionStartDate: startDate.toISOString(),
+            subscriptionEndDate: endDate.toISOString(),
             updatedAt: new Date().toISOString(),
           })
           .eq('id', clientId)

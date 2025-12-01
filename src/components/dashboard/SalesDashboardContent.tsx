@@ -7,6 +7,7 @@ import CustomerOverview from './sales/CustomerOverview'
 import CustomQuotesSection from './sales/CustomQuotesSection'
 import DeliveryAlertsSection from './sales/DeliveryAlertsSection'
 import SubscriptionsSection from './sales/SubscriptionsSection'
+import { adminTranslations } from '@/lib/admin-translations'
 
 interface SalesKPI {
   myAccounts: number
@@ -50,7 +51,7 @@ export default function SalesDashboardContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading...</div>
+        <div className="text-gray-500">{adminTranslations.loading}</div>
       </div>
     )
   }
@@ -68,11 +69,11 @@ export default function SalesDashboardContent() {
             <div className="p-3 bg-blue-50 rounded-lg">
               <Users className="w-6 h-6 text-blue-600" />
             </div>
-            <span className="text-xs font-medium text-gray-500">My Accounts</span>
+            <span className="text-xs font-medium text-gray-500">{adminTranslations.my_accounts}</span>
           </div>
           <div>
             <p className="text-3xl font-bold text-gray-900">{kpi?.myAccounts || 0}</p>
-            <p className="text-sm text-gray-600 mt-1">Assigned clients</p>
+            <p className="text-sm text-gray-600 mt-1">{adminTranslations.assigned_clients}</p>
           </div>
         </Link>
 
@@ -85,11 +86,11 @@ export default function SalesDashboardContent() {
             <div className="p-3 bg-orange-50 rounded-lg">
               <AlertCircle className="w-6 h-6 text-orange-600" />
             </div>
-            <span className="text-xs font-medium text-gray-500">Pending &gt;7d</span>
+            <span className="text-xs font-medium text-gray-500">{adminTranslations.pending_deliveries} &gt;7d</span>
           </div>
           <div>
             <p className="text-3xl font-bold text-gray-900">{kpi?.pendingDeliveries7d || 0}</p>
-            <p className="text-sm text-gray-600 mt-1">Deliveries not received</p>
+            <p className="text-sm text-gray-600 mt-1">{adminTranslations.deliveries_not_received}</p>
           </div>
         </Link>
 
@@ -102,7 +103,7 @@ export default function SalesDashboardContent() {
             <div className="p-3 bg-yellow-50 rounded-lg">
               <MessageSquare className="w-6 h-6 text-yellow-600" />
             </div>
-            <span className="text-xs font-medium text-gray-500">Quotes Pending</span>
+            <span className="text-xs font-medium text-gray-500">{adminTranslations.quotes_pending}</span>
           </div>
           <div>
             <p className="text-3xl font-bold text-gray-900">{kpi?.quotesAwaitingAction?.total || 0}</p>
@@ -125,12 +126,12 @@ export default function SalesDashboardContent() {
             <div className="p-3 bg-green-50 rounded-lg">
               <CreditCard className="w-6 h-6 text-green-600" />
             </div>
-            <span className="text-xs font-medium text-gray-500">Subscriptions</span>
+            <span className="text-xs font-medium text-gray-500">{adminTranslations.subscriptions}</span>
           </div>
           <div>
             <p className="text-3xl font-bold text-gray-900">{kpi?.activeSubscriptions?.total || 0}</p>
             <p className="text-sm text-gray-600 mt-1">
-              {kpi?.activeSubscriptions?.paidOnTimePercent || 0}% paid on time
+              {kpi?.activeSubscriptions?.paidOnTimePercent || 0}% {adminTranslations.paid_on_time}
             </p>
           </div>
         </div>
@@ -148,7 +149,7 @@ export default function SalesDashboardContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Customer Overview
+              {adminTranslations.overview}
             </button>
             <button
               onClick={() => setActiveSection('quotes')}
@@ -158,7 +159,7 @@ export default function SalesDashboardContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Custom Quotes
+              {adminTranslations.quotes}
             </button>
             <button
               onClick={() => setActiveSection('deliveries')}
@@ -168,7 +169,7 @@ export default function SalesDashboardContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Delivery Alerts
+              {adminTranslations.deliveries}
             </button>
             <button
               onClick={() => setActiveSection('subscriptions')}
@@ -178,7 +179,7 @@ export default function SalesDashboardContent() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Subscriptions & Orders
+              {adminTranslations.subscriptions}
             </button>
           </nav>
         </div>

@@ -9,11 +9,13 @@ export async function checkActiveSubscription(clientId: string): Promise<{
   hasActiveSubscription: boolean
   status?: string
   error?: string
+  subscriptionEndDate?: Date | null
+  subscriptionStartDate?: Date | null
 }> {
   try {
     const { data: client, error } = await supabase
       .from('Client')
-      .select('planId, status')
+      .select('planId, status, subscriptionStartDate, subscriptionEndDate')
       .eq('id', clientId)
       .single()
 
@@ -32,13 +34,46 @@ export async function checkActiveSubscription(clientId: string): Promise<{
       }
     }
 
-    // For now, subscription is active if planId is set
-    // TODO: Add grace period logic (3 days past due)
-    const hasActiveSubscription = !!client.planId
+    // No plan = no subscription
+    if (!client.planId) {
+      return {
+        hasActiveSubscription: false,
+        status: client.status || 'INACTIVE',
+        subscriptionStartDate: client.subscriptionStartDate ? new Date(client.subscriptionStartDate) : null,
+        subscriptionEndDate: client.subscriptionEndDate ? new Date(client.subscriptionEndDate) : null,
+      }
+    }
 
+    // Check if subscription has expired
+    const now = new Date()
+    const endDate = client.subscriptionEndDate ? new Date(client.subscriptionEndDate) : null
+    
+    if (endDate && endDate < now) {
+      return {
+        hasActiveSubscription: false,
+        status: 'EXPIRED',
+        subscriptionStartDate: client.subscriptionStartDate ? new Date(client.subscriptionStartDate) : null,
+        subscriptionEndDate: endDate,
+      }
+    }
+
+    // Check if subscription has started (if startDate is set)
+    const startDate = client.subscriptionStartDate ? new Date(client.subscriptionStartDate) : null
+    if (startDate && startDate > now) {
+      return {
+        hasActiveSubscription: false,
+        status: 'PENDING_START',
+        subscriptionStartDate: startDate,
+        subscriptionEndDate: endDate,
+      }
+    }
+
+    // Subscription is active
     return {
-      hasActiveSubscription,
-      status: client.status || 'INACTIVE',
+      hasActiveSubscription: true,
+      status: client.status || 'ACTIVE',
+      subscriptionStartDate: startDate,
+      subscriptionEndDate: endDate,
     }
   } catch (error) {
     console.error('Error in checkActiveSubscription:', error)
@@ -69,13 +104,21 @@ export async function requireActiveSubscription(
   const subscriptionCheck = await checkActiveSubscription(clientId)
 
   if (!subscriptionCheck.hasActiveSubscription) {
+    const message = subscriptionCheck.status === 'EXPIRED'
+      ? 'Your subscription has expired. Please renew your subscription to continue using this feature.'
+      : subscriptionCheck.status === 'PENDING_START'
+      ? 'Your subscription has not started yet. Please wait until the start date.'
+      : 'Please activate your subscription to use this feature.'
+    
     return {
       allowed: false,
       response: new Response(
         JSON.stringify({
           error: 'Active subscription required',
-          message: 'Please activate your subscription to use this feature.',
+          message,
           redirect: '/client/settings?tab=billing',
+          subscriptionEndDate: subscriptionCheck.subscriptionEndDate,
+          subscriptionStartDate: subscriptionCheck.subscriptionStartDate,
         }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       ),

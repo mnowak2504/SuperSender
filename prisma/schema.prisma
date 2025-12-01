@@ -137,6 +137,9 @@ model Client {
   individualOperationsRateEur       Float?    // Custom operations rate in EUR for Individual plan
   individualOverSpaceRateEur        Float?    // Custom over-space rate in EUR for Individual plan
   individualAdditionalServicesRateEur Float? // Custom additional services rate in EUR for Individual plan
+  // Subscription dates
+  subscriptionStartDate             DateTime? // When subscription starts
+  subscriptionEndDate                DateTime? // When subscription expires
 
   users              User[]
   addresses          Address[]
@@ -146,6 +149,8 @@ model Client {
   invoices           Invoice[]
   warehouseCapacity  WarehouseCapacity?
   usedVouchers        Voucher[]
+  monthlyCharges     MonthlyAdditionalCharges[]
+  proformas          ProformaInvoice[]
 
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -249,12 +254,18 @@ model Invoice {
   amountEur         Float
   currency          String        @default("EUR")
   status            InvoiceStatus @default(ISSUED)
+  invoiceNumber     String?       // Invoice number from external invoicing system (editable by admin/superadmin)
+  // Subscription metadata (for SUBSCRIPTION invoices)
+  subscriptionStartDate DateTime? // When subscription should start
+  subscriptionPeriod    String?  // Subscription period in months ('1', '3', '6')
+  subscriptionPlanId    String?  // Plan ID for subscription invoice
   revolutLink       String?
   revolutOrderId    String?       // Revolut order ID
   revolutPublicId   String?       // Revolut public order ID
   revolutCheckoutUrl String?      // Revolut checkout URL
   revolutState      String?       // PENDING, COMPLETED, DECLINED, CANCELLED
   providerCustomerId String?      // For payment provider customer reuse
+  revolutPaymentId  String?       // Revolut payment ID (for webhook matching)
   dueDate           DateTime
   createdAt         DateTime      @default(now())
   paidAt            DateTime?
@@ -426,4 +437,43 @@ model PageVisit {
   @@index([createdAt])
   @@index([sessionId])
   @@index([pagePath])
+}
+
+model MonthlyAdditionalCharges {
+  id                String   @id @default(cuid())
+  client            Client   @relation(fields: [clientId], references: [id])
+  clientId         String
+  month            Int      // Month (1-12)
+  year             Int      // Year (e.g., 2024)
+  overSpaceAmountEur Float   @default(0) // Charges for exceeding space limit
+  additionalServicesAmountEur Float @default(0) // Charges for additional services
+  totalAmountEur    Float   // Total additional charges for the month
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([clientId, month, year])
+  @@index([clientId])
+  @@index([year, month])
+}
+
+model ProformaInvoice {
+  id                String   @id @default(cuid())
+  client            Client   @relation(fields: [clientId], references: [id])
+  clientId         String
+  month            Int      // Month (1-12)
+  year             Int      // Year (e.g., 2024)
+  amountEur        Float    // Total amount from MonthlyAdditionalCharges
+  status           String   @default("PENDING") // PENDING, PAID, OVERDUE
+  dueDate          DateTime // 7 days from month end
+  paymentLink      String?  // Payment link if available
+  revolutOrderId   String?  // Revolut order ID if paid via Revolut
+  revolutCheckoutUrl String? // Revolut checkout URL
+  paidAt           DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([clientId, month, year])
+  @@index([clientId])
+  @@index([status])
+  @@index([dueDate])
 }

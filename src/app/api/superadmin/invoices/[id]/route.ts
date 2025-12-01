@@ -21,32 +21,40 @@ export async function PUT(
     }
 
     const role = (session.user as any)?.role
-    if (role !== 'SUPERADMIN') {
+    if (role !== 'SUPERADMIN' && role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await req.json()
-    const { status, paidAt } = body
-
-    if (!status) {
-      return NextResponse.json({ error: 'Status is required' }, { status: 400 })
-    }
-
-    if (!['ISSUED', 'PAID', 'OVERDUE'].includes(status)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
-    }
+    const { status, paidAt, invoiceNumber } = body
 
     // Build update object
-    const updateData: any = {
-      status,
+    const updateData: any = {}
+
+    // Update status if provided
+    if (status) {
+      if (!['ISSUED', 'PAID', 'OVERDUE'].includes(status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+      }
+      updateData.status = status
+
+      // If marking as paid, set paidAt
+      if (status === 'PAID') {
+        updateData.paidAt = paidAt || new Date().toISOString()
+      } else if (status !== 'PAID') {
+        // If changing from PAID to something else, clear paidAt
+        updateData.paidAt = null
+      }
     }
 
-    // If marking as paid, set paidAt
-    if (status === 'PAID') {
-      updateData.paidAt = paidAt || new Date().toISOString()
-    } else if (status !== 'PAID') {
-      // If changing from PAID to something else, clear paidAt
-      updateData.paidAt = null
+    // Update invoiceNumber if provided (can be empty string to clear it)
+    if (invoiceNumber !== undefined) {
+      updateData.invoiceNumber = invoiceNumber || null
+    }
+
+    // At least one field must be provided
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'At least one field (status or invoiceNumber) is required' }, { status: 400 })
     }
 
     console.log('[API /superadmin/invoices/[id] PUT] Updating invoice:', {
@@ -108,7 +116,7 @@ export async function GET(
     }
 
     const role = (session.user as any)?.role
-    if (role !== 'SUPERADMIN') {
+    if (role !== 'SUPERADMIN' && role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

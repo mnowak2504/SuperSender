@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { CheckCircle, XCircle, Clock, AlertCircle, Loader2 } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Edit2, Save, X } from 'lucide-react'
 
 interface Invoice {
   id: string
@@ -27,6 +27,8 @@ export default function SuperAdminInvoicesContent() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null)
+  const [editingInvoiceNumber, setEditingInvoiceNumber] = useState<string>('')
   const [filter, setFilter] = useState<'all' | 'ISSUED' | 'PAID' | 'OVERDUE'>('all')
   const [error, setError] = useState('')
 
@@ -87,6 +89,46 @@ export default function SuperAdminInvoicesContent() {
     } catch (err) {
       console.error('Error marking invoice as paid:', err)
       setError(err instanceof Error ? err.message : 'Failed to mark invoice as paid')
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  const handleStartEditInvoiceNumber = (invoice: Invoice) => {
+    setEditingInvoiceId(invoice.id)
+    setEditingInvoiceNumber(invoice.invoiceNumber || '')
+  }
+
+  const handleCancelEditInvoiceNumber = () => {
+    setEditingInvoiceId(null)
+    setEditingInvoiceNumber('')
+  }
+
+  const handleSaveInvoiceNumber = async (invoiceId: string) => {
+    try {
+      setUpdating(invoiceId)
+      setError('')
+
+      const res = await fetch(`/api/superadmin/invoices/${invoiceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceNumber: editingInvoiceNumber.trim() || null,
+        }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to update invoice' }))
+        throw new Error(errorData.error || errorData.details || 'Failed to update invoice number')
+      }
+
+      // Refresh invoices
+      await fetchInvoices()
+      setEditingInvoiceId(null)
+      setEditingInvoiceNumber('')
+    } catch (err) {
+      console.error('Error updating invoice number:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update invoice number')
     } finally {
       setUpdating(null)
     }
@@ -254,10 +296,56 @@ export default function SuperAdminInvoicesContent() {
                 return (
                   <tr key={invoice.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {invoice.invoiceNumber || `#${invoice.id.slice(0, 8)}`}
-                      </div>
-                      <div className="text-xs text-gray-500">{invoice.id.slice(0, 8)}...</div>
+                      {editingInvoiceId === invoice.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={editingInvoiceNumber}
+                            onChange={(e) => setEditingInvoiceNumber(e.target.value)}
+                            className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Numer faktury"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSaveInvoiceNumber(invoice.id)
+                              } else if (e.key === 'Escape') {
+                                handleCancelEditInvoiceNumber()
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={() => handleSaveInvoiceNumber(invoice.id)}
+                            disabled={updating === invoice.id}
+                            className="p-1 text-green-600 hover:text-green-700 disabled:opacity-50"
+                            title="Zapisz"
+                          >
+                            <Save className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={handleCancelEditInvoiceNumber}
+                            className="p-1 text-red-600 hover:text-red-700"
+                            title="Anuluj"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {invoice.invoiceNumber || `#${invoice.id.slice(0, 8)}`}
+                            </div>
+                            <div className="text-xs text-gray-500">{invoice.id.slice(0, 8)}...</div>
+                          </div>
+                          <button
+                            onClick={() => handleStartEditInvoiceNumber(invoice)}
+                            className="p-1 text-gray-400 hover:text-gray-600"
+                            title="Edytuj numer faktury"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">

@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/db'
-import { Package, Truck, FileText, Plus, Building2, Box, Activity, Settings } from 'lucide-react'
+import { Package, Truck, FileText, Plus, Building2, Box, Activity, Settings, AlertCircle, Euro } from 'lucide-react'
 import CopyButton from '@/components/CopyButton'
 import ClientHeader from '@/components/ClientHeader'
 import ShipmentsInPreparation from '@/components/shipments/ShipmentsInPreparation'
@@ -155,9 +155,48 @@ export default async function ClientDashboard() {
   const deliveriesThisMonth = client?.deliveriesThisMonth || 0
   const deliveriesLimit = client?.planId ? 0 : 0 // TODO: Get from plan if needed
   
-  // Check subscription status
+  // Check subscription status with dates
   const hasActiveSubscription = !!client?.planId
+  const subscriptionEndDate = client?.subscriptionEndDate ? new Date(client.subscriptionEndDate) : null
+  const subscriptionStartDate = client?.subscriptionStartDate ? new Date(client.subscriptionStartDate) : null
+  const now = new Date()
+  const isSubscriptionExpired = subscriptionEndDate ? subscriptionEndDate < now : false
+  const isSubscriptionPending = subscriptionStartDate ? subscriptionStartDate > now : false
+  const daysUntilExpiry = subscriptionEndDate ? Math.ceil((subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null
   const hasReceivedItems = warehouseOrders.length > 0
+
+  // Fetch additional charges for current month
+  let currentMonthCharges: any = null
+  if (clientId) {
+    const currentMonth = now.getMonth() + 1
+    const currentYear = now.getFullYear()
+    const { data: charges } = await supabase
+      .from('MonthlyAdditionalCharges')
+      .select('*')
+      .eq('clientId', clientId)
+      .eq('month', currentMonth)
+      .eq('year', currentYear)
+      .single()
+    
+    if (charges) {
+      currentMonthCharges = charges
+    }
+  }
+
+  // Fetch pending proformas
+  let pendingProformas: any[] = []
+  if (clientId) {
+    const { data: proformas } = await supabase
+      .from('ProformaInvoice')
+      .select('*')
+      .eq('clientId', clientId)
+      .eq('status', 'PENDING')
+      .order('dueDate', { ascending: true })
+    
+    if (proformas) {
+      pendingProformas = proformas
+    }
+  }
 
   // Fetch shipments in preparation (status: REQUESTED), ready (status: AWAITING_ACCEPTANCE), and own transport (READY_FOR_LOADING)
   let shipmentsInPrep: any[] = []
@@ -414,6 +453,173 @@ export default async function ClientDashboard() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {hasActiveSubscription && subscriptionEndDate && (
+          <div className={`border-l-4 p-4 mb-6 rounded-r-lg ${
+            isSubscriptionExpired 
+              ? 'bg-red-50 border-red-400' 
+              : daysUntilExpiry !== null && daysUntilExpiry <= 7
+              ? 'bg-yellow-50 border-yellow-400'
+              : 'bg-blue-50 border-blue-400'
+          }`}>
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                {isSubscriptionExpired ? (
+                  <Activity className="h-5 w-5 text-red-400" />
+                ) : daysUntilExpiry !== null && daysUntilExpiry <= 7 ? (
+                  <Activity className="h-5 w-5 text-yellow-400" />
+                ) : (
+                  <Activity className="h-5 w-5 text-blue-400" />
+                )}
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className={`text-sm font-medium ${
+                  isSubscriptionExpired 
+                    ? 'text-red-800' 
+                    : daysUntilExpiry !== null && daysUntilExpiry <= 7
+                    ? 'text-yellow-800'
+                    : 'text-blue-800'
+                }`}>
+                  {isSubscriptionExpired 
+                    ? 'Subscription Expired' 
+                    : isSubscriptionPending
+                    ? `Subscription starts ${subscriptionStartDate?.toLocaleDateString()}`
+                    : daysUntilExpiry !== null && daysUntilExpiry <= 7
+                    ? `Subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`
+                    : `Subscription active until ${subscriptionEndDate.toLocaleDateString()}`
+                  }
+                </h3>
+                <p className={`mt-1 text-sm ${
+                  isSubscriptionExpired 
+                    ? 'text-red-700' 
+                    : daysUntilExpiry !== null && daysUntilExpiry <= 7
+                    ? 'text-yellow-700'
+                    : 'text-blue-700'
+                }`}>
+                  {isSubscriptionExpired 
+                    ? 'Your subscription has expired. Please renew to continue using the service.'
+                    : isSubscriptionPending
+                    ? 'Your subscription will start on the selected date.'
+                    : daysUntilExpiry !== null && daysUntilExpiry <= 7
+                    ? 'Your subscription is expiring soon. Renew now to avoid service interruption.'
+                    : `Current plan: ${planName}`
+                  }
+                </p>
+                <div className="mt-3">
+                  <Link
+                    href="/client/upgrade"
+                    className={`text-sm font-medium underline ${
+                      isSubscriptionExpired 
+                        ? 'text-red-800 hover:text-red-900' 
+                        : daysUntilExpiry !== null && daysUntilExpiry <= 7
+                        ? 'text-yellow-800 hover:text-yellow-900'
+                        : 'text-blue-800 hover:text-blue-900'
+                    }`}
+                  >
+                    {isSubscriptionExpired ? 'Renew Subscription →' : 'Extend Subscription →'}
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Additional Charges & Proformas */}
+        {(currentMonthCharges?.totalAmountEur > 0 || pendingProformas.length > 0) && (
+          <div className="mb-8 space-y-4">
+            {/* Current Month Additional Charges */}
+            {currentMonthCharges && currentMonthCharges.totalAmountEur > 0 && (
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <AlertCircle className="h-5 w-5 text-yellow-600" />
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <h3 className="text-sm font-medium text-yellow-800">Additional Charges This Month</h3>
+                    <div className="mt-2 space-y-1 text-sm text-yellow-700">
+                      {currentMonthCharges.overSpaceAmountEur > 0 && (
+                        <div className="flex justify-between">
+                          <span>Over-space storage:</span>
+                          <span className="font-medium">€{currentMonthCharges.overSpaceAmountEur.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {currentMonthCharges.additionalServicesAmountEur > 0 && (
+                        <div className="flex justify-between">
+                          <span>Additional services:</span>
+                          <span className="font-medium">€{currentMonthCharges.additionalServicesAmountEur.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between pt-2 border-t border-yellow-200">
+                        <span className="font-semibold">Total:</span>
+                        <span className="font-bold">€{currentMonthCharges.totalAmountEur.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-yellow-600 mt-2">
+                      These charges will be included in your monthly proforma invoice.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Pending Proformas */}
+            {pendingProformas.length > 0 && (
+              <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <FileText className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <h3 className="text-sm font-medium text-red-800">Proforma Invoices Pending Payment</h3>
+                    <div className="mt-2 space-y-2">
+                      {pendingProformas.map((proforma: any) => {
+                        const dueDate = new Date(proforma.dueDate)
+                        const isOverdue = dueDate < now
+                        const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                        
+                        return (
+                          <div key={proforma.id} className="bg-white rounded-lg p-3 border border-red-200">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  Proforma for {new Date(proforma.year, proforma.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Amount: <span className="font-semibold">€{proforma.amountEur.toFixed(2)}</span>
+                                </div>
+                                <div className={`text-xs mt-1 ${isOverdue ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                                  Due: {dueDate.toLocaleDateString()} 
+                                  {isOverdue ? ' (Overdue)' : daysUntilDue >= 0 ? ` (${daysUntilDue} day${daysUntilDue !== 1 ? 's' : ''} remaining)` : ''}
+                                </div>
+                              </div>
+                              {proforma.paymentLink ? (
+                                <a
+                                  href={proforma.paymentLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
+                                >
+                                  Pay Now
+                                </a>
+                              ) : (
+                                <span className="px-4 py-2 bg-gray-300 text-gray-600 text-sm font-medium rounded-lg cursor-not-allowed">
+                                  Payment Link Coming Soon
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <p className="text-xs text-red-600 mt-2">
+                      Please pay within 7 days of receiving the proforma invoice.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

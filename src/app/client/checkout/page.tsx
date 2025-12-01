@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CreditCard, Building2, Loader2, ArrowLeft, Check, X } from 'lucide-react'
+import { CreditCard, Building2, Loader2, ArrowLeft, Check, X, Calendar } from 'lucide-react'
 import Link from 'next/link'
 import ClientLayout from '@/components/ClientLayout'
 import ClientPageHeader from '@/components/ClientPageHeader'
@@ -42,10 +42,15 @@ export default function CheckoutPage() {
   const [voucherDiscount, setVoucherDiscount] = useState(0)
   const [voucherError, setVoucherError] = useState('')
   const [error, setError] = useState('')
+  const [subscriptionStartDate, setSubscriptionStartDate] = useState<string>('')
 
   useEffect(() => {
     if (planId) {
       fetchData()
+      // Set default start date to today
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      setSubscriptionStartDate(today.toISOString().split('T')[0])
     } else {
       setError('No plan selected')
       setLoading(false)
@@ -144,6 +149,7 @@ export default function CheckoutPage() {
           subscriptionPeriod,
           paymentMethod,
           voucherCode: voucherApplied ? voucherCode : null,
+          subscriptionStartDate: subscriptionStartDate || null,
         }),
       })
 
@@ -314,6 +320,39 @@ export default function CheckoutPage() {
                     </p>
                   </button>
                 </div>
+              </div>
+
+              {/* Subscription Start Date */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Subscription Start Date</h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  Choose when you want your subscription to start. You can start immediately or schedule it for any of the next 14 days.
+                </p>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={subscriptionStartDate}
+                    onChange={(e) => setSubscriptionStartDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    max={(() => {
+                      const maxDate = new Date()
+                      maxDate.setDate(maxDate.getDate() + 14)
+                      return maxDate.toISOString().split('T')[0]
+                    })()}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <Calendar className="absolute right-3 top-2.5 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
+                {subscriptionStartDate && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    Subscription will start on: {new Date(subscriptionStartDate).toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                )}
               </div>
 
               {/* Voucher Code */}
