@@ -480,7 +480,7 @@ export default function CheckoutPage() {
                       <CreditCard className="w-5 h-5 text-gray-600" />
                       <div>
                         <p className="font-medium text-gray-900">Pay by card - Request payment link</p>
-                        <p className="text-sm text-gray-500">Payment link will be sent within 1 working day. Account will be activated instantly upon payment.</p>
+                        <p className="text-sm text-gray-500">Account activated immediately. Payment link will be sent within 1 working day.</p>
                       </div>
                     </div>
                   </button>
