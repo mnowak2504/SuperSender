@@ -461,67 +461,6 @@ export async function POST(req: NextRequest) {
       bankTransferInfo,
       clientCode: client.clientCode,
     })
-      
-      // Mark voucher as used if applicable (even if payment link creation failed)
-      if (voucherId) {
-        await supabase
-          .from('Voucher')
-          .update({
-            usedByClientId: clientId,
-            usedAt: new Date().toISOString(),
-          })
-          .eq('id', voucherId)
-      }
-
-      // If bank transfer, activate account immediately
-      if (paymentMethod === 'bank_transfer') {
-        // Calculate subscription dates
-        const startDate = subscriptionStartDate ? new Date(subscriptionStartDate) : new Date()
-        startDate.setHours(0, 0, 0, 0)
-        
-        const endDate = new Date(startDate)
-        const months = parseInt(subscriptionPeriod) || 1
-        endDate.setMonth(endDate.getMonth() + months)
-        endDate.setHours(23, 59, 59, 999)
-        
-        const { error: updatePlanError } = await supabase
-          .from('Client')
-          .update({
-            planId: planId,
-            subscriptionStartDate: startDate.toISOString(),
-            subscriptionEndDate: endDate.toISOString(),
-            updatedAt: new Date().toISOString(),
-          })
-          .eq('id', clientId)
-
-        if (updatePlanError) {
-          console.error('[API /client/subscription/upgrade] Error updating client plan for bank transfer:', updatePlanError)
-        }
-      }
-
-      // Prepare bank transfer info if applicable
-      const bankTransferInfo = paymentMethod === 'bank_transfer' ? {
-        instructions: formatBankTransferInstructions(client.clientCode || 'N/A', invoice.invoiceNumber || undefined, finalAmount),
-        transferTitle: getBankTransferTitle(client.clientCode || 'N/A', invoice.invoiceNumber || undefined),
-        accountDetails: BANK_TRANSFER_INFO,
-      } : null
-      
-      // Still return invoice, user can pay later
-      return NextResponse.json({
-        success: true,
-        invoiceId: invoice.id,
-        paymentLink: null,
-        amount: finalAmount,
-        planId,
-        planName: plan.name,
-        paymentMethod,
-        bankTransferInfo,
-        clientCode: client.clientCode,
-        message: paymentMethod === 'online' 
-          ? 'Invoice created. Payment link will be available shortly.'
-          : 'Invoice created. Bank transfer instructions will be provided.',
-      })
-    }
   } catch (error) {
     console.error('Error upgrading subscription:', error)
     return NextResponse.json(

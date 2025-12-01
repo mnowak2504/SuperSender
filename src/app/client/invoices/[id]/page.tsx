@@ -14,7 +14,7 @@ export default async function InvoiceDetailsPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ paymentMethod?: string; paymentLinkRequested?: string }
+  searchParams: Promise<{ paymentMethod?: string; paymentLinkRequested?: string }>
 }) {
   const session = await auth()
   const { id } = await params
