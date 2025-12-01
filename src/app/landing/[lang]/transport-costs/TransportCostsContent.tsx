@@ -1,9 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import MainNavigation from '@/components/navigation/MainNavigation'
 import type { Language } from '@/lib/i18n'
+import { trackPageVisit, cleanupAnalytics } from '@/lib/analytics'
 import { 
   Package, 
   Shield, 
@@ -113,7 +115,16 @@ export default function TransportCostsContent({ lang, translations }: TransportC
   const [paletteSize, setPaletteSize] = useState<PaletteSize>('standard')
   const [showAllCountries, setShowAllCountries] = useState(false)
   const [showVolumes, setShowVolumes] = useState(false)
+  const pathname = usePathname()
   const t = translations
+
+  useEffect(() => {
+    trackPageVisit(pathname || '/', lang)
+    
+    return () => {
+      cleanupAnalytics()
+    }
+  }, [pathname, lang])
 
   const getCountryName = (countryKey: string): string => {
     return t[`transport_costs_country_${countryKey}`] || countryKey
@@ -145,7 +156,7 @@ export default function TransportCostsContent({ lang, translations }: TransportC
       <MainNavigation currentLang={lang} useLanguageContext={false} />
       
       {/* Hero Section with USP */}
-      <section className="bg-gradient-to-br from-blue-50 to-indigo-100 pt-24 pb-12">
+      <section data-section-id="transport-costs-hero" className="bg-gradient-to-br from-blue-50 to-indigo-100 pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
@@ -188,7 +199,7 @@ export default function TransportCostsContent({ lang, translations }: TransportC
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Why Supersender Section */}
-        <section className="mb-12 bg-white rounded-lg shadow-lg p-6 md:p-8">
+        <section data-section-id="transport-costs-why" className="mb-12 bg-white rounded-lg shadow-lg p-6 md:p-8">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 text-center">
             {t.transport_costs_why_title}
           </h2>
@@ -304,7 +315,7 @@ export default function TransportCostsContent({ lang, translations }: TransportC
           </section>
 
           {/* Pricing Tables */}
-          <section className="mb-8">
+          <section data-section-id="transport-costs-pricing" className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">{t.transport_costs_europe_title}</h2>
               <Link
@@ -495,7 +506,7 @@ export default function TransportCostsContent({ lang, translations }: TransportC
           </section>
 
           {/* FAQ - Compact */}
-          <section className="mb-8 pb-8 border-b border-gray-200">
+          <section data-section-id="transport-costs-faq" className="mb-8 pb-8 border-b border-gray-200">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">{t.transport_costs_faq_title}</h2>
             <div className="space-y-4">
               <div className="bg-gray-50 p-4 rounded-lg">

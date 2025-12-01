@@ -398,3 +398,32 @@ model Voucher {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+model PageVisit {
+  id              String   @id @default(cuid())
+  sessionId       String   // Unique session identifier (fingerprint)
+  pagePath        String   // e.g., "/landing/en", "/landing/pl/transport-costs"
+  language        String?  // Language code (en, pl, de, fr, it)
+  country         String?  // Country code from IP geolocation
+  countryName     String?  // Full country name
+  city            String?  // City name
+  region          String?  // Region/state
+  ipAddress       String?  // IP address (hashed for privacy)
+  userAgent       String?  // Browser user agent
+  referrer        String?  // Referrer URL
+  timeOnPage      Int?     // Time spent on page in seconds
+  scrollDepth     Float?   // Scroll depth percentage (0-100)
+  viewportWidth   Int?     // Viewport width
+  viewportHeight  Int?     // Viewport height
+  deviceType      String?  // mobile, tablet, desktop
+  browser         String?  // Browser name
+  os              String?  // Operating system
+  isUnique        Boolean  @default(true) // First visit in session
+  visitedSections String[] // Array of section IDs that were viewed
+  createdAt       DateTime @default(now())
+  
+  @@index([country])
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([pagePath])
+}

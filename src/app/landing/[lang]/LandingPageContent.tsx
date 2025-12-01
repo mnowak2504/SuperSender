@@ -1,8 +1,11 @@
 'use client'
 
+import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { languages, type Language } from '@/lib/i18n'
 import MainNavigation from '@/components/navigation/MainNavigation'
+import { trackPageVisit, cleanupAnalytics } from '@/lib/analytics'
 
 interface LandingPageContentProps {
   lang: Language
@@ -10,13 +13,23 @@ interface LandingPageContentProps {
 }
 
 export default function LandingPageContent({ lang, translations }: LandingPageContentProps) {
+  const pathname = usePathname()
+
+  useEffect(() => {
+    trackPageVisit(pathname || '/', lang)
+    
+    return () => {
+      cleanupAnalytics()
+    }
+  }, [pathname, lang])
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <MainNavigation currentLang={lang} useLanguageContext={false} />
 
       {/* Hero Section */}
-      <section className="pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 to-indigo-100">
+      <section data-section-id="hero" className="pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="max-w-7xl mx-auto">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
@@ -44,7 +57,7 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
       </section>
 
       {/* About Section */}
-      <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      <section id="about" data-section-id="about" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
@@ -101,7 +114,7 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
       </section>
 
       {/* Process Section */}
-      <section id="process" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <section id="process" data-section-id="process" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
@@ -170,7 +183,7 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      <section id="pricing" data-section-id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
