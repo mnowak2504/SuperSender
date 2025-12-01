@@ -60,7 +60,7 @@ export default async function SuperAdminLayout({
 
         {/* Main content */}
         <main className="flex-1 w-full lg:ml-64">
-          <div className="pt-20 lg:pt-6 py-6 px-4 sm:px-6 lg:px-8">
+          <div className="pt-20 lg:pt-6 py-6 px-4 sm:px-6 lg:px-8 max-w-full">
             {children}
           </div>
         </main>
