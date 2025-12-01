@@ -14,11 +14,11 @@ export default async function InvoiceDetailsPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ paymentMethod?: string }>
+  searchParams: Promise<{ paymentMethod?: string; paymentLinkRequested?: string }
 }) {
   const session = await auth()
   const { id } = await params
-  const { paymentMethod } = await searchParams
+  const { paymentMethod, paymentLinkRequested } = await searchParams
 
   if (!session?.user) {
     redirect('/auth/signin')
@@ -141,6 +141,25 @@ export default async function InvoiceDetailsPage({
               <p className="text-lg font-bold text-gray-900">{formatCurrency(invoice.amountEur, invoice.currency || 'EUR')}</p>
             </div>
           </div>
+
+          {paymentLinkRequested === 'true' && !invoice.revolutLink && status !== 'PAID' && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-blue-900 mb-1">Payment Link Requested</h3>
+                  <p className="text-sm text-blue-700">
+                    Your payment link request has been received. The payment link will be sent to your email within 1 working day. 
+                    Your account will be activated instantly upon payment confirmation.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {invoice.revolutLink && status !== 'PAID' && (
             <div className="mb-6">

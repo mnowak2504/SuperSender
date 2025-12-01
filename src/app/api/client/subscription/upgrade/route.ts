@@ -392,80 +392,75 @@ export async function POST(req: NextRequest) {
       // Don't fail the request if email fails
     })
 
-    // Create payment link
-    try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
-      const paymentLinkRes = await fetch(`${baseUrl}/api/payments/revolut/create-link`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ invoiceId: invoice.id }),
-      })
+    // Mark voucher as used if applicable
+    if (voucherId) {
+      await supabase
+        .from('Voucher')
+        .update({
+          usedByClientId: clientId,
+          usedAt: new Date().toISOString(),
+        })
+        .eq('id', voucherId)
+    }
 
-      if (!paymentLinkRes.ok) {
-        throw new Error('Failed to create payment link')
+    // If bank transfer, activate account immediately
+    if (paymentMethod === 'bank_transfer') {
+      // Calculate subscription dates
+      const startDate = subscriptionStartDate ? new Date(subscriptionStartDate) : new Date()
+      startDate.setHours(0, 0, 0, 0)
+      
+      const endDate = new Date(startDate)
+      const months = parseInt(subscriptionPeriod) || 1
+      endDate.setMonth(endDate.getMonth() + months)
+      endDate.setHours(23, 59, 59, 999)
+      
+      const { error: updatePlanError } = await supabase
+        .from('Client')
+        .update({
+          planId: planId,
+          subscriptionStartDate: startDate.toISOString(),
+          subscriptionEndDate: endDate.toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', clientId)
+
+      if (updatePlanError) {
+        console.error('[API /client/subscription/upgrade] Error updating client plan for bank transfer:', updatePlanError)
       }
+    }
 
-      const paymentData = await paymentLinkRes.json()
+    // For online payment, mark invoice as awaiting payment link
+    // Payment link will be created manually by admin/superadmin
+    if (paymentMethod === 'online') {
+      // Update invoice to indicate payment link is requested
+      await supabase
+        .from('Invoice')
+        .update({
+          revolutLink: null, // Will be set when admin creates payment link
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', invoice.id)
+    }
 
-      // Mark voucher as used if applicable
-      if (voucherId) {
-        await supabase
-          .from('Voucher')
-          .update({
-            usedByClientId: clientId,
-            usedAt: new Date().toISOString(),
-          })
-          .eq('id', voucherId)
-      }
+    // Prepare bank transfer info if applicable
+    const bankTransferInfo = paymentMethod === 'bank_transfer' ? {
+      instructions: formatBankTransferInstructions(client.clientCode || 'N/A', invoice.invoiceNumber || undefined, finalAmount),
+      transferTitle: getBankTransferTitle(client.clientCode || 'N/A', invoice.invoiceNumber || undefined),
+      accountDetails: BANK_TRANSFER_INFO,
+    } : null
 
-      // If bank transfer, activate account immediately
-      if (paymentMethod === 'bank_transfer') {
-        // Calculate subscription dates
-        const startDate = subscriptionStartDate ? new Date(subscriptionStartDate) : new Date()
-        startDate.setHours(0, 0, 0, 0)
-        
-        const endDate = new Date(startDate)
-        const months = parseInt(subscriptionPeriod) || 1
-        endDate.setMonth(endDate.getMonth() + months)
-        endDate.setHours(23, 59, 59, 999)
-        
-        const { error: updatePlanError } = await supabase
-          .from('Client')
-          .update({
-            planId: planId,
-            subscriptionStartDate: startDate.toISOString(),
-            subscriptionEndDate: endDate.toISOString(),
-            updatedAt: new Date().toISOString(),
-          })
-          .eq('id', clientId)
-
-        if (updatePlanError) {
-          console.error('[API /client/subscription/upgrade] Error updating client plan for bank transfer:', updatePlanError)
-        }
-      }
-
-      // Prepare bank transfer info if applicable
-      const bankTransferInfo = paymentMethod === 'bank_transfer' ? {
-        instructions: formatBankTransferInstructions(client.clientCode || 'N/A', invoice.invoiceNumber || undefined, finalAmount),
-        transferTitle: getBankTransferTitle(client.clientCode || 'N/A', invoice.invoiceNumber || undefined),
-        accountDetails: BANK_TRANSFER_INFO,
-      } : null
-
-      return NextResponse.json({
-        success: true,
-        invoiceId: invoice.id,
-        paymentLink: paymentMethod === 'online' ? paymentData.link : null,
-        amount: finalAmount,
-        planId,
-        planName: plan.name,
-        paymentMethod,
-        bankTransferInfo,
-        clientCode: client.clientCode,
-      })
-    } catch (paymentError) {
-      console.error('Error creating payment link:', paymentError)
+    return NextResponse.json({
+      success: true,
+      invoiceId: invoice.id,
+      paymentLink: null, // No automatic payment link - will be created by admin
+      paymentLinkRequested: paymentMethod === 'online', // Indicate that payment link was requested
+      amount: finalAmount,
+      planId,
+      planName: plan.name,
+      paymentMethod,
+      bankTransferInfo,
+      clientCode: client.clientCode,
+    })
       
       // Mark voucher as used if applicable (even if payment link creation failed)
       if (voucherId) {

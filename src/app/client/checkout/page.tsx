@@ -177,8 +177,9 @@ export default function CheckoutPage() {
         throw new Error(data.error || data.details || 'Failed to process checkout')
       }
 
-      if (paymentMethod === 'online' && data.paymentLink) {
-        window.location.href = data.paymentLink
+      if (paymentMethod === 'online') {
+        // Redirect to invoice details page with payment link request info
+        router.push(`/client/invoices/${data.invoiceId}?paymentMethod=online&paymentLinkRequested=true`)
       } else if (paymentMethod === 'bank_transfer') {
         // Redirect to invoice details page with bank transfer info
         router.push(`/client/invoices/${data.invoiceId}?paymentMethod=bank_transfer`)
@@ -478,8 +479,8 @@ export default function CheckoutPage() {
                       </div>
                       <CreditCard className="w-5 h-5 text-gray-600" />
                       <div>
-                        <p className="font-medium text-gray-900">Pay Online</p>
-                        <p className="text-sm text-gray-500">Credit card, debit card, or Revolut</p>
+                        <p className="font-medium text-gray-900">Pay by card - Request payment link</p>
+                        <p className="text-sm text-gray-500">Payment link will be sent within 1 working day. Account will be activated instantly upon payment.</p>
                       </div>
                     </div>
                   </button>
