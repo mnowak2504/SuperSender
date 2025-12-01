@@ -42,15 +42,33 @@ export default function CheckoutPage() {
   const [voucherDiscount, setVoucherDiscount] = useState(0)
   const [voucherError, setVoucherError] = useState('')
   const [error, setError] = useState('')
+  const [startImmediately, setStartImmediately] = useState<boolean>(true)
   const [subscriptionStartDate, setSubscriptionStartDate] = useState<string>('')
+
+  // Helper function to get today's date in local timezone (YYYY-MM-DD format)
+  const getTodayLocalDate = (): string => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  // Helper function to get max date (14 days from today) in local timezone
+  const getMaxDate = (): string => {
+    const maxDate = new Date()
+    maxDate.setDate(maxDate.getDate() + 14)
+    const year = maxDate.getFullYear()
+    const month = String(maxDate.getMonth() + 1).padStart(2, '0')
+    const day = String(maxDate.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
 
   useEffect(() => {
     if (planId) {
       fetchData()
-      // Set default start date to today
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      setSubscriptionStartDate(today.toISOString().split('T')[0])
+      // Set default date to today (for when user switches to "Choose date")
+      setSubscriptionStartDate(getTodayLocalDate())
     } else {
       setError('No plan selected')
       setLoading(false)
@@ -149,7 +167,7 @@ export default function CheckoutPage() {
           subscriptionPeriod,
           paymentMethod,
           voucherCode: voucherApplied ? voucherCode : null,
-          subscriptionStartDate: subscriptionStartDate || null,
+          subscriptionStartDate: startImmediately ? null : subscriptionStartDate || null,
         }),
       })
 
@@ -328,24 +346,64 @@ export default function CheckoutPage() {
                 <p className="text-sm text-gray-600 mb-4">
                   Choose when you want your subscription to start. You can start immediately or schedule it for any of the next 14 days.
                 </p>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={subscriptionStartDate}
-                    onChange={(e) => setSubscriptionStartDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
-                    max={(() => {
-                      const maxDate = new Date()
-                      maxDate.setDate(maxDate.getDate() + 14)
-                      return maxDate.toISOString().split('T')[0]
-                    })()}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <Calendar className="absolute right-3 top-2.5 w-5 h-5 text-gray-400 pointer-events-none" />
+                
+                {/* Radio buttons for Now or Choose date */}
+                <div className="space-y-3 mb-4">
+                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="startDateOption"
+                      checked={startImmediately}
+                      onChange={() => {
+                        setStartImmediately(true)
+                        setSubscriptionStartDate(getTodayLocalDate()) // Reset to today when switching back
+                      }}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Now</p>
+                      <p className="text-sm text-gray-500">Start subscription immediately</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="startDateOption"
+                      checked={!startImmediately}
+                      onChange={() => setStartImmediately(false)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Choose date</p>
+                      <p className="text-sm text-gray-500">Select a start date within the next 14 days</p>
+                    </div>
+                  </label>
                 </div>
-                {subscriptionStartDate && (
+
+                {/* Date picker - only shown when "Choose date" is selected */}
+                {!startImmediately && (
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={subscriptionStartDate}
+                      onChange={(e) => setSubscriptionStartDate(e.target.value)}
+                      min={getTodayLocalDate()}
+                      max={getMaxDate()}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <Calendar className="absolute right-3 top-2.5 w-5 h-5 text-gray-400 pointer-events-none" />
+                  </div>
+                )}
+
+                {/* Display selected date info */}
+                {startImmediately ? (
                   <p className="text-sm text-gray-500 mt-2">
-                    Subscription will start on: {new Date(subscriptionStartDate).toLocaleDateString('en-US', { 
+                    Subscription will start immediately upon payment confirmation.
+                  </p>
+                ) : subscriptionStartDate && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    Subscription will start on: {new Date(subscriptionStartDate + 'T00:00:00').toLocaleDateString('en-US', { 
                       weekday: 'long', 
                       year: 'numeric', 
                       month: 'long', 
