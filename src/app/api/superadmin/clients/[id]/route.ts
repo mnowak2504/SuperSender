@@ -293,19 +293,208 @@ export async function DELETE(
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    // Delete client (cascade should handle related records, but we'll delete explicitly if needed)
-    // First, delete related records that might not cascade
+    // Delete related records in correct order (due to foreign key constraints with RESTRICT)
+    // Order matters: delete child records before parent records
+
+    // 1. Delete ProformaInvoice (references Client)
+    const { error: deleteProformasError } = await supabase
+      .from('ProformaInvoice')
+      .delete()
+      .eq('clientId', id)
+    if (deleteProformasError) {
+      console.error('Error deleting proforma invoices:', deleteProformasError)
+    }
+
+    // 2. Delete MonthlyAdditionalCharges (references Client)
+    const { error: deleteChargesError } = await supabase
+      .from('MonthlyAdditionalCharges')
+      .delete()
+      .eq('clientId', id)
+    if (deleteChargesError) {
+      console.error('Error deleting monthly charges:', deleteChargesError)
+    }
+
+    // 3. Delete ShipmentItem (references ShipmentOrder)
+    // First, get all shipment orders for this client
+    const { data: shipmentOrders } = await supabase
+      .from('ShipmentOrder')
+      .select('id')
+      .eq('clientId', id)
+    
+    if (shipmentOrders && shipmentOrders.length > 0) {
+      const shipmentIds = shipmentOrders.map(so => so.id)
+      for (const shipmentId of shipmentIds) {
+        const { error: deleteItemsError } = await supabase
+          .from('ShipmentItem')
+          .delete()
+          .eq('shipmentId', shipmentId)
+        if (deleteItemsError) {
+          console.error('Error deleting shipment items:', deleteItemsError)
+        }
+      }
+    }
+
+    // 4. Delete Package (references ShipmentOrder and WarehouseOrder)
+    if (shipmentOrders && shipmentOrders.length > 0) {
+      const shipmentIds = shipmentOrders.map(so => so.id)
+      for (const shipmentId of shipmentIds) {
+        const { error: deletePackagesError } = await supabase
+          .from('Package')
+          .delete()
+          .eq('shipmentId', shipmentId)
+        if (deletePackagesError) {
+          console.error('Error deleting packages:', deletePackagesError)
+        }
+      }
+    }
+
+    // 5. Delete ShipmentOrder (references Client and Address)
+    const { error: deleteShipmentsError } = await supabase
+      .from('ShipmentOrder')
+      .delete()
+      .eq('clientId', id)
+    if (deleteShipmentsError) {
+      console.error('Error deleting shipment orders:', deleteShipmentsError)
+      return NextResponse.json(
+        { error: 'Failed to delete shipment orders', details: deleteShipmentsError.message },
+        { status: 500 }
+      )
+    }
+
+    // 6. Delete WarehouseOrder (references Client and DeliveryExpected)
+    // First, get warehouse orders to delete related packages
+    const { data: warehouseOrders } = await supabase
+      .from('WarehouseOrder')
+      .select('id')
+      .eq('clientId', id)
+    
+    if (warehouseOrders && warehouseOrders.length > 0) {
+      const warehouseOrderIds = warehouseOrders.map(wo => wo.id)
+      // Delete packages linked to warehouse orders
+      for (const warehouseOrderId of warehouseOrderIds) {
+        const { error: deleteWOPackagesError } = await supabase
+          .from('Package')
+          .delete()
+          .eq('warehouseOrderId', warehouseOrderId)
+        if (deleteWOPackagesError) {
+          console.error('Error deleting warehouse order packages:', deleteWOPackagesError)
+        }
+      }
+    }
+
+    const { error: deleteWarehouseOrdersError } = await supabase
+      .from('WarehouseOrder')
+      .delete()
+      .eq('clientId', id)
+    if (deleteWarehouseOrdersError) {
+      console.error('Error deleting warehouse orders:', deleteWarehouseOrdersError)
+      return NextResponse.json(
+        { error: 'Failed to delete warehouse orders', details: deleteWarehouseOrdersError.message },
+        { status: 500 }
+      )
+    }
+
+    // 7. Delete Media (references DeliveryExpected and WarehouseOrder)
+    // Delete media linked to warehouse orders (before deleting warehouse orders)
+    if (warehouseOrders && warehouseOrders.length > 0) {
+      const warehouseOrderIds = warehouseOrders.map(wo => wo.id)
+      for (const warehouseOrderId of warehouseOrderIds) {
+        // Delete photos before wrap
+        const { error: deleteBeforeWrapError } = await supabase
+          .from('Media')
+          .delete()
+          .eq('warehouseOrderBeforeId', warehouseOrderId)
+        if (deleteBeforeWrapError) {
+          console.error('Error deleting before wrap photos:', deleteBeforeWrapError)
+        }
+        // Delete photos after wrap
+        const { error: deleteAfterWrapError } = await supabase
+          .from('Media')
+          .delete()
+          .eq('warehouseOrderAfterId', warehouseOrderId)
+        if (deleteAfterWrapError) {
+          console.error('Error deleting after wrap photos:', deleteAfterWrapError)
+        }
+      }
+    }
+
+    // Delete media linked to delivery expected
+    const { data: deliveries } = await supabase
+      .from('DeliveryExpected')
+      .select('id')
+      .eq('clientId', id)
+    
+    if (deliveries && deliveries.length > 0) {
+      const deliveryIds = deliveries.map(d => d.id)
+      for (const deliveryId of deliveryIds) {
+        const { error: deleteMediaError } = await supabase
+          .from('Media')
+          .delete()
+          .eq('deliveryExpectedId', deliveryId)
+        if (deleteMediaError) {
+          console.error('Error deleting media:', deleteMediaError)
+        }
+      }
+    }
+
+    // 8. Delete DeliveryExpected (references Client)
+    const { error: deleteDeliveriesError } = await supabase
+      .from('DeliveryExpected')
+      .delete()
+      .eq('clientId', id)
+    if (deleteDeliveriesError) {
+      console.error('Error deleting expected deliveries:', deleteDeliveriesError)
+      return NextResponse.json(
+        { error: 'Failed to delete expected deliveries', details: deleteDeliveriesError.message },
+        { status: 500 }
+      )
+    }
+
+    // 9. Delete Invoice (references Client)
+    const { error: deleteInvoicesError } = await supabase
+      .from('Invoice')
+      .delete()
+      .eq('clientId', id)
+    if (deleteInvoicesError) {
+      console.error('Error deleting invoices:', deleteInvoicesError)
+      return NextResponse.json(
+        { error: 'Failed to delete invoices', details: deleteInvoicesError.message },
+        { status: 500 }
+      )
+    }
+
+    // 10. Delete Address (references Client)
+    const { error: deleteAddressesError } = await supabase
+      .from('Address')
+      .delete()
+      .eq('clientId', id)
+    if (deleteAddressesError) {
+      console.error('Error deleting addresses:', deleteAddressesError)
+      return NextResponse.json(
+        { error: 'Failed to delete addresses', details: deleteAddressesError.message },
+        { status: 500 }
+      )
+    }
+
+    // 11. Delete WarehouseCapacity (has onDelete: Cascade, but delete explicitly)
+    const { error: deleteCapacityError } = await supabase
+      .from('WarehouseCapacity')
+      .delete()
+      .eq('clientId', id)
+    if (deleteCapacityError) {
+      console.error('Error deleting warehouse capacity:', deleteCapacityError)
+    }
+
+    // 12. Delete User (references Client with SET NULL, but delete explicitly)
     const { error: deleteUsersError } = await supabase
       .from('User')
       .delete()
       .eq('clientId', id)
-
     if (deleteUsersError) {
       console.error('Error deleting client users:', deleteUsersError)
-      // Continue anyway, might be no users
     }
 
-    // Delete the client
+    // 13. Finally, delete the client
     const { error: deleteError } = await supabase
       .from('Client')
       .delete()
