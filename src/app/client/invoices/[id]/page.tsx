@@ -153,8 +153,7 @@ export default async function InvoiceDetailsPage({
                 <div>
                   <h3 className="text-sm font-medium text-blue-900 mb-1">Payment Link Requested</h3>
                   <p className="text-sm text-blue-700">
-                    Your payment link request has been received. The payment link will be sent to your email within 1 working day. 
-                    Your account will be activated instantly upon payment confirmation.
+                    Account activated immediately. The payment link will be sent to your email within 1 working day.
                   </p>
                 </div>
               </div>

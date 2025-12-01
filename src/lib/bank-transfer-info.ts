@@ -11,7 +11,7 @@ export const BANK_TRANSFER_INFO = {
 }
 
 export function getBankTransferTitle(clientCode: string, invoiceNumber?: string): string {
-  return `Subscription ${clientCode}${invoiceNumber ? ` - Invoice ${invoiceNumber}` : ''}`
+  return `Subscription ${clientCode}${invoiceNumber ? ` - Order ${invoiceNumber}` : ''}`
 }
 
 export function formatBankTransferInstructions(clientCode: string, invoiceNumber?: string, amount?: number): string {
