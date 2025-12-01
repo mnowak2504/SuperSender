@@ -63,7 +63,6 @@ export const adminTranslations = {
   rejected: 'Odrzucona',
   at_warehouse: 'W magazynie',
   being_packed: 'Pakowane',
-  to_pack: 'Do pakowania',
   ready_for_quote: 'Gotowe do wyceny',
   ready_to_ship: 'Gotowe do wysyłki',
   shipped: 'Wysłane',
@@ -72,7 +71,6 @@ export const adminTranslations = {
   quoted: 'Oferta',
   awaiting_acceptance: 'Oczekuje na akceptację',
   awaiting_payment: 'Oczekuje na płatność',
-  ready_for_loading: 'Gotowe do załadunku',
   in_transit: 'W transporcie',
   
   // Invoices
@@ -96,7 +94,6 @@ export const adminTranslations = {
   view_all: 'Zobacz wszystkie',
   
   // Warehouse specific
-  shipping_requests: 'Zapytania o wysyłkę',
   pack_shipment: 'Spakuj przesyłkę',
   ready_for_loading: 'Gotowe do załadunku',
   release_shipment: 'Wydaj przesyłkę',
