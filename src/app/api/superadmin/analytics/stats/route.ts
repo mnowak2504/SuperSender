@@ -65,6 +65,30 @@ export async function GET(req: NextRequest) {
     // @ts-ignore - pageVisit model may not exist until migration is run
     const pageVisitModel = (prisma as any).pageVisit
 
+    // Check if model exists
+    if (!pageVisitModel) {
+      return NextResponse.json({
+        period,
+        dateRange: {
+          start: startDate.toISOString(),
+          end: endDate.toISOString(),
+        },
+        summary: {
+          totalVisits: 0,
+          uniqueVisits: 0,
+          uniqueVisitors: 0,
+          avgTimeOnPage: 0,
+          avgScrollDepth: 0,
+        },
+        countries: [],
+        languages: [],
+        pages: [],
+        devices: [],
+        browsers: [],
+        topSections: [],
+      })
+    }
+
     let visits: any[] = []
     
     try {
@@ -79,7 +103,7 @@ export async function GET(req: NextRequest) {
       })
     } catch (error: any) {
       // If table doesn't exist yet, return empty stats
-      if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
+      if (error?.code === 'P2021' || error?.message?.includes('does not exist') || error?.message?.includes('Unknown model')) {
         return NextResponse.json({
           period,
           dateRange: {

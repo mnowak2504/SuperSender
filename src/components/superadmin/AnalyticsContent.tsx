@@ -54,6 +54,7 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'
 export default function AnalyticsContent() {
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [period, setPeriod] = useState<'day' | 'month' | 'year'>('day')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
 
@@ -64,14 +65,38 @@ export default function AnalyticsContent() {
   const fetchAnalytics = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await fetch(`/api/superadmin/analytics/stats?period=${period}&date=${date}`)
       if (!response.ok) {
-        throw new Error('Failed to fetch analytics')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to fetch analytics')
       }
       const analyticsData = await response.json()
       setData(analyticsData)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching analytics:', error)
+      setError(error.message || 'Failed to load analytics data')
+      // Set empty data structure so UI can still render
+      setData({
+        period,
+        dateRange: {
+          start: new Date().toISOString(),
+          end: new Date().toISOString(),
+        },
+        summary: {
+          totalVisits: 0,
+          uniqueVisits: 0,
+          uniqueVisitors: 0,
+          avgTimeOnPage: 0,
+          avgScrollDepth: 0,
+        },
+        countries: [],
+        languages: [],
+        pages: [],
+        devices: [],
+        browsers: [],
+        topSections: [],
+      })
     } finally {
       setLoading(false)
     }
@@ -92,7 +117,11 @@ export default function AnalyticsContent() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">Failed to load analytics data</p>
+          <p className="text-red-800 font-semibold mb-2">Failed to load analytics data</p>
+          {error && <p className="text-red-700 text-sm">{error}</p>}
+          <p className="text-red-700 text-sm mt-2">
+            If this is the first time accessing analytics, make sure to run the database migration first.
+          </p>
         </div>
       </div>
     )
@@ -100,8 +129,35 @@ export default function AnalyticsContent() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {error && (
+        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                <strong>Note:</strong> {error}. If this is the first time accessing analytics, the PageVisit table may not exist yet. 
+                Please run the database migration in Supabase SQL Editor.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Analytics Dashboard</h1>
+        
+        {data.summary.totalVisits === 0 && !error && (
+          <div className="mb-6 bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r">
+            <p className="text-sm text-blue-700">
+              <strong>No data available.</strong> Analytics will start tracking visits once the PageVisit table is created in the database. 
+              If you haven't run the migration yet, please execute the SQL migration in Supabase SQL Editor.
+            </p>
+          </div>
+        )}
         
         {/* Period Selector */}
         <div className="flex flex-wrap items-center gap-4 mb-6">
