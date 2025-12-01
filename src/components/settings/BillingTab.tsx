@@ -84,7 +84,7 @@ export default function BillingTab() {
         </div>
 
         {plan && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mt-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-6">
             <div>
               <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
                 <TrendingUp className="w-4 h-4" />
@@ -106,6 +106,21 @@ export default function BillingTab() {
               </div>
               <p className="text-lg font-semibold text-gray-900">Monthly</p>
             </div>
+            {client?.subscriptionEndDate && (
+              <div>
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                  <Calendar className="w-4 h-4" />
+                  <span>Expires On</span>
+                </div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {new Date(client.subscriptionEndDate).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
