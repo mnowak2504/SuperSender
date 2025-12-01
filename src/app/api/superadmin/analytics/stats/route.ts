@@ -61,31 +61,64 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Get all visits in period
-    const visits = await prisma.pageVisit.findMany({
-      where: {
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
+    // Use dynamic access to pageVisit model (works even if table doesn't exist yet)
+    // @ts-ignore - pageVisit model may not exist until migration is run
+    const pageVisitModel = (prisma as any).pageVisit
+
+    let visits: any[] = []
+    
+    try {
+      // Get all visits in period
+      visits = await pageVisitModel.findMany({
+        where: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
         },
-      },
-    })
+      })
+    } catch (error: any) {
+      // If table doesn't exist yet, return empty stats
+      if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
+        return NextResponse.json({
+          period,
+          dateRange: {
+            start: startDate.toISOString(),
+            end: endDate.toISOString(),
+          },
+          summary: {
+            totalVisits: 0,
+            uniqueVisits: 0,
+            uniqueVisitors: 0,
+            avgTimeOnPage: 0,
+            avgScrollDepth: 0,
+          },
+          countries: [],
+          languages: [],
+          pages: [],
+          devices: [],
+          browsers: [],
+          topSections: [],
+        })
+      }
+      throw error
+    }
 
     // Calculate statistics
     const totalVisits = visits.length
-    const uniqueVisits = new Set(visits.map(v => v.sessionId)).size
-    const uniqueVisitors = visits.filter(v => v.isUnique).length
+    const uniqueVisits = new Set(visits.map((v: any) => v.sessionId)).size
+    const uniqueVisitors = visits.filter((v: any) => v.isUnique).length
 
     // Average time on page
-    const visitsWithTime = visits.filter(v => v.timeOnPage !== null)
+    const visitsWithTime = visits.filter((v: any) => v.timeOnPage !== null)
     const avgTimeOnPage = visitsWithTime.length > 0
-      ? visitsWithTime.reduce((sum, v) => sum + (v.timeOnPage || 0), 0) / visitsWithTime.length
+      ? visitsWithTime.reduce((sum: number, v: any) => sum + (v.timeOnPage || 0), 0) / visitsWithTime.length
       : 0
 
     // Country statistics
     const countryStats: Record<string, { count: number; unique: number; name: string }> = {}
     
-    visits.forEach(visit => {
+    visits.forEach((visit: any) => {
       const country = visit.country || 'unknown'
       const countryName = visit.countryName || 'Unknown'
       
@@ -100,43 +133,45 @@ export async function GET(req: NextRequest) {
 
     // Language statistics
     const languageStats: Record<string, number> = {}
-    visits.forEach(visit => {
+    visits.forEach((visit: any) => {
       const lang = visit.language || 'unknown'
       languageStats[lang] = (languageStats[lang] || 0) + 1
     })
 
     // Page path statistics
     const pageStats: Record<string, number> = {}
-    visits.forEach(visit => {
+    visits.forEach((visit: any) => {
       pageStats[visit.pagePath] = (pageStats[visit.pagePath] || 0) + 1
     })
 
     // Device type statistics
     const deviceStats: Record<string, number> = {}
-    visits.forEach(visit => {
+    visits.forEach((visit: any) => {
       const device = visit.deviceType || 'unknown'
       deviceStats[device] = (deviceStats[device] || 0) + 1
     })
 
     // Browser statistics
     const browserStats: Record<string, number> = {}
-    visits.forEach(visit => {
+    visits.forEach((visit: any) => {
       const browser = visit.browser || 'unknown'
       browserStats[browser] = (browserStats[browser] || 0) + 1
     })
 
     // Average scroll depth
-    const visitsWithScroll = visits.filter(v => v.scrollDepth !== null)
+    const visitsWithScroll = visits.filter((v: any) => v.scrollDepth !== null)
     const avgScrollDepth = visitsWithScroll.length > 0
-      ? visitsWithScroll.reduce((sum, v) => sum + (v.scrollDepth || 0), 0) / visitsWithScroll.length
+      ? visitsWithScroll.reduce((sum: number, v: any) => sum + (v.scrollDepth || 0), 0) / visitsWithScroll.length
       : 0
 
     // Top visited sections
     const sectionStats: Record<string, number> = {}
-    visits.forEach(visit => {
-      visit.visitedSections.forEach(section => {
-        sectionStats[section] = (sectionStats[section] || 0) + 1
-      })
+    visits.forEach((visit: any) => {
+      if (visit.visitedSections && Array.isArray(visit.visitedSections)) {
+        visit.visitedSections.forEach((section: string) => {
+          sectionStats[section] = (sectionStats[section] || 0) + 1
+        })
+      }
     })
 
     // Convert country stats to array for pie chart
@@ -145,7 +180,7 @@ export async function GET(req: NextRequest) {
       name: data.name,
       count: data.count,
       unique: data.unique,
-      percentage: (data.count / totalVisits) * 100,
+      percentage: totalVisits > 0 ? (data.count / totalVisits) * 100 : 0,
     })).sort((a, b) => b.count - a.count)
 
     return NextResponse.json({
@@ -165,22 +200,22 @@ export async function GET(req: NextRequest) {
       languages: Object.entries(languageStats).map(([lang, count]) => ({
         language: lang,
         count,
-        percentage: (count / totalVisits) * 100,
+        percentage: totalVisits > 0 ? (count / totalVisits) * 100 : 0,
       })).sort((a, b) => b.count - a.count),
       pages: Object.entries(pageStats).map(([path, count]) => ({
         path,
         count,
-        percentage: (count / totalVisits) * 100,
+        percentage: totalVisits > 0 ? (count / totalVisits) * 100 : 0,
       })).sort((a, b) => b.count - a.count),
       devices: Object.entries(deviceStats).map(([device, count]) => ({
         device,
         count,
-        percentage: (count / totalVisits) * 100,
+        percentage: totalVisits > 0 ? (count / totalVisits) * 100 : 0,
       })),
       browsers: Object.entries(browserStats).map(([browser, count]) => ({
         browser,
         count,
-        percentage: (count / totalVisits) * 100,
+        percentage: totalVisits > 0 ? (count / totalVisits) * 100 : 0,
       })).sort((a, b) => b.count - a.count),
       topSections: Object.entries(sectionStats)
         .map(([section, count]) => ({ section, count }))

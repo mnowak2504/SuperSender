@@ -57,45 +57,57 @@ export async function POST(req: NextRequest) {
     const ipAddress = getIPAddress(req)
     const hashedIP = ipAddress ? hashIP(ipAddress) : null
 
-    // Check if this is a unique visit (first visit in this session for this page)
-    const existingVisit = await prisma.pageVisit.findFirst({
-      where: {
-        sessionId,
-        pagePath,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
+    try {
+      // Use dynamic access to pageVisit model (works even if table doesn't exist yet)
+      // @ts-ignore - pageVisit model may not exist until migration is run
+      const pageVisitModel = (prisma as any).pageVisit
 
-    const isUnique = !existingVisit
+      // Check if this is a unique visit (first visit in this session for this page)
+      const existingVisit = await pageVisitModel.findFirst({
+        where: {
+          sessionId,
+          pagePath,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })
 
-    // Create visit record
-    const visit = await prisma.pageVisit.create({
-      data: {
-        sessionId,
-        pagePath,
-        language: language || null,
-        country: country || null,
-        countryName: countryName || null,
-        city: city || null,
-        region: region || null,
-        ipAddress: hashedIP,
-        userAgent: userAgent || null,
-        referrer: referrer || null,
-        timeOnPage: timeOnPage || null,
-        scrollDepth: scrollDepth || null,
-        viewportWidth: viewportWidth || null,
-        viewportHeight: viewportHeight || null,
-        deviceType: deviceType || null,
-        browser: browser || null,
-        os: os || null,
-        isUnique,
-        visitedSections,
-      },
-    })
+      const isUnique = !existingVisit
 
-    return NextResponse.json({ success: true, id: visit.id })
+      // Create visit record
+      const visit = await pageVisitModel.create({
+        data: {
+          sessionId,
+          pagePath,
+          language: language || null,
+          country: country || null,
+          countryName: countryName || null,
+          city: city || null,
+          region: region || null,
+          ipAddress: hashedIP,
+          userAgent: userAgent || null,
+          referrer: referrer || null,
+          timeOnPage: timeOnPage || null,
+          scrollDepth: scrollDepth || null,
+          viewportWidth: viewportWidth || null,
+          viewportHeight: viewportHeight || null,
+          deviceType: deviceType || null,
+          browser: browser || null,
+          os: os || null,
+          isUnique,
+          visitedSections,
+        },
+      })
+
+      return NextResponse.json({ success: true, id: visit.id })
+    } catch (error: any) {
+      // If table doesn't exist yet, return success but skip tracking
+      if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
+        return NextResponse.json({ success: true, skipped: true })
+      }
+      throw error
+    }
   } catch (error) {
     console.error('Error tracking page visit:', error)
     return NextResponse.json(
