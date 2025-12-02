@@ -89,6 +89,13 @@ export async function GET(req: NextRequest) {
     const totalInvoices = paidInvoices?.length || 0
     const paidOnTimePercent = totalInvoices > 0 ? (paidOnTime / totalInvoices) * 100 : 0
 
+    // 5. Local Collection Quotes Awaiting Quote (REQUESTED status)
+    const { data: localCollectionQuotes, error: localQuotesError } = await supabase
+      .from('LocalCollectionQuote')
+      .select('id, clientId')
+      .in('clientId', clientIds.length > 0 ? clientIds : [''])
+      .eq('status', 'REQUESTED')
+
     return NextResponse.json({
       myAccounts,
       pendingDeliveries7d: pendingDeliveries?.length || 0,
@@ -101,6 +108,7 @@ export async function GET(req: NextRequest) {
         total: activeClients?.length || 0,
         paidOnTimePercent: Math.round(paidOnTimePercent),
       },
+      localCollectionQuotesPending: localCollectionQuotes?.length || 0,
     })
   } catch (error) {
     console.error('Error fetching sales KPI:', error)

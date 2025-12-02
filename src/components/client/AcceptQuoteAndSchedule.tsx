@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar, Clock, X, Loader2, FileText, Key } from 'lucide-react'
+import { Calendar, Clock, X, Loader2, FileText, Key, Mail, XCircle } from 'lucide-react'
 
 interface AcceptQuoteAndScheduleProps {
   quote: any
@@ -11,10 +11,11 @@ interface AcceptQuoteAndScheduleProps {
 
 export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: AcceptQuoteAndScheduleProps) {
   const [loading, setLoading] = useState(false)
+  const [declining, setDeclining] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [action, setAction] = useState<'accept' | 'decline' | null>(null)
   
   const [formData, setFormData] = useState({
-    collectionCountry: '',
     collectionContactName: '',
     collectionContactPhone: '',
     collectionDateFrom: '',
@@ -24,22 +25,23 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
     pinCode: '',
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAccept = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setAction('accept')
 
     try {
       const res = await fetch(`/api/client/local-collection-quote/${quote.id}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          collectionCountry: formData.collectionCountry,
-          collectionContactName: formData.collectionContactName,
-          collectionContactPhone: formData.collectionContactPhone,
+          collectionCountry: 'Poland', // Always Poland for local collection
+          collectionContactName: formData.collectionContactName || null,
+          collectionContactPhone: formData.collectionContactPhone || null,
           collectionDateFrom: formData.collectionDateFrom,
           collectionDateTo: formData.collectionDateTo,
-          orderNumber: formData.orderNumber || null,
+          orderNumber: formData.orderNumber,
           orderDetails: formData.orderDetails || null,
           pinCode: formData.pinCode || null,
         }),
@@ -56,6 +58,37 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
       setError(err instanceof Error ? err.message : 'An unknown error occurred')
     } finally {
       setLoading(false)
+      setAction(null)
+    }
+  }
+
+  const handleDecline = async () => {
+    if (!confirm('Are you sure you want to decline this quote? This action cannot be undone.')) {
+      return
+    }
+
+    setDeclining(true)
+    setError(null)
+    setAction('decline')
+
+    try {
+      const res = await fetch(`/api/client/local-collection-quote/${quote.id}/decline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to decline quote')
+      }
+
+      onSuccess()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred')
+    } finally {
+      setDeclining(false)
+      setAction(null)
     }
   }
 
@@ -72,7 +105,7 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
               <Calendar className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Accept Quote & Schedule Collection</h2>
+              <h2 className="text-xl font-bold text-gray-900">Accept or Decline Quote</h2>
               <p className="text-sm text-gray-500">Quote: €{quote.quotedPriceEur?.toFixed(2)}</p>
             </div>
           </div>
@@ -84,65 +117,80 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* Info about email contact */}
+        <div className="px-6 pt-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+            <Mail className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-blue-900 mb-1">Additional Information Required?</p>
+              <p className="text-sm text-blue-700">
+                If you need additional information or have questions, your sales representative will contact you via email.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleAccept} className="p-6 space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
 
-          {/* Collection Address Details */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Collection Address Details</h3>
-            <div className="space-y-4">
+          {/* Quote Summary */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Quote Details</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <label htmlFor="collectionCountry" className="block text-sm font-medium text-gray-700 mb-1">
-                  Country *
-                </label>
-                <input
-                  type="text"
-                  id="collectionCountry"
-                  name="collectionCountry"
-                  required
-                  value={formData.collectionCountry}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., Poland"
-                />
+                <p className="text-gray-600">Package:</p>
+                <p className="font-medium text-gray-900">
+                  {quote.widthCm}×{quote.lengthCm}×{quote.heightCm} cm, {quote.weightKg} kg
+                </p>
+                <p className="text-xs text-gray-500">{quote.volumeCbm.toFixed(3)} m³</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Collection Address:</p>
+                <p className="font-medium text-gray-900">
+                  {quote.collectionAddressLine1}
+                  {quote.collectionAddressLine2 && `, ${quote.collectionAddressLine2}`}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {quote.collectionCity}, {quote.collectionPostCode}, Poland
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Contact Information */}
+          {/* Contact Information (Optional) */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information (Optional)</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="collectionContactName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact Name *
+                  Contact Name
                 </label>
                 <input
                   type="text"
                   id="collectionContactName"
                   name="collectionContactName"
-                  required
                   value={formData.collectionContactName}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Optional"
                 />
               </div>
               <div>
                 <label htmlFor="collectionContactPhone" className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact Phone *
+                  Contact Phone
                 </label>
                 <input
                   type="tel"
                   id="collectionContactPhone"
                   name="collectionContactPhone"
-                  required
                   value={formData.collectionContactPhone}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Optional"
                 />
               </div>
             </div>
@@ -152,7 +200,7 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5 text-gray-600" />
-              Collection Time Window
+              Collection Time Window *
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -195,12 +243,13 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
             <div className="space-y-4">
               <div>
                 <label htmlFor="orderNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                  Order Number
+                  Order Number *
                 </label>
                 <input
                   type="text"
                   id="orderNumber"
                   name="orderNumber"
+                  required
                   value={formData.orderNumber}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -209,7 +258,7 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
               </div>
               <div>
                 <label htmlFor="orderDetails" className="block text-sm font-medium text-gray-700 mb-1">
-                  Order Details
+                  Order Details (Optional)
                 </label>
                 <textarea
                   id="orderDetails"
@@ -224,7 +273,7 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
               <div>
                 <label htmlFor="pinCode" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                   <Key className="w-4 h-4" />
-                  PIN Code (if seller uses)
+                  PIN Code (Optional)
                 </label>
                 <input
                   type="text"
@@ -240,32 +289,55 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              onClick={handleDecline}
+              disabled={loading || declining}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {loading ? (
+              {declining ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Processing...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Declining...
                 </>
               ) : (
-                'Accept & Schedule Collection'
+                <>
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Decline Quote
+                </>
               )}
             </button>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading || declining}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="w-4 h-4" />
+                    Accept & Schedule Collection
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>
     </div>
   )
 }
-

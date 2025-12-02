@@ -21,6 +21,7 @@ interface SalesKPI {
     total: number
     paidOnTimePercent: number
   }
+  localCollectionQuotesPending: number
 }
 
 export default function SalesDashboardContent() {
@@ -135,6 +136,23 @@ export default function SalesDashboardContent() {
             </p>
           </div>
         </div>
+
+        {/* Local Collection Quotes Pending */}
+        <Link
+          href="/admin/local-collection-quotes?status=REQUESTED"
+          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-purple-50 rounded-lg">
+              <Truck className="w-6 h-6 text-purple-600" />
+            </div>
+            <span className="text-xs font-medium text-gray-500">Transporty lokalne</span>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-gray-900">{kpi?.localCollectionQuotesPending || 0}</p>
+            <p className="text-sm text-gray-600 mt-1">Oczekujące na wycenę</p>
+          </div>
+        </Link>
       </div>
 
       {/* Navigation Tabs */}
