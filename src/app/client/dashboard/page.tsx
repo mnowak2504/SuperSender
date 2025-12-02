@@ -152,6 +152,7 @@ export default async function ClientDashboard() {
   const usedCbm = warehouseCapacity?.usedCbm || client?.usedCbm || 0
   const spaceUsagePct = limitCbm > 0 ? (usedCbm / limitCbm) * 100 : 0
   const isOverLimit = usedCbm > limitCbm
+  const shouldShowSpaceWarning = spaceUsagePct >= 90 && spaceUsagePct <= 120
   const deliveriesThisMonth = client?.deliveriesThisMonth || 0
   const deliveriesLimit = client?.planId ? 0 : 0 // TODO: Get from plan if needed
   
@@ -359,6 +360,11 @@ export default async function ClientDashboard() {
               {isOverLimit && (
                 <p className="text-xs text-red-600 mt-1 font-medium">
                   Over by {(usedCbm - limitCbm).toFixed(2)} m³
+                </p>
+              )}
+              {shouldShowSpaceWarning && !isOverLimit && (
+                <p className="text-xs text-yellow-600 mt-1 font-medium">
+                  ⚠️ Approaching storage limit ({spaceUsagePct.toFixed(1)}%)
                 </p>
               )}
             </div>

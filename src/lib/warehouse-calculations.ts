@@ -46,15 +46,25 @@ export function isOverLimit(usedCbm: number, limitCbm: number): boolean {
 
 /**
  * Calculate over-space charge (only for m³ over limit)
+ * Charge is applied when usage exceeds limit by 20% or more
  */
 export function calculateOverSpaceCharge(
   usedCbm: number,
   limitCbm: number,
   overSpaceRateEur: number
 ): number {
-  if (usedCbm <= limitCbm) return 0
-  const overSpace = usedCbm - limitCbm
+  const threshold = limitCbm * 1.2 // 20% over limit threshold
+  if (usedCbm <= threshold) return 0
+  const overSpace = usedCbm - threshold // Only charge for space over 120% of limit
   return overSpace * overSpaceRateEur
+}
+
+/**
+ * Check if client should receive space usage warning (90-120% of limit)
+ */
+export function shouldShowSpaceWarning(usedCbm: number, limitCbm: number): boolean {
+  const usagePercent = (usedCbm / limitCbm) * 100
+  return usagePercent >= 90 && usagePercent <= 120
 }
 
 /**

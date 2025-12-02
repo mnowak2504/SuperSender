@@ -151,6 +151,7 @@ model Client {
   usedVouchers        Voucher[]
   monthlyCharges     MonthlyAdditionalCharges[]
   proformas          ProformaInvoice[]
+  localCollectionQuotes LocalCollectionQuote[]
 
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -488,4 +489,45 @@ model ProformaInvoice {
   @@index([clientId])
   @@index([status])
   @@index([dueDate])
+}
+
+model LocalCollectionQuote {
+  id                String   @id @default(cuid())
+  client            Client   @relation(fields: [clientId], references: [id])
+  clientId          String
+  status            String   @default("REQUESTED") // REQUESTED, QUOTED, ACCEPTED, SCHEDULED, COMPLETED, CANCELLED
+  // Package details
+  widthCm           Float
+  lengthCm          Float
+  heightCm          Float
+  weightKg          Float
+  volumeCbm         Float    // Calculated: (width * length * height) / 1,000,000 * 1.05
+  // Collection address
+  collectionAddressLine1  String
+  collectionAddressLine2  String?
+  collectionCity          String
+  collectionPostCode      String
+  collectionCountry       String
+  collectionContactName   String
+  collectionContactPhone  String
+  // Quote details
+  quotedPriceEur    Float?   // Price quoted by sales rep
+  quotedById        String?  // User ID who quoted
+  quotedAt          DateTime?
+  // Collection scheduling (after acceptance)
+  collectionDateFrom DateTime? // Start date/time window
+  collectionDateTo   DateTime? // End date/time window
+  // Documentation for collection
+  orderNumber       String?  // Order number from seller
+  orderDetails      String?  // Order details/description
+  pinCode           String?  // PIN if seller uses it
+  // Notes
+  clientNotes       String?  // Notes from client
+  adminNotes        String?  // Notes from admin/sales rep
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+  @@index([createdAt])
 }
