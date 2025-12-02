@@ -14,9 +14,9 @@ CREATE TABLE IF NOT EXISTS "LocalCollectionQuote" (
     "collectionAddressLine2" TEXT,
     "collectionCity" TEXT NOT NULL,
     "collectionPostCode" TEXT NOT NULL,
-    "collectionCountry" TEXT NOT NULL,
-    "collectionContactName" TEXT NOT NULL,
-    "collectionContactPhone" TEXT NOT NULL,
+    "collectionCountry" TEXT,
+    "collectionContactName" TEXT,
+    "collectionContactPhone" TEXT,
     -- Quote details
     "quotedPriceEur" DOUBLE PRECISION,
     "quotedById" TEXT,

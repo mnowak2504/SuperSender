@@ -507,9 +507,9 @@ model LocalCollectionQuote {
   collectionAddressLine2  String?
   collectionCity          String
   collectionPostCode      String
-  collectionCountry       String
-  collectionContactName   String
-  collectionContactPhone  String
+  collectionCountry       String?  // Set when accepting quote
+  collectionContactName   String?  // Set when accepting quote
+  collectionContactPhone  String?  // Set when accepting quote
   // Quote details
   quotedPriceEur    Float?   // Price quoted by sales rep
   quotedById        String?  // User ID who quoted

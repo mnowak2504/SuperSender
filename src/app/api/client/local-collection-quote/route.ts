@@ -81,9 +81,25 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating local collection quote:', error)
+      console.error('Error creating local collection quote:', {
+        error,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        body: {
+          clientId,
+          widthCm, lengthCm, heightCm, weightKg, volumeCbm,
+          collectionAddressLine1, collectionCity, collectionPostCode,
+        },
+      })
       return NextResponse.json(
-        { error: 'Failed to create quote request', details: error.message },
+        { 
+          error: 'Failed to create quote request', 
+          details: error.message || error.details || 'Database error occurred',
+          code: error.code,
+          hint: error.hint,
+        },
         { status: 500 }
       )
     }
