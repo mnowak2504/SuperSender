@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
         await new Promise(resolve => setTimeout(resolve, 200))
         const { data: retryClient, error: retryError } = await supabase
           .from('Client')
-          .select('id, planId, subscriptionDiscount, clientCode, email')
+          .select('id, planId, subscriptionDiscount, clientCode, email, subscriptionEndDate')
           .eq('id', clientId)
           .single()
         
