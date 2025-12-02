@@ -47,6 +47,12 @@ export default async function AdminLayout({
                   Wyceny transportu
                 </Link>
                 <Link
+                  href="/admin/local-collection-quotes"
+                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Transporty lokalne
+                </Link>
+                <Link
                   href="/admin/shipments"
                   className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
                 >
