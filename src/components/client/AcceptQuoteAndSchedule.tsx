@@ -11,9 +11,7 @@ interface AcceptQuoteAndScheduleProps {
 
 export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: AcceptQuoteAndScheduleProps) {
   const [loading, setLoading] = useState(false)
-  const [declining, setDeclining] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [action, setAction] = useState<'accept' | 'decline' | null>(null)
   
   const [formData, setFormData] = useState({
     collectionContactName: '',
@@ -29,7 +27,6 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
     e.preventDefault()
     setLoading(true)
     setError(null)
-    setAction('accept')
 
     try {
       const res = await fetch(`/api/client/local-collection-quote/${quote.id}/accept`, {
@@ -58,37 +55,6 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
       setError(err instanceof Error ? err.message : 'An unknown error occurred')
     } finally {
       setLoading(false)
-      setAction(null)
-    }
-  }
-
-  const handleDecline = async () => {
-    if (!confirm('Are you sure you want to decline this quote? This action cannot be undone.')) {
-      return
-    }
-
-    setDeclining(true)
-    setError(null)
-    setAction('decline')
-
-    try {
-      const res = await fetch(`/api/client/local-collection-quote/${quote.id}/decline`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to decline quote')
-      }
-
-      onSuccess()
-      onClose()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred')
-    } finally {
-      setDeclining(false)
-      setAction(null)
     }
   }
 
@@ -289,52 +255,31 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
             <button
               type="button"
-              onClick={handleDecline}
-              disabled={loading || declining}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              {declining ? (
+              Cancel
+            </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+              {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Declining...
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processing...
                 </>
               ) : (
                 <>
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Decline Quote
+                  <Calendar className="w-4 h-4" />
+                  Accept & Schedule Collection
                 </>
               )}
             </button>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading || declining}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Calendar className="w-4 h-4" />
-                    Accept & Schedule Collection
-                  </>
-                )}
-              </button>
-            </div>
           </div>
         </form>
       </div>
