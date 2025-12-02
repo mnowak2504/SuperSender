@@ -21,6 +21,7 @@ interface SetupFee {
   currentAmountEur: number
   validUntil: string | null
   isPromotional: boolean
+  shouldCharge: boolean
 }
 
 type PaymentMethod = 'online' | 'bank_transfer'
