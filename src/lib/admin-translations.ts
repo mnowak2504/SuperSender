@@ -40,7 +40,7 @@ export const adminTranslations = {
   outside_loading_window: 'Poza oknem załadunku (8:00-16:00)',
   loading_window_message: 'Wydania przesyłek poza tym oknem wymagają zatwierdzenia przez przedstawiciela handlowego.',
   orders_missing_data: 'zamówienia z brakującymi danymi',
-  add_photos_dimensions: 'Proszę dodać zdjęcia lub wymiary przed kontynuacją.',
+      add_photos_dimensions: 'Proszę dodać wymiary przed kontynuacją.',
   view_orders: 'Zobacz zamówienia',
   expected_deliveries: 'Oczekujące dostawy',
   receive_deliveries: 'Odbierz dostawy i zapisz wymiary (m³) do magazynu',
