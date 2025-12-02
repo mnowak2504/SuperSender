@@ -199,6 +199,10 @@ export async function POST(req: NextRequest) {
           // Trigger warehouse capacity update
           try {
             await supabase.rpc('update_client_warehouse_capacity', { client_id: clientId })
+            
+            // Automatically update monthly additional charges (over-space)
+            const { updateMonthlyAdditionalCharges } = await import('@/lib/update-additional-charges')
+            await updateMonthlyAdditionalCharges(clientId)
           } catch (capacityError) {
             console.warn('Could not update warehouse capacity:', capacityError)
           }

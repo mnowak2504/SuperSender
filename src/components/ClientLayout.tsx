@@ -2,15 +2,23 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useLanguage } from '@/lib/use-language'
 import LanguageSelector from '@/components/LanguageSelector'
+import { useEffect, useState } from 'react'
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession()
   const pathname = usePathname()
+  const router = useRouter()
   const { t } = useLanguage()
+  const [mounted, setMounted] = useState(false)
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const navItems = [
     { href: '/client/dashboard', label: t('client_dashboard'), key: 'client_dashboard' },
@@ -18,6 +26,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     { href: '/client/warehouse-orders', label: t('client_warehouse_orders'), key: 'client_warehouse_orders' },
     { href: '/client/invoices', label: t('client_invoices'), key: 'client_invoices' },
   ]
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault()
+    // Ensure navigation happens even if there are modals
+    router.push(href)
+    router.refresh()
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -51,13 +66,15 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                    onClick={(e) => handleNavClick(e, item.href)}
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors ${
                       pathname === item.href
                         ? 'border-blue-500 text-gray-900'
                         : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                     }`}
+                    style={{ position: 'relative', zIndex: 10 }}
                   >
-                    {item.label}
+                    {mounted ? item.label : item.key}
                   </Link>
                 ))}
               </div>
