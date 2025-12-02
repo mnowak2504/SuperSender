@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import ClientLayout from '@/components/ClientLayout'
-import ClientHeader from '@/components/ClientHeader'
 import RequestLocalCollectionQuote from '@/components/client/RequestLocalCollectionQuote'
 import { Truck, Loader2, CheckCircle, Clock, XCircle } from 'lucide-react'
 
@@ -53,7 +52,6 @@ export default function LocalCollectionQuotePage() {
 
   return (
     <ClientLayout>
-      <ClientHeader />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
