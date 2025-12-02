@@ -215,13 +215,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Update ShipmentOrder with calculated price and status
+    // After packing, status changes to QUOTED (ready for client to choose transport)
     if (transportPrice > 0) {
       const { error: updateShipmentError } = await supabase
         .from('ShipmentOrder')
         .update({
           calculatedPriceEur: transportPrice,
           transportPricingId: transportPricingId,
-          status: 'AWAITING_ACCEPTANCE',
+          status: 'QUOTED',
         })
         .eq('id', shipmentId)
 

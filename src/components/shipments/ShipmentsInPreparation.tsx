@@ -69,11 +69,11 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
             <h3 className="text-lg font-semibold text-gray-900">Shipments in Preparation</h3>
             <p className="text-xs text-gray-500">
               {shipments.filter(s => s.status === 'REQUESTED').length} being packed
-              {shipments.filter(s => s.status === 'AWAITING_ACCEPTANCE').length > 0 && (
+              {(shipments.filter(s => s.status === 'QUOTED').length > 0 || shipments.filter(s => s.status === 'AWAITING_ACCEPTANCE').length > 0) && (
                 <span>
                   {' • '}
                   <span className="text-green-600 font-medium">
-                    {shipments.filter(s => s.status === 'AWAITING_ACCEPTANCE').length} ready for transport choice
+                    {shipments.filter(s => s.status === 'QUOTED' || s.status === 'AWAITING_ACCEPTANCE').length} ready for transport choice
                   </span>
                 </span>
               )}
@@ -93,8 +93,9 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
       <div className="space-y-3">
         {shipments
           .sort((a, b) => {
-            // Sort: AWAITING_ACCEPTANCE first, then READY_FOR_LOADING, then REQUESTED
+            // Sort: QUOTED/AWAITING_ACCEPTANCE first, then READY_FOR_LOADING, then REQUESTED
             const statusOrder: Record<string, number> = {
+              'QUOTED': 1,
               'AWAITING_ACCEPTANCE': 1,
               'READY_FOR_LOADING': 2,
               'REQUESTED': 3,
@@ -124,7 +125,7 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
                       <span className="font-medium text-gray-900">
                         Shipment #{shipment.id.slice(-8)}
                       </span>
-                      {shipment.status === 'AWAITING_ACCEPTANCE' ? (
+                      {(shipment.status === 'QUOTED' || shipment.status === 'AWAITING_ACCEPTANCE') ? (
                         <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                           Ready for Transport Choice
                         </span>
@@ -190,7 +191,7 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
                     })}
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    {shipment.status === 'AWAITING_ACCEPTANCE' && shipment.calculatedPriceEur ? (
+                    {(shipment.status === 'QUOTED' || shipment.status === 'AWAITING_ACCEPTANCE') && shipment.calculatedPriceEur ? (
                       <div className="space-y-3">
                         <div className="bg-green-50 border border-green-200 rounded-md p-3">
                           <p className="text-sm font-medium text-green-900 mb-1">
