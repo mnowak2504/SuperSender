@@ -148,12 +148,39 @@ export default function LocalCollectionQuotePage() {
                         <p className="text-2xl font-bold text-blue-600">€{quote.quotedPriceEur.toFixed(2)}</p>
                       </div>
                       {quote.status === 'QUOTED' && (
-                        <button
-                          onClick={() => setAcceptingQuoteId(quote.id)}
-                          className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-                        >
-                          Accept & Schedule
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={async () => {
+                              if (confirm('Are you sure you want to decline this quote? This action cannot be undone.')) {
+                                try {
+                                  const res = await fetch(`/api/client/local-collection-quote/${quote.id}/decline`, {
+                                    method: 'POST',
+                                  })
+                                  if (res.ok) {
+                                    fetchQuotes()
+                                  } else {
+                                    const errorData = await res.json()
+                                    alert(errorData.error || 'Failed to decline quote')
+                                  }
+                                } catch (err) {
+                                  console.error('Error declining quote:', err)
+                                  alert('Failed to decline quote')
+                                }
+                              }
+                            }}
+                            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            Decline
+                          </button>
+                          <button
+                            onClick={() => setAcceptingQuoteId(quote.id)}
+                            className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            Accept & Schedule
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
