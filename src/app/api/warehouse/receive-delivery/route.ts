@@ -176,40 +176,53 @@ export async function POST(req: NextRequest) {
     let warehouseOrderId: string | null = null
 
     if (newStatus === 'RECEIVED') {
-      // Generuj ID dla WarehouseOrder (używamy funkcji pomocniczej jeśli dostępna, lub prostej generacji)
-      const generateCUID = () => {
-        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-        let result = 'cl'
-        for (let i = 0; i < 22; i++) {
-          result += chars.charAt(Math.floor(Math.random() * chars.length))
-        }
-        return result
-      }
-      warehouseOrderId = generateCUID()
-
-      // Generate internal tracking number for warehouse use
-      const { generateInternalTrackingNumber } = await import('@/lib/internal-tracking-number')
-      const internalTrackingNumber = await generateInternalTrackingNumber(supabase)
-
-      const { error: warehouseOrderError } = await supabase
+      // Sprawdź czy już istnieje WarehouseOrder dla tego deliveryId (sourceDeliveryId jest unique)
+      const { data: existingOrder } = await supabase
         .from('WarehouseOrder')
-        .insert({
-          id: warehouseOrderId,
-          clientId: clientId,
-          sourceDeliveryId: deliveryId,
-          status: 'AT_WAREHOUSE',
-          warehouseLocation: warehouseLocation || null,
-          notes: notes || null,
-          receivedAt: new Date().toISOString(),
-          internalTrackingNumber: internalTrackingNumber,
-        })
+        .select('id')
+        .eq('sourceDeliveryId', deliveryId)
+        .maybeSingle()
 
-      if (warehouseOrderError) {
-        console.error('Error creating warehouse order:', warehouseOrderError)
-        return NextResponse.json(
-          { error: 'Failed to create warehouse order', details: warehouseOrderError.message },
-          { status: 500 }
-        )
+      if (existingOrder) {
+        // WarehouseOrder już istnieje - użyj istniejącego ID
+        warehouseOrderId = existingOrder.id
+        console.log('WarehouseOrder already exists for this delivery, using existing:', warehouseOrderId)
+      } else {
+        // Generuj ID dla WarehouseOrder (używamy funkcji pomocniczej jeśli dostępna, lub prostej generacji)
+        const generateCUID = () => {
+          const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+          let result = 'cl'
+          for (let i = 0; i < 22; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length))
+          }
+          return result
+        }
+        warehouseOrderId = generateCUID()
+
+        // Generate internal tracking number for warehouse use
+        const { generateInternalTrackingNumber } = await import('@/lib/internal-tracking-number')
+        const internalTrackingNumber = await generateInternalTrackingNumber(supabase)
+
+        const { error: warehouseOrderError } = await supabase
+          .from('WarehouseOrder')
+          .insert({
+            id: warehouseOrderId,
+            clientId: clientId,
+            sourceDeliveryId: deliveryId,
+            status: 'AT_WAREHOUSE',
+            warehouseLocation: warehouseLocation || null,
+            notes: notes || null,
+            receivedAt: new Date().toISOString(),
+            internalTrackingNumber: internalTrackingNumber,
+          })
+
+        if (warehouseOrderError) {
+          console.error('Error creating warehouse order:', warehouseOrderError)
+          return NextResponse.json(
+            { error: 'Failed to create warehouse order', details: warehouseOrderError.message },
+            { status: 500 }
+          )
+        }
       }
 
       // 2.5. Create Package records for each item (if RECEIVED and items provided)

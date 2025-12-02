@@ -1,11 +1,12 @@
 import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import ClientLayout from '@/components/ClientLayout'
-import ClientHeader from '@/components/ClientHeader'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import BankTransferInfo from '@/components/invoices/BankTransferInfo'
 import { getBankTransferTitle } from '@/lib/bank-transfer-info'
+import { ArrowLeft } from 'lucide-react'
 
 export const runtime = 'nodejs'
 
@@ -59,8 +60,16 @@ export default async function InvoiceDetailsPage({
   if (error || !invoice) {
     return (
       <ClientLayout>
-        <ClientHeader title="Invoice" showBackButton={true} backButtonHref="/client/invoices" backButtonLabel="Back to Invoices" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-6">
+            <Link
+              href="/client/invoices"
+              className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium mb-4"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Invoices
+            </Link>
+          </div>
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-red-800">Invoice not found or you don't have access to it.</p>
           </div>
@@ -110,8 +119,16 @@ export default async function InvoiceDetailsPage({
 
   return (
     <ClientLayout>
-      <ClientHeader title="Invoice Details" showBackButton={true} backButtonHref="/client/invoices" backButtonLabel="Back to Invoices" />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <Link
+            href="/client/invoices"
+            className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Invoices
+          </Link>
+        </div>
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-start mb-6">
             <div>
