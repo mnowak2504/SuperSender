@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .eq('status', 'REQUESTED')
 
-    // Missing data (no photos or no dimensions)
+    // Missing data (no dimensions)
     const { data: ordersWithoutData } = await supabase
       .from('WarehouseOrder')
       .select('id, packedLengthCm, packedWidthCm, packedHeightCm')
