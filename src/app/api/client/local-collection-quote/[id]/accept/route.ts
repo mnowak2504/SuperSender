@@ -71,22 +71,25 @@ export async function POST(
     } = body
 
     // Validate required fields
-    if (!collectionCountry || !collectionContactName || !collectionContactPhone ||
-        !collectionDateFrom || !collectionDateTo) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    // collectionCountry is always 'Poland' for local collection
+    // collectionContactName and collectionContactPhone are optional
+    // orderNumber is required
+    if (!collectionDateFrom || !collectionDateTo || !orderNumber) {
+      return NextResponse.json({ error: 'Missing required fields: collection dates and order number are required' }, { status: 400 })
     }
 
     // Update quote with acceptance and scheduling details
+    // collectionCountry is always 'Poland' for local collection
     const { data: updatedQuote, error: updateError } = await supabase
       .from('LocalCollectionQuote')
       .update({
         status: 'ACCEPTED',
-        collectionCountry,
-        collectionContactName,
-        collectionContactPhone,
+        collectionCountry: collectionCountry || 'Poland', // Default to Poland
+        collectionContactName: collectionContactName || null,
+        collectionContactPhone: collectionContactPhone || null,
         collectionDateFrom: new Date(collectionDateFrom).toISOString(),
         collectionDateTo: new Date(collectionDateTo).toISOString(),
-        orderNumber: orderNumber || null,
+        orderNumber: orderNumber, // Required field
         orderDetails: orderDetails || null,
         pinCode: pinCode || null,
         updatedAt: new Date().toISOString(),
