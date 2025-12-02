@@ -235,55 +235,6 @@ export default function RequestLocalCollectionQuote({ onClose, onSuccess }: Requ
                   />
                 </div>
               </div>
-              <div>
-                <label htmlFor="collectionCountry" className="block text-sm font-medium text-gray-700 mb-1">
-                  Country *
-                </label>
-                <input
-                  type="text"
-                  id="collectionCountry"
-                  name="collectionCountry"
-                  required
-                  value={formData.collectionCountry}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Contact Information */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="collectionContactName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact Name *
-                </label>
-                <input
-                  type="text"
-                  id="collectionContactName"
-                  name="collectionContactName"
-                  required
-                  value={formData.collectionContactName}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="collectionContactPhone" className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact Phone *
-                </label>
-                <input
-                  type="tel"
-                  id="collectionContactPhone"
-                  name="collectionContactPhone"
-                  required
-                  value={formData.collectionContactPhone}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
             </div>
           </div>
 
