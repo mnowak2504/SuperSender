@@ -22,9 +22,6 @@ export default function RequestLocalCollectionQuote({ onClose, onSuccess }: Requ
     collectionAddressLine2: '',
     collectionCity: '',
     collectionPostCode: '',
-    collectionCountry: '',
-    collectionContactName: '',
-    collectionContactPhone: '',
     clientNotes: '',
   })
 

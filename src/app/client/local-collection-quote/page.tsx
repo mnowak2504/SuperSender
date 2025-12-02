@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import ClientLayout from '@/components/ClientLayout'
 import RequestLocalCollectionQuote from '@/components/client/RequestLocalCollectionQuote'
+import AcceptQuoteAndSchedule from '@/components/client/AcceptQuoteAndSchedule'
 import { Truck, Loader2, CheckCircle, Clock, XCircle } from 'lucide-react'
 
 export default function LocalCollectionQuotePage() {
@@ -11,6 +12,7 @@ export default function LocalCollectionQuotePage() {
   const [quotes, setQuotes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showRequestForm, setShowRequestForm] = useState(false)
+  const [acceptingQuoteId, setAcceptingQuoteId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchQuotes()
@@ -125,14 +127,17 @@ export default function LocalCollectionQuotePage() {
                       {quote.collectionAddressLine2 && `, ${quote.collectionAddressLine2}`}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {quote.collectionCity}, {quote.collectionPostCode}, {quote.collectionCountry}
+                      {quote.collectionCity}, {quote.collectionPostCode}
+                      {quote.collectionCountry && `, ${quote.collectionCountry}`}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Contact</p>
-                    <p className="text-sm font-medium text-gray-900">{quote.collectionContactName}</p>
-                    <p className="text-xs text-gray-500">{quote.collectionContactPhone}</p>
-                  </div>
+                  {quote.collectionContactName && quote.collectionContactPhone && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Contact</p>
+                      <p className="text-sm font-medium text-gray-900">{quote.collectionContactName}</p>
+                      <p className="text-xs text-gray-500">{quote.collectionContactPhone}</p>
+                    </div>
+                  )}
                 </div>
 
                 {quote.quotedPriceEur && (
@@ -143,7 +148,10 @@ export default function LocalCollectionQuotePage() {
                         <p className="text-2xl font-bold text-blue-600">€{quote.quotedPriceEur.toFixed(2)}</p>
                       </div>
                       {quote.status === 'QUOTED' && (
-                        <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                        <button
+                          onClick={() => setAcceptingQuoteId(quote.id)}
+                          className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                        >
                           Accept & Schedule
                         </button>
                       )}
@@ -168,6 +176,17 @@ export default function LocalCollectionQuotePage() {
             onSuccess={() => {
               fetchQuotes()
               setShowRequestForm(false)
+            }}
+          />
+        )}
+
+        {acceptingQuoteId && (
+          <AcceptQuoteAndSchedule
+            quote={quotes.find(q => q.id === acceptingQuoteId)!}
+            onClose={() => setAcceptingQuoteId(null)}
+            onSuccess={() => {
+              fetchQuotes()
+              setAcceptingQuoteId(null)
             }}
           />
         )}

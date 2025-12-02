@@ -48,16 +48,12 @@ export async function POST(req: NextRequest) {
       collectionAddressLine2,
       collectionCity,
       collectionPostCode,
-      collectionCountry,
-      collectionContactName,
-      collectionContactPhone,
       clientNotes,
     } = body
 
     // Validate required fields
     if (!widthCm || !lengthCm || !heightCm || !weightKg || !volumeCbm ||
-        !collectionAddressLine1 || !collectionCity || !collectionPostCode || !collectionCountry ||
-        !collectionContactName || !collectionContactPhone) {
+        !collectionAddressLine1 || !collectionCity || !collectionPostCode) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -76,9 +72,9 @@ export async function POST(req: NextRequest) {
         collectionAddressLine2: collectionAddressLine2 || null,
         collectionCity,
         collectionPostCode,
-        collectionCountry,
-        collectionContactName,
-        collectionContactPhone,
+        collectionCountry: null, // Will be set when accepting quote
+        collectionContactName: null, // Will be set when accepting quote
+        collectionContactPhone: null, // Will be set when accepting quote
         clientNotes: clientNotes || null,
       })
       .select()
