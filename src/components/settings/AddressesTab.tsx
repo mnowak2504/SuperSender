@@ -268,7 +268,6 @@ export default function AddressesTab() {
                   <option value="DE">Germany</option>
                   <option value="FR">France</option>
                   <option value="IT">Italy</option>
-                  <option value="GB">United Kingdom</option>
                   <option value="US">United States</option>
                 </select>
               </div>

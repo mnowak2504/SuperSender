@@ -418,7 +418,10 @@ export default async function ClientDashboard() {
           </div>
 
           {/* Plan */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+          <Link
+            href="/client/settings?tab=billing"
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow cursor-pointer block"
+          >
             <div className="flex items-center justify-between mb-4">
               <div className="p-2 bg-purple-50 rounded-lg">
                 <Activity className="w-5 h-5 text-purple-600" />
@@ -438,7 +441,7 @@ export default async function ClientDashboard() {
                 </p>
               )}
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Shipments in Preparation */}

@@ -1,7 +1,6 @@
 // ISO-3166-1 alpha-2 country codes - Only countries we accept clients from
 export const countries = [
   { code: 'IE', name: 'Ireland' },
-  { code: 'GB', name: 'United Kingdom' },
   { code: 'US', name: 'United States' },
   { code: 'FR', name: 'France' },
   { code: 'IT', name: 'Italy' },

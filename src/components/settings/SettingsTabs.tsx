@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { User, MapPin, CreditCard, Bell, Lock } from 'lucide-react'
 import ProfileTab from './ProfileTab'
 import AddressesTab from './AddressesTab'
@@ -9,7 +10,17 @@ import NotificationsTab from './NotificationsTab'
 import SecurityTab from './SecurityTab'
 
 export default function SettingsTabs() {
-  const [activeTab, setActiveTab] = useState('profile')
+  const searchParams = useSearchParams()
+  const tabFromUrl = searchParams?.get('tab') || 'profile'
+  const [activeTab, setActiveTab] = useState(tabFromUrl)
+
+  useEffect(() => {
+    // Update active tab when URL changes
+    const tab = searchParams?.get('tab') || 'profile'
+    if (tab !== activeTab) {
+      setActiveTab(tab)
+    }
+  }, [searchParams, activeTab])
 
   const tabs = [
     { id: 'profile', label: 'Profile & Account', icon: User },

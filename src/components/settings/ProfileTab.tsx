@@ -239,7 +239,6 @@ export default function ProfileTab() {
             >
               <option value="">Select country</option>
               <option value="IE">Ireland</option>
-              <option value="GB">United Kingdom</option>
               <option value="US">United States</option>
               <option value="FR">France</option>
               <option value="IT">Italy</option>
