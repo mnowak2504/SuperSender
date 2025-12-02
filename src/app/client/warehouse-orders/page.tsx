@@ -141,7 +141,8 @@ export default function WarehouseOrdersPage() {
   }
 
   const canSelectOrder = (status: string) => {
-    return status === 'AT_WAREHOUSE' || status === 'READY_TO_SHIP'
+    // Client can only select orders that are AT_WAREHOUSE (not yet selected for packing)
+    return status === 'AT_WAREHOUSE'
   }
 
   const availableOrders = orders.filter((o: any) => canSelectOrder(o.status))

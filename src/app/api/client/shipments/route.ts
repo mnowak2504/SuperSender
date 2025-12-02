@@ -67,13 +67,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify all orders belong to client and are available for shipment
-    // Allow both AT_WAREHOUSE and READY_TO_SHIP statuses
+    // Only allow AT_WAREHOUSE status (client selects orders for packing)
     const { data: orders, error: ordersError } = await supabase
       .from('WarehouseOrder')
       .select('id, status')
       .in('id', warehouseOrderIds)
       .eq('clientId', clientId)
-      .in('status', ['AT_WAREHOUSE', 'READY_TO_SHIP'])
+      .eq('status', 'AT_WAREHOUSE')
 
     if (ordersError) {
       console.error('Error verifying orders:', ordersError)
@@ -97,11 +97,26 @@ export async function POST(req: NextRequest) {
       return result
     }
 
+    // Get client country for packing order number generation
+    const { data: clientData } = await supabase
+      .from('Client')
+      .select('country')
+      .eq('id', clientId)
+      .single()
+
+    const countryCode = clientData?.country || 'PL'
+    const { getCountryCode } = await import('@/lib/packing-order-number')
+    const country = getCountryCode(countryCode)
+
+    // Generate packing order number (IE-{COUNTRY}-{MONTH}-XXX)
+    const { generatePackingOrderNumber } = await import('@/lib/packing-order-number')
+    const packingOrderNumber = await generatePackingOrderNumber(supabase, country)
+
     const shipmentOrderId = generateCUID()
-    // Status starts as REQUESTED - warehouse needs to pack and calculate price first
+    // Status starts as REQUESTED - this is a packing order
     const initialStatus = 'REQUESTED'
 
-    // Create ShipmentOrder
+    // Create ShipmentOrder (this is now a packing order)
     const { data: shipment, error: shipmentError } = await supabase
       .from('ShipmentOrder')
       .insert({
@@ -112,6 +127,7 @@ export async function POST(req: NextRequest) {
         timeWindowFrom: timeWindowFrom ? new Date(timeWindowFrom).toISOString() : null,
         timeWindowTo: timeWindowTo ? new Date(timeWindowTo).toISOString() : null,
         status: initialStatus,
+        packingOrderNumber: packingOrderNumber,
       })
       .select()
       .single()
@@ -146,11 +162,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Update WarehouseOrder status to BEING_PACKED
+    // Update WarehouseOrder status to IN_PREPARATION (client selected for packing)
+    // These orders no longer count towards warehouse capacity
     await supabase
       .from('WarehouseOrder')
-      .update({ status: 'BEING_PACKED' })
+      .update({ status: 'IN_PREPARATION' })
       .in('id', warehouseOrderIds)
+
+    // Update warehouse capacity (remove these orders from used space)
+    try {
+      await supabase.rpc('update_client_warehouse_capacity', { client_id: clientId })
+      const { updateMonthlyAdditionalCharges } = await import('@/lib/update-additional-charges')
+      await updateMonthlyAdditionalCharges(clientId)
+    } catch (capacityError) {
+      console.warn('Could not update warehouse capacity:', capacityError)
+    }
 
     // Check for additional charges and create invoice if any exist
     const now = new Date()

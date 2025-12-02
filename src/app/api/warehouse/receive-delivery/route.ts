@@ -187,6 +187,10 @@ export async function POST(req: NextRequest) {
       }
       warehouseOrderId = generateCUID()
 
+      // Generate internal tracking number for warehouse use
+      const { generateInternalTrackingNumber } = await import('@/lib/internal-tracking-number')
+      const internalTrackingNumber = await generateInternalTrackingNumber(supabase)
+
       const { error: warehouseOrderError } = await supabase
         .from('WarehouseOrder')
         .insert({
@@ -197,6 +201,7 @@ export async function POST(req: NextRequest) {
           warehouseLocation: warehouseLocation || null,
           notes: notes || null,
           receivedAt: new Date().toISOString(),
+          internalTrackingNumber: internalTrackingNumber,
         })
 
       if (warehouseOrderError) {

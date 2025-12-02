@@ -136,11 +136,11 @@ export async function POST(req: NextRequest) {
       // Don't fail the operation if capacity update fails
     }
 
-    // Update all WarehouseOrders to READY_TO_SHIP
+    // Update all WarehouseOrders to PACKED (packing is complete)
     const { error: updateOrdersError } = await supabase
       .from('WarehouseOrder')
       .update({
-        status: 'READY_TO_SHIP',
+        status: 'PACKED',
         packedAt: new Date().toISOString(),
         notes: notes || null,
       })

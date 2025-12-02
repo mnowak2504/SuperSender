@@ -38,7 +38,8 @@ export default async function WarehouseOrdersPage({
       : ['IN_TRANSIT']
     
     // Fetch ShipmentOrders with their packages
-    const { data: shipments, error: shipmentsError } = await supabase
+    // Sort by plannedLoadingDate (ascending - earliest first), then by createdAt
+    let query = supabase
       .from('ShipmentOrder')
       .select(`
         id,
@@ -78,7 +79,12 @@ export default async function WarehouseOrdersPage({
         )
       `)
       .in('status', statuses)
-      .order('createdAt', { ascending: false })
+    
+    // Sort by plannedLoadingDate (ascending - earliest first), then by createdAt
+    query = query.order('plannedLoadingDate', { ascending: true, nullsFirst: false })
+                 .order('createdAt', { ascending: false })
+    
+    const { data: shipments, error: shipmentsError } = await query
 
     if (shipmentsError) {
       error = shipmentsError
@@ -134,16 +140,54 @@ export default async function WarehouseOrdersPage({
         }
       }) || []
     }
+  } else if (statusFilter === 'TO_PACK') {
+    // For TO_PACK, show ShipmentOrders (packing orders) with status REQUESTED
+    const { data: packingOrders, error: packingError } = await supabase
+      .from('ShipmentOrder')
+      .select(`
+        id,
+        packingOrderNumber,
+        createdAt,
+        status,
+        Client:clientId(displayName, clientCode),
+        items:ShipmentItem(
+          warehouseOrder:WarehouseOrder(
+            id,
+            internalTrackingNumber,
+            warehouseLocation,
+            sourceDelivery:DeliveryExpected(
+              deliveryNumber,
+              supplierName,
+              goodsDescription
+            )
+          )
+        )
+      `)
+      .eq('status', 'REQUESTED')
+      .order('createdAt', { ascending: false })
+
+    if (packingError) {
+      error = packingError
+      console.error('Error fetching packing orders:', packingError)
+    } else {
+      // Transform packing orders for display
+      orders = (packingOrders || []).map((po: any) => ({
+        id: po.id,
+        type: 'PACKING_ORDER',
+        packingOrderNumber: po.packingOrderNumber,
+        createdAt: po.createdAt,
+        Client: po.Client,
+        warehouseOrders: (po.items || []).map((item: any) => item.warehouseOrder).filter(Boolean),
+      }))
+    }
   } else {
-    // For other statuses, fetch WarehouseOrders as before
+    // For other statuses (AT_WAREHOUSE, PACKED), fetch WarehouseOrders
     let query = supabase
       .from('WarehouseOrder')
       .select('*, Client:clientId(displayName, clientCode), sourceDelivery:sourceDeliveryId(id, deliveryNumber, supplierName, goodsDescription)')
       .order('createdAt', { ascending: false })
 
-    if (statusFilter !== 'ALL') {
-      query = query.eq('status', statusFilter)
-    }
+    query = query.eq('status', statusFilter)
 
     const { data: warehouseOrders, error: ordersError } = await query
     
@@ -155,13 +199,11 @@ export default async function WarehouseOrdersPage({
     }
   }
 
+  // Filter options for warehouse - hide ALL, IN_PREPARATION (BEING_PACKED), and READY_FOR_QUOTE
   const statusOptions = [
-    { value: 'ALL', label: 'Wszystkie' },
     { value: 'AT_WAREHOUSE', label: 'Na magazynie' },
-    { value: 'BEING_PACKED', label: 'W przygotowaniu' },
     { value: 'TO_PACK', label: 'Do pakowania' },
     { value: 'PACKED', label: 'Spakowane' },
-    { value: 'READY_FOR_QUOTE', label: 'Gotowe do wyceny' },
     { value: 'READY_TO_SHIP', label: 'Gotowe do wysyłki' },
     { value: 'SHIPPED', label: 'Wysłane' },
   ]
@@ -352,6 +394,63 @@ export default async function WarehouseOrdersPage({
                             </div>
                           )}
                         </>
+                      ) : order.type === 'PACKING_ORDER' ? (
+                        // Display as Packing Order (ShipmentOrder with REQUESTED status)
+                        <>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-gray-900">
+                              Zlecenie pakowania: {order.packingOrderNumber || order.id.slice(-8)}
+                            </p>
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              Do pakowania
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-center text-sm text-gray-500">
+                            <p className="truncate">
+                              <span className="font-medium">Klient:</span> {(order.Client as any)?.displayName || 'Brak'}
+                            </p>
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              {(order.Client as any)?.clientCode || 'Brak kodu'}
+                            </span>
+                          </div>
+                          {order.warehouseOrders && order.warehouseOrders.length > 0 && (
+                            <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                              <div className="text-sm font-medium text-gray-700 mb-2">
+                                Zamówienia do spakowania ({order.warehouseOrders.length}):
+                              </div>
+                              <ul className="space-y-2">
+                                {order.warehouseOrders.map((wo: any) => (
+                                  <li key={wo.id} className="text-xs text-gray-600 bg-white p-2 rounded border">
+                                    <div className="font-medium">
+                                      Nr wewnętrzny: {wo.internalTrackingNumber || wo.id.slice(-8)}
+                                    </div>
+                                    {wo.warehouseLocation && (
+                                      <div>Lokalizacja: {wo.warehouseLocation}</div>
+                                    )}
+                                    {wo.sourceDelivery && (
+                                      <>
+                                        <div>Dostawa: {wo.sourceDelivery.deliveryNumber || 'Brak numeru'}</div>
+                                        <div>Dostawca: {wo.sourceDelivery.supplierName || 'Brak'}</div>
+                                        {wo.sourceDelivery.goodsDescription && (
+                                          <div className="text-gray-500">Opis: {wo.sourceDelivery.goodsDescription}</div>
+                                        )}
+                                      </>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          <div className="mt-2 text-xs text-gray-400">
+                            Utworzono: {new Date(order.createdAt).toLocaleDateString('pl-PL', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </>
                       ) : (
                         // Display as regular WarehouseOrder
                         <>
@@ -365,6 +464,11 @@ export default async function WarehouseOrdersPage({
                               {order.status}
                             </span>
                           </div>
+                          {order.internalTrackingNumber && (
+                            <div className="mt-1 text-sm font-medium text-gray-700">
+                              Nr ewidencyjny: <span className="font-mono">{order.internalTrackingNumber}</span>
+                            </div>
+                          )}
                           {order.sourceDelivery?.supplierName && (
                             <div className="mt-1 text-sm text-gray-600">
                               <span className="font-medium">Dostawca:</span> {order.sourceDelivery.supplierName}
@@ -418,26 +522,26 @@ export default async function WarehouseOrdersPage({
                           )}
                         </>
                       )}
-                      {order.type !== 'SHIPMENT' && (
+                      {order.type === 'PACKING_ORDER' && (
+                        <Link
+                          href={`/warehouse/pack-shipment/${order.id}`}
+                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                        >
+                          Rozpocznij pakowanie
+                        </Link>
+                      )}
+                      {order.type !== 'SHIPMENT' && order.type !== 'PACKING_ORDER' && (
                         <>
-                          {order.status === 'TO_PACK' && (
-                            <Link
-                              href={`/warehouse/pack-order/${order.id}`}
-                              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-                            >
-                              Pakuj
-                            </Link>
-                          )}
-                          {(order.status === 'AT_WAREHOUSE' || order.status === 'BEING_PACKED') && (
-                            <Link
-                              href={`/warehouse/pack-order/${order.id}`}
-                              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                            >
-                              {order.status === 'BEING_PACKED' ? 'Kontynuuj pakowanie' : 'Rozpocznij pakowanie'}
-                            </Link>
+                          {/* AT_WAREHOUSE - no actions, just display */}
+                          {order.status === 'AT_WAREHOUSE' && (
+                            <span className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-400 bg-gray-100">
+                              Na magazynie
+                            </span>
                           )}
                           {order.status === 'PACKED' && (
-                            <MarkReadyForQuoteButton orderId={order.id} />
+                            <span className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100">
+                              Spakowane
+                            </span>
                           )}
                         </>
                       )}
