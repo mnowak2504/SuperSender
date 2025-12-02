@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
+import { sendLocalCollectionQuoteReadyEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
 
@@ -77,7 +78,16 @@ export async function PUT(
       )
     }
 
-    // TODO: Send email notification to client about the quote
+    // Send email notification to client about the quote
+    if (updatedQuote && updatedQuote.Client) {
+      const collectionAddress = `${updatedQuote.collectionAddressLine1}, ${updatedQuote.collectionCity}, ${updatedQuote.collectionPostCode}`
+      await sendLocalCollectionQuoteReadyEmail(
+        updatedQuote.clientId,
+        updatedQuote.id,
+        updatedQuote.quotedPriceEur,
+        collectionAddress
+      )
+    }
 
     return NextResponse.json({ success: true, quote: updatedQuote })
   } catch (error) {

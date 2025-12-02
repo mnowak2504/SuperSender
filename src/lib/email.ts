@@ -437,3 +437,160 @@ export async function sendOverStorageAlertEmail(
   })
 }
 
+/**
+ * Send Local Collection Quote Ready notification email
+ */
+export async function sendLocalCollectionQuoteReadyEmail(
+  clientId: string,
+  quoteId: string,
+  quotedPriceEur: number,
+  collectionAddress: string
+): Promise<{ success: boolean; skipped?: boolean; error?: string }> {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' }
+  }
+
+  // Get client info
+  const { data: client } = await supabase
+    .from('Client')
+    .select('email, displayName')
+    .eq('id', clientId)
+    .single()
+
+  if (!client || !client.email) {
+    return { success: false, error: 'Client not found' }
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  
+  const emailSubject = `Local Collection Quote Ready: €${quotedPriceEur.toFixed(2)}`
+  const emailBody = `
+    <h2>Local Collection Quote Ready</h2>
+    <p>Hello ${client.displayName || 'Valued Client'},</p>
+    <p>Your local collection quote is ready for review.</p>
+    <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+      <p><strong>Quote Price:</strong> €${quotedPriceEur.toFixed(2)}</p>
+      <p><strong>Collection Address:</strong> ${collectionAddress}</p>
+    </div>
+    <p>You can accept or decline this quote in your dashboard.</p>
+    <p>
+      <a href="${baseUrl}/client/local-collection-quote" 
+         style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin-top: 16px;">
+        View Quote
+      </a>
+    </p>
+    <p>Best regards,<br>Supersender Team</p>
+  `
+
+  // Use a generic preference key (we can add specific one later)
+  return sendClientNotificationEmail(clientId, 'deliveryReceived', {
+    to: client.email,
+    subject: emailSubject,
+    html: emailBody,
+  })
+}
+
+/**
+ * Send Shipment Packed notification email
+ */
+export async function sendShipmentPackedEmail(
+  clientId: string,
+  shipmentId: string,
+  calculatedPriceEur: number | null
+): Promise<{ success: boolean; skipped?: boolean; error?: string }> {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' }
+  }
+
+  // Get client info
+  const { data: client } = await supabase
+    .from('Client')
+    .select('email, displayName')
+    .eq('id', clientId)
+    .single()
+
+  if (!client || !client.email) {
+    return { success: false, error: 'Client not found' }
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  
+  const emailSubject = `Shipment Packed: Ready for Transport Selection`
+  const emailBody = `
+    <h2>Your Shipment is Packed and Ready</h2>
+    <p>Hello ${client.displayName || 'Valued Client'},</p>
+    <p>Your shipment has been packed and is ready for transport selection.</p>
+    <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+      <p><strong>Shipment ID:</strong> ${shipmentId.slice(-8).toUpperCase()}</p>
+      ${calculatedPriceEur ? `<p><strong>Calculated Price:</strong> €${calculatedPriceEur.toFixed(2)}</p>` : ''}
+    </div>
+    <p>Please choose your preferred transport method in your dashboard.</p>
+    <p>
+      <a href="${baseUrl}/client/shipments" 
+         style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin-top: 16px;">
+        Choose Transport Method
+      </a>
+    </p>
+    <p>Best regards,<br>Supersender Team</p>
+  `
+
+  return sendClientNotificationEmail(clientId, 'shipmentReady', {
+    to: client.email,
+    subject: emailSubject,
+    html: emailBody,
+  })
+}
+
+/**
+ * Send Shipment Shipped notification email
+ */
+export async function sendShipmentShippedEmail(
+  clientId: string,
+  shipmentId: string,
+  trackingNumber: string | null,
+  transportCompany: string | null
+): Promise<{ success: boolean; skipped?: boolean; error?: string }> {
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' }
+  }
+
+  // Get client info
+  const { data: client } = await supabase
+    .from('Client')
+    .select('email, displayName')
+    .eq('id', clientId)
+    .single()
+
+  if (!client || !client.email) {
+    return { success: false, error: 'Client not found' }
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  
+  const emailSubject = `Shipment Shipped: ${shipmentId.slice(-8).toUpperCase()}`
+  const emailBody = `
+    <h2>Your Shipment Has Been Shipped</h2>
+    <p>Hello ${client.displayName || 'Valued Client'},</p>
+    <p>Your shipment has been shipped and is on its way.</p>
+    <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+      <p><strong>Shipment ID:</strong> ${shipmentId.slice(-8).toUpperCase()}</p>
+      ${trackingNumber ? `<p><strong>Tracking Number:</strong> ${trackingNumber}</p>` : ''}
+      ${transportCompany ? `<p><strong>Transport Company:</strong> ${transportCompany}</p>` : ''}
+    </div>
+    <p>You can track your shipment in your dashboard.</p>
+    <p>
+      <a href="${baseUrl}/client/shipments" 
+         style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin-top: 16px;">
+        Track Shipment
+      </a>
+    </p>
+    <p>Best regards,<br>Supersender Team</p>
+  `
+
+  return sendClientNotificationEmail(clientId, 'shipmentReady', {
+    to: client.email,
+    subject: emailSubject,
+    html: emailBody,
+  })
+}
+

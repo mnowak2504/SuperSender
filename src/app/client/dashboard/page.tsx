@@ -206,6 +206,9 @@ export default async function ClientDashboard() {
   // Fetch archived shipments (status: DELIVERED)
   let archivedShipments: any[] = []
   
+  // Fetch local collection quotes (status: QUOTED, ACCEPTED, SCHEDULED)
+  let localCollectionQuotes: any[] = []
+  
   if (clientId) {
     // Shipments in preparation
     const { data: shipmentsData, error: shipmentsError } = await supabase
@@ -334,6 +337,19 @@ export default async function ClientDashboard() {
         })) || [],
       }))
     }
+
+    // Fetch local collection quotes
+    const { data: quotesData, error: quotesError } = await supabase
+      .from('LocalCollectionQuote')
+      .select('id, status, quotedPriceEur, quotedAt, collectionAddressLine1, collectionCity, collectionPostCode, createdAt')
+      .eq('clientId', clientId)
+      .in('status', ['QUOTED', 'ACCEPTED', 'SCHEDULED'])
+      .order('createdAt', { ascending: false })
+      .limit(5)
+
+    if (!quotesError && quotesData) {
+      localCollectionQuotes = quotesData || []
+    }
   }
 
   return (
@@ -446,7 +462,7 @@ export default async function ClientDashboard() {
           </div>
         )}
 
-        {/* Request Local Collection Quote */}
+        {/* Local Collection Quotes Section */}
         <div className="mb-8">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
@@ -467,6 +483,54 @@ export default async function ClientDashboard() {
                 Request Quote
               </Link>
             </div>
+
+            {/* Active Quotes List */}
+            {localCollectionQuotes.length > 0 && (
+              <div className="mt-4 space-y-3">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Active Quotes</h4>
+                {localCollectionQuotes.map((quote: any) => (
+                  <div
+                    key={quote.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-medium text-gray-900">
+                          Quote #{quote.id.slice(-8).toUpperCase()}
+                        </span>
+                        {quote.status === 'QUOTED' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            Ready for Review
+                          </span>
+                        )}
+                        {quote.status === 'ACCEPTED' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Accepted
+                          </span>
+                        )}
+                        {quote.status === 'SCHEDULED' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Scheduled
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {quote.collectionAddressLine1}, {quote.collectionCity}, {quote.collectionPostCode}
+                        {quote.quotedPriceEur && (
+                          <span className="ml-2 font-medium text-gray-700">€{quote.quotedPriceEur.toFixed(2)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <Link
+                      href="/client/local-collection-quote"
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      View →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
