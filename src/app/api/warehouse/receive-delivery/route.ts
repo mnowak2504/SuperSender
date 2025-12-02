@@ -34,15 +34,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Handle FormData (for file uploads) or JSON
+    // Handle FormData or JSON
     let deliveryId: string
     let receivedById: string
     let clientId: string
     let items: any[] = []
-    let condition: string = 'OK'
+    let condition: string = 'NO_REMARKS'
     let warehouseLocation: string | null = null
     let notes: string | null = null
-    let photos: File[] = []
 
     const contentType = req.headers.get('content-type') || ''
     
@@ -62,20 +61,16 @@ export async function POST(req: NextRequest) {
           )
         }
       }
-      condition = (formData.get('condition') as string) || 'OK'
+      condition = (formData.get('condition') as string) || 'NO_REMARKS'
       warehouseLocation = (formData.get('warehouseLocation') as string) || null
       notes = (formData.get('notes') as string) || null
-      
-      // Get photos
-      const photoFiles = formData.getAll('photos') as File[]
-      photos = photoFiles.filter(file => file && file.size > 0)
     } else {
       const body = await req.json()
       deliveryId = body.deliveryId
       receivedById = body.receivedById
       clientId = body.clientId
       items = body.items || []
-      condition = body.condition || 'OK'
+      condition = body.condition || 'NO_REMARKS'
       warehouseLocation = body.warehouseLocation || null
       notes = body.notes || null
     }
@@ -109,12 +104,26 @@ export async function POST(req: NextRequest) {
     }
 
     // Określ status na podstawie condition
-    const newStatus = condition === 'DAMAGED' ? 'DAMAGED' : 'RECEIVED'
+    // Wszystkie dostawy są przyjmowane (nie można odmówić), status zawsze RECEIVED
+    // Informacja o uszkodzeniu jest zapisywana w notes
+    const newStatus = 'RECEIVED'
 
     // Generate delivery number if not already set
     let deliveryNumber = delivery.deliveryNumber
     if (!deliveryNumber) {
       deliveryNumber = await generateDeliveryNumber(supabase)
+    }
+
+    // Dodaj informację o stanie opakowania do notes jeśli jest uszkodzenie
+    let finalNotes = notes || ''
+    if (condition !== 'NO_REMARKS') {
+      const conditionLabels: Record<string, string> = {
+        'MINOR_DAMAGE': 'Uszkodzenie opakowania nie zagrażające zawartości',
+        'MODERATE_DAMAGE': 'Poważniejsze uszkodzenie opakowania - zawartość do weryfikacji',
+        'SEVERE_DAMAGE': 'Poważne uszkodzenie',
+      }
+      const conditionNote = `\n[STAN OPAKOWANIA: ${conditionLabels[condition] || condition}]\nUWAGA: Klient musi skontaktować się niezwłocznie z dostawcą. Zdjęcia należy wysłać mailowo.`
+      finalNotes = finalNotes ? finalNotes + conditionNote : conditionNote.trim()
     }
 
     // 1. Aktualizuj DeliveryExpected
@@ -124,9 +133,9 @@ export async function POST(req: NextRequest) {
         status: newStatus,
         deliveryNumber: deliveryNumber, // Set generated number
         quantity: items.length || null,
-        condition: condition || 'OK',
+        condition: condition || 'NO_REMARKS',
         warehouseLocation: warehouseLocation || null,
-        notes: notes || null,
+        notes: finalNotes || null,
         receivedAt: new Date().toISOString(),
         receivedById: receivedById,
       })
@@ -209,89 +218,8 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 3. Upload zdjęć do Supabase Storage i zapisz do Media (jeśli są)
-      if (photos.length > 0) {
-        const uploadedPhotos: { id: string; url: string }[] = []
-
-        for (let i = 0; i < photos.length; i++) {
-          const photo = photos[i]
-          const fileExt = photo.name.split('.').pop() || 'jpg'
-          const fileName = `deliveries/${deliveryId}/${Date.now()}-${i}.${fileExt}`
-          
-          // Convert File to ArrayBuffer for upload
-          const arrayBuffer = await photo.arrayBuffer()
-          const fileBuffer = Buffer.from(arrayBuffer)
-
-          // Upload to Supabase Storage
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('delivery-photos')
-            .upload(fileName, fileBuffer, {
-              contentType: photo.type || 'image/jpeg',
-              upsert: false,
-            })
-
-          if (uploadError) {
-            console.error(`Error uploading photo ${i}:`, uploadError)
-            continue // Skip this photo but continue with others
-          }
-
-          // Get public URL
-          const { data: urlData } = supabase.storage
-            .from('delivery-photos')
-            .getPublicUrl(fileName)
-
-          const photoUrl = urlData.publicUrl
-          
-          console.log(`[API /warehouse/receive-delivery] Photo ${i} uploaded:`, {
-            fileName,
-            photoUrl,
-            deliveryId,
-          })
-
-          // Generate ID for Media record
-          const photoId = 'cl' + Math.random().toString(36).substring(2, 24)
-          
-          // Save to Media table
-          const { data: insertedMedia, error: mediaError } = await supabase
-            .from('Media')
-            .insert({
-              id: photoId,
-              url: photoUrl,
-              kind: 'delivery_received',
-              deliveryExpectedId: deliveryId,
-            })
-            .select()
-
-          if (mediaError) {
-            console.error(`[API /warehouse/receive-delivery] Error saving photo ${i} to database:`, {
-              error: mediaError,
-              code: mediaError.code,
-              message: mediaError.message,
-              details: mediaError.details,
-              hint: mediaError.hint,
-              photoId,
-              photoUrl,
-              deliveryId,
-              kind: 'delivery_received',
-            })
-            // Try to delete uploaded file
-            await supabase.storage
-              .from('delivery-photos')
-              .remove([fileName])
-            continue
-          }
-
-          console.log(`[API /warehouse/receive-delivery] Photo ${i} saved to database:`, {
-            photoId,
-            insertedMedia,
-            deliveryId,
-          })
-
-          uploadedPhotos.push({ id: photoId, url: photoUrl })
-        }
-
-        console.log(`Successfully uploaded ${uploadedPhotos.length} photos for delivery ${deliveryId}`)
-      }
+      // 3. Zapisz informację o stanie opakowania w notes (jeśli condition != NO_REMARKS)
+      // Zdjęcia będą wysyłane mailowo i zapisywane na dysku
     }
 
     // 4. Aktualizuj zajętość przestrzeni klienta (uproszczone - w przyszłości można dodać dokładne obliczenia)
@@ -320,19 +248,13 @@ export async function POST(req: NextRequest) {
         .eq('id', deliveryId)
         .single()
 
-      // Count photos
-      const { count: photosCount } = await supabase
-        .from('Media')
-        .select('*', { count: 'exact', head: true })
-        .eq('deliveryExpectedId', deliveryId)
-        .eq('kind', 'delivery_received')
-
       // Send email (non-blocking)
+      // Note: Photos are sent via email separately, not uploaded to the system
       sendDeliveryReceivedEmail(
         clientId,
         updatedDelivery?.deliveryNumber || deliveryNumber || 'N/A',
         updatedDelivery?.supplierName || delivery.supplierName || 'Unknown',
-        photosCount || photos.length || 0
+        0 // No photos uploaded to system
       ).catch((error) => {
         console.error('Error sending delivery received email:', error)
         // Don't fail the request if email fails

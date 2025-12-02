@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, X, Package, Palette } from 'lucide-react'
 import { calculateVolumeCbm, formatVolumeCbm, calculateTotalVolumeCbm } from '@/lib/warehouse-calculations'
@@ -25,11 +25,8 @@ export default function ReceiveDeliveryForm({
   clientId,
 }: ReceiveDeliveryFormProps) {
   const router = useRouter()
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [photos, setPhotos] = useState<File[]>([])
-  const [previewUrls, setPreviewUrls] = useState<string[]>([])
   const [items, setItems] = useState<WarehouseItem[]>([
     {
       type: 'PALLET',
@@ -40,7 +37,7 @@ export default function ReceiveDeliveryForm({
     }
   ])
   const [formData, setFormData] = useState({
-    condition: 'OK',
+    condition: 'NO_REMARKS',
     warehouseLocation: '',
     notes: '',
   })
@@ -79,25 +76,6 @@ export default function ReceiveDeliveryForm({
   )
   const totalWeight = items.reduce((sum, item) => sum + (item.weightKg || 0), 0)
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length > 0) {
-      setPhotos(files)
-      const urls = files.map(file => URL.createObjectURL(file))
-      setPreviewUrls(urls)
-    }
-  }
-
-  const removePhoto = (index: number) => {
-    const newPhotos = photos.filter((_, i) => i !== index)
-    const newUrls = previewUrls.filter((_, i) => i !== index)
-    URL.revokeObjectURL(previewUrls[index])
-    setPhotos(newPhotos)
-    setPreviewUrls(newUrls)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -133,9 +111,6 @@ export default function ReceiveDeliveryForm({
         volumeCbm: calculateItemVolume(item),
       }))))
 
-      photos.forEach((photo) => {
-        formDataToSend.append(`photos`, photo)
-      })
 
       const response = await fetch('/api/warehouse/receive-delivery', {
         method: 'POST',
@@ -147,8 +122,6 @@ export default function ReceiveDeliveryForm({
       if (!response.ok) {
         throw new Error(data.error || 'Błąd przy przyjmowaniu dostawy')
       }
-
-      previewUrls.forEach(url => URL.revokeObjectURL(url))
 
       router.push('/warehouse/dashboard')
       router.refresh()
@@ -318,8 +291,8 @@ export default function ReceiveDeliveryForm({
         </div>
 
         <div>
-          <label htmlFor="condition" className="block text-sm font-medium text-gray-700">
-            Stan opakowań
+          <label htmlFor="condition" className="block text-sm font-medium text-gray-700 mb-2">
+            Stan opakowań *
           </label>
           <select
             id="condition"
@@ -328,9 +301,39 @@ export default function ReceiveDeliveryForm({
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             required
           >
-            <option value="OK">OK</option>
-            <option value="DAMAGED">Uszkodzone</option>
+            <option value="NO_REMARKS">Bez uwag</option>
+            <option value="MINOR_DAMAGE">Uszkodzenie opakowania nie zagrażające zawartości</option>
+            <option value="MODERATE_DAMAGE">Poważniejsze uszkodzenie opakowania - zawartość do weryfikacji</option>
+            <option value="SEVERE_DAMAGE">Poważne uszkodzenie</option>
           </select>
+          
+          {formData.condition !== 'NO_REMARKS' && (
+            <div className="mt-3 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-md">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Ważna informacja o uszkodzonej przesyłce
+                  </h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p className="mb-2">
+                      <strong>W obecnych czasach nie ma możliwości odmowy przyjęcia uszkodzonej przesyłki.</strong>
+                    </p>
+                    <p className="mb-2">
+                      Uszkodzenie zostało udokumentowane w systemie. Klient musi skontaktować się niezwłocznie z dostawcą w sprawie uszkodzenia.
+                    </p>
+                    <p className="text-xs text-yellow-600 mt-2">
+                      Jeśli klient chce zlecić nam obsługę kontaktu z dostawcą, prosimy o kontakt z przedstawicielem handlowym.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div>
@@ -361,44 +364,13 @@ export default function ReceiveDeliveryForm({
           />
         </div>
 
-        <div>
-          <label htmlFor="photos" className="block text-sm font-medium text-gray-700 mb-2">
-            Zdjęcia dostawy (opcjonalne)
-          </label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            id="photos"
-            accept="image/*"
-            multiple
-            onChange={handlePhotoChange}
-            className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-          />
-          <p className="mt-2 text-xs text-gray-500">
-            Możesz dodać zdjęcia dokumentujące stan dostawy przy przyjęciu (maksymalnie 10 zdjęć)
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-800 font-medium mb-2">
+            Informacja o zdjęciach
           </p>
-          
-          {previewUrls.length > 0 && (
-            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-              {previewUrls.map((url, index) => (
-                <div key={index} className="relative">
-                  <img
-                    src={url}
-                    alt={`Preview ${index + 1}`}
-                    className="h-24 w-full object-cover rounded-md border border-gray-300"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removePhoto(index)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 text-xs"
-                    title="Usuń zdjęcie"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          <p className="text-sm text-blue-700">
+            Zdjęcia uszkodzonych przesyłek należy wysłać mailowo na specjalny adres e-mail. Zdjęcia będą zapisane na naszym dysku i udostępnione gdy zajdzie potrzeba.
+          </p>
         </div>
 
         <div className="flex items-center justify-end space-x-3">
