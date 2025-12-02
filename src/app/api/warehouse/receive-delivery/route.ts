@@ -114,15 +114,38 @@ export async function POST(req: NextRequest) {
       deliveryNumber = await generateDeliveryNumber(supabase)
     }
 
+    // Get client language preference (default to 'en' if not available)
+    // Try to get from Client table, or use default
+    let clientLanguage: 'pl' | 'en' | 'de' | 'fr' | 'it' = 'en'
+    const { data: clientData } = await supabase
+      .from('Client')
+      .select('country')
+      .eq('id', clientId)
+      .single()
+    
+    // Map country to language (default to English)
+    if (clientData?.country) {
+      const countryToLang: Record<string, 'pl' | 'en' | 'de' | 'fr' | 'it'> = {
+        'Poland': 'pl',
+        'Polska': 'pl',
+        'PL': 'pl',
+        'Germany': 'de',
+        'Deutschland': 'de',
+        'DE': 'de',
+        'France': 'fr',
+        'FR': 'fr',
+        'Italy': 'it',
+        'Italia': 'it',
+        'IT': 'it',
+      }
+      clientLanguage = countryToLang[clientData.country] || 'en'
+    }
+
     // Dodaj informację o stanie opakowania do notes jeśli jest uszkodzenie
     let finalNotes = notes || ''
     if (condition !== 'NO_REMARKS') {
-      const conditionLabels: Record<string, string> = {
-        'MINOR_DAMAGE': 'Uszkodzenie opakowania nie zagrażające zawartości',
-        'MODERATE_DAMAGE': 'Poważniejsze uszkodzenie opakowania - zawartość do weryfikacji',
-        'SEVERE_DAMAGE': 'Poważne uszkodzenie',
-      }
-      const conditionNote = `\n[STAN OPAKOWANIA: ${conditionLabels[condition] || condition}]\nUWAGA: Klient musi skontaktować się niezwłocznie z dostawcą. Zdjęcia należy wysłać mailowo.`
+      const { getConditionNote } = await import('@/lib/delivery-condition-translations')
+      const conditionNote = getConditionNote(condition, clientLanguage)
       finalNotes = finalNotes ? finalNotes + conditionNote : conditionNote.trim()
     }
 
