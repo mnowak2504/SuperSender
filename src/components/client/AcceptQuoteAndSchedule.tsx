@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar, Clock, X, Loader2, FileText, Key, Mail, XCircle } from 'lucide-react'
+import { Calendar, Clock, X, Loader2, FileText, Key, Mail, AlertCircle } from 'lucide-react'
 
 interface AcceptQuoteAndScheduleProps {
   quote: any
@@ -83,18 +83,27 @@ export default function AcceptQuoteAndSchedule({ quote, onClose, onSuccess }: Ac
           </button>
         </div>
 
-        {/* Info about email contact */}
-        <div className="px-6 pt-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-            <Mail className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-blue-900 mb-1">Additional Information Required?</p>
-              <p className="text-sm text-blue-700">
-                If you need additional information or have questions, your sales representative will contact you via email.
-              </p>
+            {/* Info about email contact and confirmation deadline */}
+            <div className="px-6 pt-4 space-y-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                <Mail className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900 mb-1">Additional Information Required?</p>
+                  <p className="text-sm text-blue-700">
+                    If we need additional information regarding collection, we will contact you directly.
+                  </p>
+                </div>
+              </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-yellow-900 mb-1">Important Notice</p>
+                  <p className="text-sm text-yellow-700">
+                    Collection orders must be confirmed at least 2 business days before the collection deadline.
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
         <form onSubmit={handleAccept} className="p-6 space-y-6">
           {error && (
