@@ -57,8 +57,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Generate CUID for the quote ID
+    const generateCUID = () => {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+      let result = 'lcq' // Local Collection Quote prefix
+      for (let i = 0; i < 22; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length))
+      }
+      return result
+    }
+
+    const quoteId = generateCUID()
+
     // Create quote request
     const insertData = {
+      id: quoteId,
       clientId,
       status: 'REQUESTED',
       widthCm: parseFloat(widthCm),
