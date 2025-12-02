@@ -152,6 +152,69 @@ export async function POST(req: NextRequest) {
       .update({ status: 'BEING_PACKED' })
       .in('id', warehouseOrderIds)
 
+    // Check for additional charges and create invoice if any exist
+    const now = new Date()
+    const currentMonth = now.getMonth() + 1
+    const currentYear = now.getFullYear()
+
+    const { data: additionalCharges } = await supabase
+      .from('MonthlyAdditionalCharges')
+      .select('*')
+      .eq('clientId', clientId)
+      .eq('month', currentMonth)
+      .eq('year', currentYear)
+      .single()
+
+    let invoiceId: string | null = null
+
+    if (additionalCharges && additionalCharges.totalAmountEur > 0) {
+      // Create invoice for additional charges
+      const generateCUID = () => {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+        let result = 'inv'
+        for (let i = 0; i < 22; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        return result
+      }
+
+      invoiceId = generateCUID()
+      const dueDate = new Date()
+      dueDate.setDate(dueDate.getDate() + 14) // 14 days to pay
+
+      const { data: invoice, error: invoiceError } = await supabase
+        .from('Invoice')
+        .insert({
+          id: invoiceId,
+          clientId: clientId,
+          type: 'OPERATIONS',
+          amountEur: additionalCharges.totalAmountEur,
+          currency: 'EUR',
+          status: 'ISSUED',
+          dueDate: dueDate.toISOString(),
+        })
+        .select()
+        .single()
+
+      if (invoiceError) {
+        console.error('Error creating invoice for additional charges:', invoiceError)
+        // Continue with shipment creation even if invoice creation fails
+      } else {
+        // Reset additional charges after creating invoice
+        await supabase
+          .from('MonthlyAdditionalCharges')
+          .update({
+            overSpaceAmountEur: 0,
+            additionalServicesAmountEur: 0,
+            totalAmountEur: 0,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', additionalCharges.id)
+
+        console.log(`[Shipment ${shipmentOrderId}] Created invoice ${invoiceId} for additional charges: €${additionalCharges.totalAmountEur}`)
+      }
+    }
+
     // Fetch the complete shipment with items
     const { data: completeShipment, error: fetchError } = await supabase
       .from('ShipmentOrder')
@@ -162,12 +225,12 @@ export async function POST(req: NextRequest) {
     if (fetchError) {
       console.error('Error fetching complete shipment:', fetchError)
       // Return what we have
-      return NextResponse.json({ ...shipment, items: shipmentItems }, { status: 201 })
+      return NextResponse.json({ ...shipment, items: shipmentItems, invoiceId }, { status: 201 })
     }
 
     // TODO: Send notification to admin/warehouse
 
-    return NextResponse.json(completeShipment, { status: 201 })
+    return NextResponse.json({ ...completeShipment, invoiceId }, { status: 201 })
   } catch (error) {
     console.error('Error creating shipment:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

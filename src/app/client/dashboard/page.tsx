@@ -650,7 +650,7 @@ export default async function ClientDashboard() {
                       )}
                       {currentMonthCharges.additionalServicesAmountEur > 0 && (
                         <div className="flex justify-between">
-                          <span>Additional services:</span>
+                          <span>Additional services (local collection, etc.):</span>
                           <span className="font-medium">€{currentMonthCharges.additionalServicesAmountEur.toFixed(2)}</span>
                         </div>
                       )}
@@ -660,7 +660,7 @@ export default async function ClientDashboard() {
                       </div>
                     </div>
                     <p className="text-xs text-yellow-600 mt-2">
-                      These charges will be included in your monthly proforma invoice.
+                      These charges will be included in your invoice when you request a shipment.
                     </p>
                   </div>
                 </div>

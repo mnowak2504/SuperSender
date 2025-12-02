@@ -106,6 +106,60 @@ export async function POST(
       )
     }
 
+    // Add local collection cost to MonthlyAdditionalCharges
+    const now = new Date()
+    const currentMonth = now.getMonth() + 1 // 1-12
+    const currentYear = now.getFullYear()
+    const localCollectionCost = updatedQuote.quotedPriceEur || 0
+
+    if (localCollectionCost > 0) {
+      // Check if charges already exist for this month
+      const { data: existingCharges } = await supabase
+        .from('MonthlyAdditionalCharges')
+        .select('id, additionalServicesAmountEur, totalAmountEur')
+        .eq('clientId', clientId)
+        .eq('month', currentMonth)
+        .eq('year', currentYear)
+        .single()
+
+      const generateCUID = () => {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+        let result = 'mac' // Monthly Additional Charges prefix
+        for (let i = 0; i < 22; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        return result
+      }
+
+      if (existingCharges) {
+        // Update existing charges - add local collection cost
+        const newAdditionalServices = (existingCharges.additionalServicesAmountEur || 0) + localCollectionCost
+        const newTotal = (existingCharges.totalAmountEur || 0) + localCollectionCost
+
+        await supabase
+          .from('MonthlyAdditionalCharges')
+          .update({
+            additionalServicesAmountEur: newAdditionalServices,
+            totalAmountEur: newTotal,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', existingCharges.id)
+      } else {
+        // Create new charges record
+        await supabase
+          .from('MonthlyAdditionalCharges')
+          .insert({
+            id: generateCUID(),
+            clientId: clientId,
+            month: currentMonth,
+            year: currentYear,
+            overSpaceAmountEur: 0,
+            additionalServicesAmountEur: localCollectionCost,
+            totalAmountEur: localCollectionCost,
+          })
+      }
+    }
+
     // TODO: Send notification email to sales rep/admin about scheduled collection
 
     return NextResponse.json({ success: true, quote: updatedQuote })
