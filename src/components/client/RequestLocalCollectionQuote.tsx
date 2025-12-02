@@ -53,7 +53,10 @@ export default function RequestLocalCollectionQuote({ onClose, onSuccess }: Requ
 
       if (!res.ok) {
         const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to submit quote request')
+        const errorMessage = errorData.details 
+          ? `${errorData.error}: ${errorData.details}` 
+          : errorData.error || 'Failed to submit quote request'
+        throw new Error(errorMessage)
       }
 
       onSuccess()

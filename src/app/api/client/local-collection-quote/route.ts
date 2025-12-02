@@ -58,41 +58,62 @@ export async function POST(req: NextRequest) {
     }
 
     // Create quote request
+    const insertData = {
+      clientId,
+      status: 'REQUESTED',
+      widthCm: parseFloat(widthCm),
+      lengthCm: parseFloat(lengthCm),
+      heightCm: parseFloat(heightCm),
+      weightKg: parseFloat(weightKg),
+      volumeCbm: parseFloat(volumeCbm),
+      collectionAddressLine1,
+      collectionAddressLine2: collectionAddressLine2 || null,
+      collectionCity,
+      collectionPostCode,
+      collectionCountry: null, // Will be set when accepting quote
+      collectionContactName: null, // Will be set when accepting quote
+      collectionContactPhone: null, // Will be set when accepting quote
+      clientNotes: clientNotes || null,
+    }
+
+    console.log('[API /client/local-collection-quote POST] Attempting to insert:', {
+      clientId,
+      insertDataKeys: Object.keys(insertData),
+      widthCm: insertData.widthCm,
+      lengthCm: insertData.lengthCm,
+      heightCm: insertData.heightCm,
+      weightKg: insertData.weightKg,
+      volumeCbm: insertData.volumeCbm,
+    })
+
     const { data: quote, error } = await supabase
       .from('LocalCollectionQuote')
-      .insert({
-        clientId,
-        status: 'REQUESTED',
-        widthCm: parseFloat(widthCm),
-        lengthCm: parseFloat(lengthCm),
-        heightCm: parseFloat(heightCm),
-        weightKg: parseFloat(weightKg),
-        volumeCbm: parseFloat(volumeCbm),
-        collectionAddressLine1,
-        collectionAddressLine2: collectionAddressLine2 || null,
-        collectionCity,
-        collectionPostCode,
-        collectionCountry: null, // Will be set when accepting quote
-        collectionContactName: null, // Will be set when accepting quote
-        collectionContactPhone: null, // Will be set when accepting quote
-        clientNotes: clientNotes || null,
-      })
+      .insert(insertData)
       .select()
       .single()
 
     if (error) {
-      console.error('Error creating local collection quote:', {
+      console.error('[API /client/local-collection-quote POST] Error creating local collection quote:', {
         error,
         code: error.code,
         message: error.message,
         details: error.details,
         hint: error.hint,
-        body: {
-          clientId,
-          widthCm, lengthCm, heightCm, weightKg, volumeCbm,
-          collectionAddressLine1, collectionCity, collectionPostCode,
-        },
+        insertData,
       })
+
+      // Check if table doesn't exist
+      if (error.code === 'PGRST116' || error.message?.includes('does not exist') || error.message?.includes('relation') || error.code === '42P01') {
+        return NextResponse.json(
+          { 
+            error: 'Database table not found', 
+            details: 'The LocalCollectionQuote table has not been created yet. Please run the migration script in Supabase SQL Editor.',
+            hint: 'Run the migration: prisma/migrations/add-local-collection-quote.sql',
+          },
+          { status: 500 }
+        )
+      }
+
       return NextResponse.json(
         { 
           error: 'Failed to create quote request', 
