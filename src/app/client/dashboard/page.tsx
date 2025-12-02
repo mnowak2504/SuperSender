@@ -446,6 +446,30 @@ export default async function ClientDashboard() {
           </div>
         )}
 
+        {/* Request Local Collection Quote */}
+        <div className="mb-8">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <Truck className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Local Collection Service</h3>
+                  <p className="text-sm text-gray-500">Request a quote for local collection from your supplier</p>
+                </div>
+              </div>
+              <Link
+                href="/client/local-collection-quote"
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Request Quote
+              </Link>
+            </div>
+          </div>
+        </div>
+
         {/* Subscription Inactive Banner */}
         {!hasActiveSubscription && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
