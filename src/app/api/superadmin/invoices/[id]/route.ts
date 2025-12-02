@@ -92,6 +92,33 @@ export async function PUT(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
+    // If marking subscription invoice as paid, activate the subscription
+    if (status === 'PAID' && updatedInvoice.type === 'SUBSCRIPTION' && updatedInvoice.subscriptionStartDate && updatedInvoice.subscriptionPeriod && updatedInvoice.subscriptionPlanId) {
+      const startDate = new Date(updatedInvoice.subscriptionStartDate)
+      startDate.setHours(0, 0, 0, 0)
+      
+      const endDate = new Date(startDate)
+      const months = parseInt(updatedInvoice.subscriptionPeriod) || 1
+      endDate.setMonth(endDate.getMonth() + months)
+      endDate.setHours(23, 59, 59, 999)
+      
+      // Update client with plan and subscription dates
+      const { error: updateClientError } = await supabase
+        .from('Client')
+        .update({
+          planId: updatedInvoice.subscriptionPlanId,
+          subscriptionStartDate: startDate.toISOString(),
+          subscriptionEndDate: endDate.toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', updatedInvoice.clientId)
+
+      if (updateClientError) {
+        console.error('Error activating subscription after marking invoice as paid:', updateClientError)
+        // Don't fail the request, but log the error
+      }
+    }
+
     return NextResponse.json({ invoice: updatedInvoice })
   } catch (error) {
     console.error('Error in PUT /api/superadmin/invoices/[id]:', error)

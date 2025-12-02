@@ -131,7 +131,7 @@ export default function CheckoutPage() {
   }
 
   const calculateTotal = () => {
-    if (!plan || !setupFee) return 0
+    if (!plan) return 0
 
     // Base subscription amount
     let subscriptionAmount = plan.operationsRateEur
@@ -145,8 +145,11 @@ export default function CheckoutPage() {
       subscriptionAmount = subscriptionAmount * 1 // 1 month
     }
 
-    // Add setup fee
-    const total = subscriptionAmount + setupFee.currentAmountEur
+    // Add setup fee only if it should be charged
+    let total = subscriptionAmount
+    if (setupFee && setupFee.shouldCharge) {
+      total += setupFee.currentAmountEur
+    }
 
     // Apply voucher discount
     return Math.max(0, total - voucherDiscount)
@@ -262,7 +265,7 @@ export default function CheckoutPage() {
                       <p className="font-medium text-gray-900">€{subscriptionAmount.toFixed(2)}</p>
                     </div>
 
-                    {setupFee && (
+                    {setupFee && setupFee.shouldCharge && (
                       <div className="flex justify-between items-center pt-4 border-t border-gray-200">
                         <div>
                           <p className="font-medium text-gray-900">Setup Fee</p>
@@ -523,7 +526,7 @@ export default function CheckoutPage() {
                 <div className="space-y-4 mb-6">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="text-gray-900">€{(subscriptionAmount + (setupFee?.currentAmountEur || 0)).toFixed(2)}</span>
+                    <span className="text-gray-900">€{(subscriptionAmount + (setupFee && setupFee.shouldCharge ? setupFee.currentAmountEur : 0)).toFixed(2)}</span>
                   </div>
                   {voucherApplied && (
                     <div className="flex justify-between text-sm">

@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
       // We need to fetch it again to get all required fields
       const { data: fetchedClient, error: fetchError } = await supabase
         .from('Client')
-        .select('id, planId, subscriptionDiscount, clientCode, email')
+        .select('id, planId, subscriptionDiscount, clientCode, email, subscriptionEndDate')
         .eq('id', clientId)
         .single()
       
@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
       // Fetch existing client
       const { data: fetchedClient, error: clientError } = await supabase
         .from('Client')
-        .select('id, planId, subscriptionDiscount, clientCode, email')
+        .select('id, planId, subscriptionDiscount, clientCode, email, subscriptionEndDate')
         .eq('id', clientId)
         .single()
 
@@ -279,16 +279,39 @@ export async function POST(req: NextRequest) {
     const discount = client.subscriptionDiscount || 0
     let finalAmount = baseAmount * (1 - discount / 100)
 
-    // Get setup fee
-    const { data: setupFeeData } = await supabase
-      .from('SetupFee')
-      .select('*')
-      .order('createdAt', { ascending: false })
-      .limit(1)
-      .single()
+    // Determine if setup fee should be charged
+    // Setup fee is NOT charged if:
+    // - Client has an active subscription (subscriptionEndDate is in the future)
+    // - Client's subscription expired less than 1 month ago (renewal within 1 month)
+    // Setup fee IS charged if:
+    // - Client has no subscription (new client)
+    // - Client's subscription expired more than 1 month ago
+    let shouldChargeSetupFee = true
+    
+    if (client.subscriptionEndDate) {
+      const subscriptionEndDate = new Date(client.subscriptionEndDate)
+      const now = new Date()
+      const oneMonthAgo = new Date(now)
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+      
+      // If subscription is still active (end date in future) or expired less than 1 month ago, don't charge setup fee
+      if (subscriptionEndDate >= oneMonthAgo) {
+        shouldChargeSetupFee = false
+      }
+    }
 
-    const setupFee = setupFeeData?.currentAmountEur || 119.0
-    finalAmount += setupFee
+    // Get setup fee and add it if needed
+    if (shouldChargeSetupFee) {
+      const { data: setupFeeData } = await supabase
+        .from('SetupFee')
+        .select('*')
+        .order('createdAt', { ascending: false })
+        .limit(1)
+        .single()
+
+      const setupFee = setupFeeData?.currentAmountEur || 119.0
+      finalAmount += setupFee
+    }
 
     // Apply voucher discount if provided
     let voucherId = null
