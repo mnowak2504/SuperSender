@@ -153,6 +153,8 @@ export default async function WarehouseOrdersPage({
         items:ShipmentItem(
           warehouseOrder:WarehouseOrder(
             id,
+            warehouseInternalNumber,
+            internalTrackingNumber,
             warehouseLocation,
             sourceDelivery:DeliveryExpected(
               deliveryNumber,
@@ -186,7 +188,7 @@ export default async function WarehouseOrdersPage({
     // Fetch WarehouseOrders with PACKED status
     const { data: warehouseOrders, error: warehouseOrdersError } = await supabase
       .from('WarehouseOrder')
-      .select('id, status, createdAt, warehouseLocation, notes, receivedAt, clientId, sourceDeliveryId, Client:clientId(displayName, clientCode), sourceDelivery:sourceDeliveryId(id, deliveryNumber, supplierName, goodsDescription)')
+      .select('id, status, createdAt, warehouseInternalNumber, internalTrackingNumber, warehouseLocation, notes, receivedAt, clientId, sourceDeliveryId, Client:clientId(displayName, clientCode), sourceDelivery:sourceDeliveryId(id, deliveryNumber, supplierName, goodsDescription)')
       .eq('status', 'PACKED')
       .order('createdAt', { ascending: false })
     
@@ -212,6 +214,8 @@ export default async function WarehouseOrdersPage({
         items:ShipmentItem(
           warehouseOrder:WarehouseOrder(
             id,
+            warehouseInternalNumber,
+            internalTrackingNumber,
             warehouseLocation,
             sourceDelivery:DeliveryExpected(
               deliveryNumber,
@@ -535,7 +539,7 @@ export default async function WarehouseOrdersPage({
                                 {order.warehouseOrders.map((wo: any) => (
                                   <li key={wo.id} className="text-xs text-gray-600 bg-white p-2 rounded border">
                                     <div className="font-medium">
-                                      Nr wewnętrzny: {wo.internalTrackingNumber ? wo.internalTrackingNumber : wo.id.slice(-8)}
+                                      Nr wewnętrzny: {wo.warehouseInternalNumber || wo.internalTrackingNumber || wo.id.slice(-8)}
                                     </div>
                                     {wo.warehouseLocation && (
                                       <div>Lokalizacja: {wo.warehouseLocation}</div>
@@ -577,9 +581,9 @@ export default async function WarehouseOrdersPage({
                               {order.status}
                             </span>
                           </div>
-                          {order.internalTrackingNumber ? (
+                          {order.warehouseInternalNumber || order.internalTrackingNumber ? (
                             <div className="mt-1 text-sm font-medium text-gray-700">
-                              Nr ewidencyjny: <span className="font-mono">{order.internalTrackingNumber}</span>
+                              Nr wewnętrzny: <span className="font-mono">{order.warehouseInternalNumber || order.internalTrackingNumber}</span>
                             </div>
                           ) : null}
                           {order.sourceDelivery?.supplierName && (

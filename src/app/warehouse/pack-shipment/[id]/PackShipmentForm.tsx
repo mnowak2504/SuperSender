@@ -21,6 +21,7 @@ interface PackShipmentFormProps {
   warehouseOrders: Array<{
     id: string
     internalTrackingNumber?: string
+    warehouseInternalNumber?: string
     warehouseLocation?: string
     sourceDelivery?: {
       deliveryNumber?: string
@@ -221,39 +222,40 @@ export default function PackShipmentForm({ shipmentId, warehouseOrders }: PackSh
             return (
               <li 
                 key={wo.id} 
-                className={`text-sm bg-white p-3 rounded border cursor-pointer transition-colors ${
-                  isPacked ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-blue-300'
+                className={`text-sm bg-white p-3 rounded border transition-colors ${
+                  isPacked ? 'border-green-300 bg-green-50' : 'border-gray-200'
                 }`}
-                onClick={() => toggleOrderPacked(wo.id)}
               >
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5">
-                    {isPacked ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
-                    ) : (
-                      <Circle className="w-5 h-5 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium">
-                      Nr wewnętrzny: {wo.internalTrackingNumber ? wo.internalTrackingNumber : wo.id.slice(-8)}
+                  <label className="flex items-start gap-3 cursor-pointer flex-1">
+                    <input
+                      type="checkbox"
+                      checked={isPacked}
+                      onChange={() => toggleOrderPacked(wo.id)}
+                      className="mt-1 w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                      disabled={loading}
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium">
+                        Nr wewnętrzny: {wo.warehouseInternalNumber || wo.internalTrackingNumber || wo.id.slice(-8)}
+                      </div>
+                      {wo.warehouseLocation && (
+                        <div className="text-xs text-gray-600">Lokalizacja: {wo.warehouseLocation}</div>
+                      )}
+                      {wo.sourceDelivery && (
+                        <>
+                          <div className="text-xs text-gray-600">Dostawa: {wo.sourceDelivery.deliveryNumber || 'Brak numeru'}</div>
+                          <div className="text-xs text-gray-600">Dostawca: {wo.sourceDelivery.supplierName || 'Brak'}</div>
+                          {wo.sourceDelivery.goodsDescription && (
+                            <div className="text-xs text-gray-500">Opis: {wo.sourceDelivery.goodsDescription}</div>
+                          )}
+                        </>
+                      )}
                     </div>
-                    {wo.warehouseLocation && (
-                      <div className="text-xs text-gray-600">Lokalizacja: {wo.warehouseLocation}</div>
+                    {isPacked && (
+                      <span className="text-xs font-medium text-green-700">Spakowane</span>
                     )}
-                    {wo.sourceDelivery && (
-                      <>
-                        <div className="text-xs text-gray-600">Dostawa: {wo.sourceDelivery.deliveryNumber || 'Brak numeru'}</div>
-                        <div className="text-xs text-gray-600">Dostawca: {wo.sourceDelivery.supplierName || 'Brak'}</div>
-                        {wo.sourceDelivery.goodsDescription && (
-                          <div className="text-xs text-gray-500">Opis: {wo.sourceDelivery.goodsDescription}</div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  {isPacked && (
-                    <span className="text-xs font-medium text-green-700">Spakowane</span>
-                  )}
+                  </label>
                 </div>
               </li>
             )

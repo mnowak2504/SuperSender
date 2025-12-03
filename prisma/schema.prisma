@@ -186,21 +186,22 @@ model DeliveryExpected {
 }
 
 model WarehouseOrder {
-  id                 String                 @id @default(cuid())
-  client             Client                 @relation(fields: [clientId], references: [id])
-  clientId           String
-  sourceDelivery     DeliveryExpected?      @relation(fields: [sourceDeliveryId], references: [id])
-  sourceDeliveryId   String?                @unique
-  status             WarehouseOrderStatus   @default(AT_WAREHOUSE)
-  packedLengthCm     Int?
-  packedWidthCm      Int?
-  packedHeightCm     Int?
-  packedWeightKg     Float?
-  photosBeforeWrap   Media[] @relation("PhotosBeforeWrap")
-  photosAfterWrap    Media[] @relation("PhotosAfterWrap")
-  packages           Package[]
-  createdAt          DateTime               @default(now())
-  shipmentItems      ShipmentItem[]
+  id                     String                 @id @default(cuid())
+  client                 Client                 @relation(fields: [clientId], references: [id])
+  clientId               String
+  sourceDelivery         DeliveryExpected?      @relation(fields: [sourceDeliveryId], references: [id])
+  sourceDeliveryId       String?                @unique
+  status                 WarehouseOrderStatus   @default(AT_WAREHOUSE)
+  packedLengthCm         Int?
+  packedWidthCm          Int?
+  packedHeightCm         Int?
+  packedWeightKg         Float?
+  warehouseInternalNumber String?               // Manual number entered by warehouse staff
+  photosBeforeWrap       Media[] @relation("PhotosBeforeWrap")
+  photosAfterWrap        Media[] @relation("PhotosAfterWrap")
+  packages               Package[]
+  createdAt              DateTime               @default(now())
+  shipmentItems          ShipmentItem[]
 }
 
 model ShipmentOrder {

@@ -78,6 +78,7 @@ export default async function PackShipmentPage({
     .select(`
       id,
       internalTrackingNumber,
+      warehouseInternalNumber,
       warehouseLocation,
       sourceDelivery:sourceDeliveryId(
         deliveryNumber,
@@ -113,6 +114,7 @@ export default async function PackShipmentPage({
         warehouseOrders={warehouseOrders.map((wo: any) => ({
           id: wo.id,
           internalTrackingNumber: wo.internalTrackingNumber,
+          warehouseInternalNumber: wo.warehouseInternalNumber,
           warehouseLocation: wo.warehouseLocation,
           sourceDelivery: wo.sourceDelivery,
           isPacked: packedStatusMap.get(wo.id) || false,

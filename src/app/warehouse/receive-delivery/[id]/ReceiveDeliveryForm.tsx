@@ -39,6 +39,7 @@ export default function ReceiveDeliveryForm({
   const [formData, setFormData] = useState({
     condition: 'NO_REMARKS',
     warehouseLocation: '',
+    warehouseInternalNumber: '',
     notes: '',
   })
 
@@ -101,6 +102,7 @@ export default function ReceiveDeliveryForm({
       formDataToSend.append('clientId', clientId)
       formDataToSend.append('condition', formData.condition)
       formDataToSend.append('warehouseLocation', formData.warehouseLocation || '')
+      formDataToSend.append('warehouseInternalNumber', formData.warehouseInternalNumber || '')
       formDataToSend.append('notes', formData.notes || '')
       formDataToSend.append('items', JSON.stringify(items.map(item => ({
         type: item.type,
@@ -348,6 +350,24 @@ export default function ReceiveDeliveryForm({
             placeholder="A3-07"
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           />
+        </div>
+
+        <div>
+          <label htmlFor="warehouseInternalNumber" className="block text-sm font-medium text-gray-700">
+            Numer wewnętrzny magazynu *
+          </label>
+          <input
+            type="text"
+            id="warehouseInternalNumber"
+            value={formData.warehouseInternalNumber}
+            onChange={(e) => setFormData({ ...formData, warehouseInternalNumber: e.target.value })}
+            placeholder="Wpisz numer z naklejki"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            required
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Wpisz numer z naklejki, którą nakleisz na zamówienie po umieszczeniu w lokalizacji
+          </p>
         </div>
 
         <div>

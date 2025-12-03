@@ -37,11 +37,74 @@ export async function GET(req: NextRequest) {
       .eq('status', 'REQUESTED')
 
     // Missing data (no dimensions)
-    const { data: ordersWithoutData } = await supabase
+    // Check WarehouseOrders that:
+    // 1. Don't have dimensions in WarehouseOrder.packedLengthCm/WidthCm/HeightCm (old way)
+    // 2. AND are not part of a ShipmentOrder that has Package records with dimensions (new way)
+    
+    // Get all WarehouseOrders without dimensions in their own fields
+    // Only check orders that are still at warehouse or in preparation (not shipped)
+    const { data: ordersWithoutOwnDimensions } = await supabase
       .from('WarehouseOrder')
-      .select('id, packedLengthCm, packedWidthCm, packedHeightCm')
+      .select('id, packedLengthCm, packedWidthCm, packedHeightCm, status')
       .or('packedLengthCm.is.null,packedWidthCm.is.null,packedHeightCm.is.null')
-      .limit(10)
+      .in('status', ['AT_WAREHOUSE', 'IN_PREPARATION', 'PACKED'])
+    
+    // Get all WarehouseOrders that are part of ShipmentOrders with packages (have dimensions through shipment)
+    // Query ShipmentItems and check if their shipments have packages
+    const { data: allShipmentItems } = await supabase
+      .from('ShipmentItem')
+      .select('warehouseOrderId, shipmentId')
+    
+    // Get all ShipmentOrders that have packages with dimensions
+    const { data: shipmentsWithPackages } = await supabase
+      .from('ShipmentOrder')
+      .select(`
+        id,
+        packages:Package(
+          id,
+          widthCm,
+          lengthCm,
+          heightCm
+        )
+      `)
+      .not('packages', 'is', null)
+    
+    // Create a set of shipment IDs that have packages with dimensions
+    const shipmentsWithDimensions = new Set<string>()
+    if (shipmentsWithPackages) {
+      for (const shipment of shipmentsWithPackages) {
+        const packages = shipment.packages as any[]
+        if (packages && Array.isArray(packages) && packages.length > 0) {
+          // Check if at least one package has all dimensions
+          const hasDimensions = packages.some((pkg: any) => 
+            pkg.widthCm && pkg.lengthCm && pkg.heightCm
+          )
+          if (hasDimensions) {
+            shipmentsWithDimensions.add(shipment.id)
+          }
+        }
+      }
+    }
+    
+    // Create a set of warehouse order IDs that have dimensions through shipments
+    const ordersWithShipmentDimensions = new Set<string>()
+    if (allShipmentItems) {
+      for (const item of allShipmentItems) {
+        if (shipmentsWithDimensions.has(item.shipmentId)) {
+          ordersWithShipmentDimensions.add(item.warehouseOrderId)
+        }
+      }
+    }
+    
+    // Filter out orders that have dimensions through shipments
+    const ordersWithoutData = (ordersWithoutOwnDimensions || []).filter((order: any) => {
+      // If order is in a shipment with packages that have dimensions, it's not missing data
+      if (ordersWithShipmentDimensions.has(order.id)) {
+        return false
+      }
+      // Otherwise, it's missing data if it doesn't have its own dimensions
+      return true
+    }).slice(0, 10)
 
     // Shipped today
     const { data: shippedToday } = await supabase

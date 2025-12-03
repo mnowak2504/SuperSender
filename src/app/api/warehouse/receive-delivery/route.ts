@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
     let items: any[] = []
     let condition: string = 'NO_REMARKS'
     let warehouseLocation: string | null = null
+    let warehouseInternalNumber: string | null = null
     let notes: string | null = null
 
     const contentType = req.headers.get('content-type') || ''
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
       }
       condition = (formData.get('condition') as string) || 'NO_REMARKS'
       warehouseLocation = (formData.get('warehouseLocation') as string) || null
+      warehouseInternalNumber = (formData.get('warehouseInternalNumber') as string) || null
       notes = (formData.get('notes') as string) || null
     } else {
       const body = await req.json()
@@ -72,6 +74,7 @@ export async function POST(req: NextRequest) {
       items = body.items || []
       condition = body.condition || 'NO_REMARKS'
       warehouseLocation = body.warehouseLocation || null
+      warehouseInternalNumber = body.warehouseInternalNumber || null
       notes = body.notes || null
     }
 
@@ -203,10 +206,11 @@ export async function POST(req: NextRequest) {
         warehouseOrderId = existingOrder.id
         console.log('WarehouseOrder already exists for this delivery, using existing:', warehouseOrderId)
         
-        // Zaktualizuj warehouseLocation i notes jeśli zostały podane
-        if (warehouseLocation || notes) {
+        // Zaktualizuj warehouseLocation, warehouseInternalNumber i notes jeśli zostały podane
+        if (warehouseLocation || warehouseInternalNumber || notes) {
           const updateData: any = {}
           if (warehouseLocation) updateData.warehouseLocation = warehouseLocation
+          if (warehouseInternalNumber) updateData.warehouseInternalNumber = warehouseInternalNumber
           if (notes) updateData.notes = notes
           
           await supabase
@@ -242,6 +246,7 @@ export async function POST(req: NextRequest) {
           sourceDeliveryId: deliveryId,
           status: 'AT_WAREHOUSE',
           warehouseLocation: warehouseLocation || null,
+          warehouseInternalNumber: warehouseInternalNumber || null,
           notes: notes || null,
           receivedAt: new Date().toISOString(),
         }
