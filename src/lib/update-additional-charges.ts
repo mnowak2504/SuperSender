@@ -51,7 +51,7 @@ export async function updateMonthlyAdditionalCharges(
     const baseLimitCbm = capacity?.limitCbm || client.limitCbm || (client.plan as any)?.spaceLimitCbm || 0
     
     // Check for active paid overspace (not expired - within 1 month from charge date)
-    const now = new Date()
+    // Use 'now' from line 19 (already defined at function start)
     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 days ago
     
     const { data: activeOverspaceCharges } = await supabase

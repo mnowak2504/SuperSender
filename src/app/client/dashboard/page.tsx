@@ -176,11 +176,10 @@ export default async function ClientDashboard() {
   const deliveriesThisMonth = client?.deliveriesThisMonth || 0
   const deliveriesLimit = client?.planId ? 0 : 0 // TODO: Get from plan if needed
   
-  // Check subscription status with dates
+  // Check subscription status with dates (use 'now' from line 153)
   const hasActiveSubscription = !!client?.planId
   const subscriptionEndDate = client?.subscriptionEndDate ? new Date(client.subscriptionEndDate) : null
   const subscriptionStartDate = client?.subscriptionStartDate ? new Date(client.subscriptionStartDate) : null
-  const now = new Date()
   const isSubscriptionExpired = subscriptionEndDate ? subscriptionEndDate < now : false
   const isSubscriptionPending = subscriptionStartDate ? subscriptionStartDate > now : false
   const daysUntilExpiry = subscriptionEndDate ? Math.ceil((subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null
