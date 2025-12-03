@@ -74,7 +74,6 @@ export default async function PackShipmentPage({
     .from('WarehouseOrder')
     .select(`
       id,
-      internalTrackingNumber,
       warehouseLocation,
       sourceDelivery:sourceDeliveryId(
         deliveryNumber,

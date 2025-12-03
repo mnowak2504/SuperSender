@@ -6,7 +6,7 @@
  * This number is used internally by warehouse staff for quick identification
  * and is NOT shown to clients.
  */
-export async function generateInternalTrackingNumber(supabase: any): Promise<string> {
+export async function generateInternalTrackingNumber(supabase: any): Promise<string | null> {
   const year = new Date().getFullYear()
   const prefix = `INT-${year}-`
 
@@ -19,6 +19,11 @@ export async function generateInternalTrackingNumber(supabase: any): Promise<str
     .limit(1)
 
   if (error) {
+    // Check if error is because column doesn't exist
+    if (error.code === '42703' || error.message?.includes('does not exist') || error.message?.includes('schema cache')) {
+      console.warn('internalTrackingNumber column does not exist in database, skipping generation')
+      return null
+    }
     console.error('Error fetching existing internal tracking numbers:', error)
     // Fallback: generate based on timestamp
     return `${prefix}${Date.now().toString().slice(-6)}`

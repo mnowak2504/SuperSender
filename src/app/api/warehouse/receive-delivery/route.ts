@@ -96,11 +96,26 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Jeśli dostawa już została przetworzona, sprawdź czy WarehouseOrder istnieje
+    // Jeśli tak, pozwól na aktualizację (np. dodanie pakietów, zmiana lokalizacji)
     if (delivery.status !== 'EXPECTED') {
-      return NextResponse.json(
-        { error: `Delivery already processed. Current status: ${delivery.status}` },
-        { status: 400 }
-      )
+      // Sprawdź czy istnieje WarehouseOrder dla tej dostawy
+      const { data: existingOrder } = await supabase
+        .from('WarehouseOrder')
+        .select('id')
+        .eq('sourceDeliveryId', deliveryId)
+        .maybeSingle()
+      
+      // Jeśli nie ma WarehouseOrder, to znaczy że coś poszło nie tak - zwróć błąd
+      if (!existingOrder) {
+        return NextResponse.json(
+          { error: `Delivery already processed but no warehouse order found. Current status: ${delivery.status}` },
+          { status: 400 }
+        )
+      }
+      
+      // Jeśli WarehouseOrder istnieje, kontynuuj (pozwól na aktualizację pakietów/lokalizacji)
+      console.log('Delivery already processed, but allowing update. WarehouseOrder exists:', existingOrder.id)
     }
 
     // Określ status na podstawie condition
@@ -184,9 +199,21 @@ export async function POST(req: NextRequest) {
         .maybeSingle()
 
       if (existingOrder) {
-        // WarehouseOrder już istnieje - użyj istniejącego ID
+        // WarehouseOrder już istnieje - użyj istniejącego ID i zaktualizuj dane jeśli potrzeba
         warehouseOrderId = existingOrder.id
         console.log('WarehouseOrder already exists for this delivery, using existing:', warehouseOrderId)
+        
+        // Zaktualizuj warehouseLocation i notes jeśli zostały podane
+        if (warehouseLocation || notes) {
+          const updateData: any = {}
+          if (warehouseLocation) updateData.warehouseLocation = warehouseLocation
+          if (notes) updateData.notes = notes
+          
+          await supabase
+            .from('WarehouseOrder')
+            .update(updateData)
+            .eq('id', warehouseOrderId)
+        }
       } else {
         // Generuj ID dla WarehouseOrder (używamy funkcji pomocniczej jeśli dostępna, lub prostej generacji)
         const generateCUID = () => {
@@ -199,22 +226,34 @@ export async function POST(req: NextRequest) {
         }
         warehouseOrderId = generateCUID()
 
-        // Generate internal tracking number for warehouse use
+        // Generate internal tracking number for warehouse use (if column exists)
         const { generateInternalTrackingNumber } = await import('@/lib/internal-tracking-number')
-        const internalTrackingNumber = await generateInternalTrackingNumber(supabase)
+        let internalTrackingNumber: string | null = null
+        try {
+          internalTrackingNumber = await generateInternalTrackingNumber(supabase)
+        } catch (err) {
+          console.warn('Could not generate internal tracking number, column may not exist:', err)
+        }
+
+        // Build insert data - only include internalTrackingNumber if it was generated
+        const insertData: any = {
+          id: warehouseOrderId,
+          clientId: clientId,
+          sourceDeliveryId: deliveryId,
+          status: 'AT_WAREHOUSE',
+          warehouseLocation: warehouseLocation || null,
+          notes: notes || null,
+          receivedAt: new Date().toISOString(),
+        }
+        
+        // Only add internalTrackingNumber if column exists and value was generated
+        if (internalTrackingNumber !== null) {
+          insertData.internalTrackingNumber = internalTrackingNumber
+        }
 
         const { error: warehouseOrderError } = await supabase
           .from('WarehouseOrder')
-          .insert({
-            id: warehouseOrderId,
-            clientId: clientId,
-            sourceDeliveryId: deliveryId,
-            status: 'AT_WAREHOUSE',
-            warehouseLocation: warehouseLocation || null,
-            notes: notes || null,
-            receivedAt: new Date().toISOString(),
-            internalTrackingNumber: internalTrackingNumber,
-          })
+          .insert(insertData)
 
         if (warehouseOrderError) {
           console.error('Error creating warehouse order:', warehouseOrderError)
@@ -226,36 +265,48 @@ export async function POST(req: NextRequest) {
       }
 
       // 2.5. Create Package records for each item (if RECEIVED and items provided)
-      if (items.length > 0) {
-        const packageInserts = items.map((item: any) => ({
-          id: crypto.randomUUID(),
-          warehouseOrderId: warehouseOrderId!,
-          type: item.type || 'PALLET',
-          widthCm: item.widthCm,
-          lengthCm: item.lengthCm,
-          heightCm: item.heightCm,
-          weightKg: item.weightKg,
-          volumeCbm: item.volumeCbm || calculateVolumeCbm(item.widthCm, item.lengthCm, item.heightCm),
-        }))
-
-        const { error: packageError } = await supabase
+      // Sprawdź czy już istnieją pakiety dla tego WarehouseOrder
+      if (items.length > 0 && warehouseOrderId) {
+        const { data: existingPackages } = await supabase
           .from('Package')
-          .insert(packageInserts)
+          .select('id')
+          .eq('warehouseOrderId', warehouseOrderId)
+          .limit(1)
+        
+        // Twórz pakiety tylko jeśli jeszcze nie istnieją
+        if (!existingPackages || existingPackages.length === 0) {
+          const packageInserts = items.map((item: any) => ({
+            id: crypto.randomUUID(),
+            warehouseOrderId: warehouseOrderId!,
+            type: item.type || 'PALLET',
+            widthCm: item.widthCm,
+            lengthCm: item.lengthCm,
+            heightCm: item.heightCm,
+            weightKg: item.weightKg,
+            volumeCbm: item.volumeCbm || calculateVolumeCbm(item.widthCm, item.lengthCm, item.heightCm),
+          }))
 
-        if (packageError) {
-          console.error('Error creating packages:', packageError)
-          // Don't fail the whole operation, just log it
-        } else {
-          // Trigger warehouse capacity update
-          try {
-            await supabase.rpc('update_client_warehouse_capacity', { client_id: clientId })
-            
-            // Automatically update monthly additional charges (over-space)
-            const { updateMonthlyAdditionalCharges } = await import('@/lib/update-additional-charges')
-            await updateMonthlyAdditionalCharges(clientId)
-          } catch (capacityError) {
-            console.warn('Could not update warehouse capacity:', capacityError)
+          const { error: packageError } = await supabase
+            .from('Package')
+            .insert(packageInserts)
+
+          if (packageError) {
+            console.error('Error creating packages:', packageError)
+            // Don't fail the whole operation, just log it
+          } else {
+            // Trigger warehouse capacity update
+            try {
+              await supabase.rpc('update_client_warehouse_capacity', { client_id: clientId })
+              
+              // Automatically update monthly additional charges (over-space)
+              const { updateMonthlyAdditionalCharges } = await import('@/lib/update-additional-charges')
+              await updateMonthlyAdditionalCharges(clientId)
+            } catch (capacityError) {
+              console.warn('Could not update warehouse capacity:', capacityError)
+            }
           }
+        } else {
+          console.log('Packages already exist for this warehouse order, skipping creation')
         }
       }
 

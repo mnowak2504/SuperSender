@@ -153,7 +153,6 @@ export default async function WarehouseOrdersPage({
         items:ShipmentItem(
           warehouseOrder:WarehouseOrder(
             id,
-            internalTrackingNumber,
             warehouseLocation,
             sourceDelivery:DeliveryExpected(
               deliveryNumber,
@@ -184,7 +183,7 @@ export default async function WarehouseOrdersPage({
     // For other statuses (AT_WAREHOUSE, PACKED), fetch WarehouseOrders
     let query = supabase
       .from('WarehouseOrder')
-      .select('*, Client:clientId(displayName, clientCode), sourceDelivery:sourceDeliveryId(id, deliveryNumber, supplierName, goodsDescription)')
+      .select('id, status, createdAt, warehouseLocation, notes, receivedAt, clientId, sourceDeliveryId, Client:clientId(displayName, clientCode), sourceDelivery:sourceDeliveryId(id, deliveryNumber, supplierName, goodsDescription)')
       .order('createdAt', { ascending: false })
 
     query = query.eq('status', statusFilter)
@@ -193,9 +192,20 @@ export default async function WarehouseOrdersPage({
     
     if (ordersError) {
       error = ordersError
-      console.error('Error fetching warehouse orders:', ordersError)
+      console.error('[WAREHOUSE ORDERS] Error fetching warehouse orders:', ordersError)
     } else {
       orders = warehouseOrders || []
+      console.log(`[WAREHOUSE ORDERS] Found ${orders.length} orders with status ${statusFilter}`)
+      if (orders.length > 0) {
+        console.log('[WAREHOUSE ORDERS] Sample order:', {
+          id: orders[0].id,
+          status: orders[0].status,
+          clientId: orders[0].clientId,
+          sourceDeliveryId: orders[0].sourceDeliveryId,
+          hasClient: !!orders[0].Client,
+          hasSourceDelivery: !!orders[0].sourceDelivery,
+        })
+      }
     }
   }
 
@@ -422,7 +432,7 @@ export default async function WarehouseOrdersPage({
                                 {order.warehouseOrders.map((wo: any) => (
                                   <li key={wo.id} className="text-xs text-gray-600 bg-white p-2 rounded border">
                                     <div className="font-medium">
-                                      Nr wewnętrzny: {wo.internalTrackingNumber || wo.id.slice(-8)}
+                                      Nr wewnętrzny: {wo.internalTrackingNumber ? wo.internalTrackingNumber : wo.id.slice(-8)}
                                     </div>
                                     {wo.warehouseLocation && (
                                       <div>Lokalizacja: {wo.warehouseLocation}</div>
@@ -464,11 +474,11 @@ export default async function WarehouseOrdersPage({
                               {order.status}
                             </span>
                           </div>
-                          {order.internalTrackingNumber && (
+                          {order.internalTrackingNumber ? (
                             <div className="mt-1 text-sm font-medium text-gray-700">
                               Nr ewidencyjny: <span className="font-mono">{order.internalTrackingNumber}</span>
                             </div>
-                          )}
+                          ) : null}
                           {order.sourceDelivery?.supplierName && (
                             <div className="mt-1 text-sm text-gray-600">
                               <span className="font-medium">Dostawca:</span> {order.sourceDelivery.supplierName}

@@ -173,9 +173,9 @@ export default function PackShipmentForm({ shipmentId, warehouseOrders }: PackSh
         <ul className="space-y-2">
           {warehouseOrders.map((wo) => (
             <li key={wo.id} className="text-sm text-gray-700 bg-white p-2 rounded border">
-              <div className="font-medium">
-                Nr wewnętrzny: {wo.internalTrackingNumber || wo.id.slice(-8)}
-              </div>
+                                    <div className="font-medium">
+                                      Nr wewnętrzny: {wo.internalTrackingNumber ? wo.internalTrackingNumber : wo.id.slice(-8)}
+                                    </div>
               {wo.warehouseLocation && (
                 <div>Lokalizacja: {wo.warehouseLocation}</div>
               )}
