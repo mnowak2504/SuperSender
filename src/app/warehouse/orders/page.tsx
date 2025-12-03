@@ -182,15 +182,9 @@ export default async function WarehouseOrdersPage({
       }))
     }
   } else if (statusFilter === 'PACKED') {
-    // For PACKED, show both WarehouseOrders with PACKED status AND ShipmentOrders with QUOTED status
+    // For PACKED, show ONLY ShipmentOrders with QUOTED status
     // (QUOTED means shipment was packed and is ready for client to choose transport)
-    
-    // Fetch WarehouseOrders with PACKED status
-    const { data: warehouseOrders, error: warehouseOrdersError } = await supabase
-      .from('WarehouseOrder')
-      .select('id, status, createdAt, warehouseInternalNumber, internalTrackingNumber, warehouseLocation, notes, receivedAt, clientId, sourceDeliveryId, Client:clientId(displayName, clientCode), sourceDelivery:sourceDeliveryId(id, deliveryNumber, supplierName, goodsDescription)')
-      .eq('status', 'PACKED')
-      .order('createdAt', { ascending: false })
+    // WarehouseOrders are NOT shown here - they are part of ShipmentOrders
     
     // Fetch ShipmentOrders with QUOTED status (packed shipments)
     const { data: packedShipments, error: shipmentsError } = await supabase
@@ -228,26 +222,13 @@ export default async function WarehouseOrdersPage({
       .eq('status', 'QUOTED')
       .order('createdAt', { ascending: false })
     
-    if (warehouseOrdersError) {
-      error = warehouseOrdersError
-      console.error('[WAREHOUSE ORDERS] Error fetching packed warehouse orders:', warehouseOrdersError)
-    }
-    
     if (shipmentsError) {
+      error = shipmentsError
       console.error('[WAREHOUSE ORDERS] Error fetching packed shipments:', shipmentsError)
-      // Don't overwrite error if warehouseOrdersError already set
-      if (!error) {
-        error = shipmentsError
-      }
     }
     
-    // Combine both types of orders
-    const warehouseOrdersList = (warehouseOrders || []).map((wo: any) => ({
-      ...wo,
-      type: 'WAREHOUSE_ORDER',
-    }))
-    
-    const shipmentsList = (packedShipments || []).map((shipment: any) => {
+    // Transform shipments for display
+    orders = (packedShipments || []).map((shipment: any) => {
       const packages = Array.isArray(shipment.packages) 
         ? shipment.packages 
         : shipment.packages 
@@ -272,13 +253,6 @@ export default async function WarehouseOrdersPage({
         packages: packages,
         warehouseOrders: items.map((item: any) => item.warehouseOrder).filter(Boolean),
       }
-    })
-    
-    // Combine and sort by createdAt (newest first)
-    orders = [...warehouseOrdersList, ...shipmentsList].sort((a, b) => {
-      const dateA = new Date(a.createdAt).getTime()
-      const dateB = new Date(b.createdAt).getTime()
-      return dateB - dateA
     })
     
     console.log(`[WAREHOUSE ORDERS - PACKED] Found ${warehouseOrdersList.length} warehouse orders and ${shipmentsList.length} packed shipments`)

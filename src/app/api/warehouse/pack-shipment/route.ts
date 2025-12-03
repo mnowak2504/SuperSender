@@ -136,7 +136,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Update warehouse capacity for the client (packages are now linked to shipment)
+    // Update warehouse capacity for the client
+    // This will free up space because:
+    // 1. WarehouseOrders are already IN_PREPARATION (excluded from capacity calculation)
+    // 2. Packages are now linked to ShipmentOrder, not WarehouseOrder (so they don't count)
     try {
       await supabase.rpc('update_client_warehouse_capacity', { client_id: shipment.clientId })
       
@@ -148,23 +151,13 @@ export async function POST(req: NextRequest) {
       // Don't fail the operation if capacity update fails
     }
 
-    // Update all WarehouseOrders to PACKED (packing is complete)
-    const { error: updateOrdersError } = await supabase
-      .from('WarehouseOrder')
-      .update({
-        status: 'PACKED',
-        packedAt: new Date().toISOString(),
-        notes: notes || null,
-      })
-      .in('id', warehouseOrderIds)
-
-    if (updateOrdersError) {
-      console.error('Error updating warehouse orders:', updateOrdersError)
-      return NextResponse.json(
-        { error: 'Failed to update warehouse orders', details: updateOrdersError.message },
-        { status: 500 }
-      )
-    }
+    // Note: We do NOT change WarehouseOrder status to PACKED
+    // WarehouseOrders remain in IN_PREPARATION status (they are part of a ShipmentOrder)
+    // The ShipmentOrder itself changes to QUOTED status, which is what matters
+    // This ensures that:
+    // 1. WarehouseOrders in IN_PREPARATION don't count towards space usage
+    // 2. Packages linked to ShipmentOrder don't count towards space usage
+    // 3. Only WarehouseOrders with status AT_WAREHOUSE count towards space usage
 
     // Calculate total volume, weight, and pallet count
     let totalVolume = 0
