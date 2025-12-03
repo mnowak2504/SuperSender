@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
     // Missing data (no dimensions)
     // Check WarehouseOrders that:
     // 1. Don't have dimensions in WarehouseOrder.packedLengthCm/WidthCm/HeightCm (old way)
-    // 2. AND are not part of a ShipmentOrder that has Package records with dimensions (new way)
+    // 2. AND don't have Package records directly linked to WarehouseOrder (from receiving delivery)
+    // 3. AND are not part of a ShipmentOrder that has Package records with dimensions (from packing)
     
     // Get all WarehouseOrders without dimensions in their own fields
     // Only check orders that are still at warehouse or in preparation (not shipped)
@@ -48,6 +49,22 @@ export async function GET(req: NextRequest) {
       .select('id, packedLengthCm, packedWidthCm, packedHeightCm, status')
       .or('packedLengthCm.is.null,packedWidthCm.is.null,packedHeightCm.is.null')
       .in('status', ['AT_WAREHOUSE', 'IN_PREPARATION', 'PACKED'])
+    
+    // Get all WarehouseOrders that have Package records directly linked (from receiving delivery)
+    const { data: packagesLinkedToOrders } = await supabase
+      .from('Package')
+      .select('warehouseOrderId, widthCm, lengthCm, heightCm')
+      .not('warehouseOrderId', 'is', null)
+    
+    // Create a set of warehouse order IDs that have dimensions through direct Package links
+    const ordersWithDirectPackageDimensions = new Set<string>()
+    if (packagesLinkedToOrders) {
+      for (const pkg of packagesLinkedToOrders) {
+        if (pkg.warehouseOrderId && pkg.widthCm && pkg.lengthCm && pkg.heightCm) {
+          ordersWithDirectPackageDimensions.add(pkg.warehouseOrderId)
+        }
+      }
+    }
     
     // Get all WarehouseOrders that are part of ShipmentOrders with packages (have dimensions through shipment)
     // Query ShipmentItems and check if their shipments have packages
@@ -96,8 +113,12 @@ export async function GET(req: NextRequest) {
       }
     }
     
-    // Filter out orders that have dimensions through shipments
+    // Filter out orders that have dimensions (either directly through Package or through ShipmentOrder)
     const ordersWithoutData = (ordersWithoutOwnDimensions || []).filter((order: any) => {
+      // If order has dimensions through direct Package link (from receiving), it's not missing data
+      if (ordersWithDirectPackageDimensions.has(order.id)) {
+        return false
+      }
       // If order is in a shipment with packages that have dimensions, it's not missing data
       if (ordersWithShipmentDimensions.has(order.id)) {
         return false
