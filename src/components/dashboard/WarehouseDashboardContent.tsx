@@ -149,7 +149,7 @@ export default function WarehouseDashboardContent() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">{adminTranslations.shipping_requests}</h2>
             <Link
-              href="/warehouse/shipments"
+              href="/warehouse/orders?status=TO_PACK"
               className="text-sm text-blue-600 hover:text-blue-800"
             >
               {adminTranslations.view_all} →
@@ -159,7 +159,7 @@ export default function WarehouseDashboardContent() {
             {adminTranslations.pack_orders}
           </p>
           <Link
-            href="/warehouse/shipments"
+            href="/warehouse/orders?status=TO_PACK"
             className="inline-flex items-center justify-center w-full px-4 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
           >
             <Package className="w-5 h-5 mr-2" />
