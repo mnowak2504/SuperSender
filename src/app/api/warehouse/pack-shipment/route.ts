@@ -71,10 +71,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Verify all warehouse orders belong to this shipment
+    // Verify all warehouse orders belong to this shipment and are marked as packed
     const { data: shipmentItems } = await supabase
       .from('ShipmentItem')
-      .select('warehouseOrderId')
+      .select('warehouseOrderId, isPacked')
       .eq('shipmentId', shipmentId)
 
     const validOrderIds = shipmentItems?.map((item: any) => item.warehouseOrderId) || []
@@ -83,6 +83,18 @@ export async function POST(req: NextRequest) {
     if (!allOrdersValid) {
       return NextResponse.json(
         { error: 'Some warehouse orders do not belong to this shipment' },
+        { status: 400 }
+      )
+    }
+
+    // Check if all orders are marked as packed
+    const allPacked = shipmentItems?.every((item: any) => 
+      item.isPacked === true && warehouseOrderIds.includes(item.warehouseOrderId)
+    )
+
+    if (!allPacked) {
+      return NextResponse.json(
+        { error: 'All warehouse orders must be marked as packed before finalizing shipment dimensions' },
         { status: 400 }
       )
     }

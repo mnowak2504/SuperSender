@@ -773,7 +773,7 @@ export default async function ClientDashboard() {
             )}
             {hasActiveSubscription && hasReceivedItems ? (
               <Link
-                href="/client/shipments/new"
+                href="/client/warehouse-orders"
                 className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-all hover:shadow-lg hover:scale-[1.02]"
                 title="Request shipment of your warehouse orders"
               >

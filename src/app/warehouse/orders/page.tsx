@@ -179,8 +179,107 @@ export default async function WarehouseOrdersPage({
         warehouseOrders: (po.items || []).map((item: any) => item.warehouseOrder).filter(Boolean),
       }))
     }
+  } else if (statusFilter === 'PACKED') {
+    // For PACKED, show both WarehouseOrders with PACKED status AND ShipmentOrders with QUOTED status
+    // (QUOTED means shipment was packed and is ready for client to choose transport)
+    
+    // Fetch WarehouseOrders with PACKED status
+    const { data: warehouseOrders, error: warehouseOrdersError } = await supabase
+      .from('WarehouseOrder')
+      .select('id, status, createdAt, warehouseLocation, notes, receivedAt, clientId, sourceDeliveryId, Client:clientId(displayName, clientCode), sourceDelivery:sourceDeliveryId(id, deliveryNumber, supplierName, goodsDescription)')
+      .eq('status', 'PACKED')
+      .order('createdAt', { ascending: false })
+    
+    // Fetch ShipmentOrders with QUOTED status (packed shipments)
+    const { data: packedShipments, error: shipmentsError } = await supabase
+      .from('ShipmentOrder')
+      .select(`
+        id,
+        packingOrderNumber,
+        createdAt,
+        status,
+        calculatedPriceEur,
+        Client:clientId(displayName, clientCode),
+        packages:Package(
+          id,
+          type,
+          widthCm,
+          lengthCm,
+          heightCm,
+          weightKg,
+          volumeCbm
+        ),
+        items:ShipmentItem(
+          warehouseOrder:WarehouseOrder(
+            id,
+            warehouseLocation,
+            sourceDelivery:DeliveryExpected(
+              deliveryNumber,
+              supplierName,
+              goodsDescription
+            )
+          )
+        )
+      `)
+      .eq('status', 'QUOTED')
+      .order('createdAt', { ascending: false })
+    
+    if (warehouseOrdersError) {
+      error = warehouseOrdersError
+      console.error('[WAREHOUSE ORDERS] Error fetching packed warehouse orders:', warehouseOrdersError)
+    }
+    
+    if (shipmentsError) {
+      console.error('[WAREHOUSE ORDERS] Error fetching packed shipments:', shipmentsError)
+      // Don't overwrite error if warehouseOrdersError already set
+      if (!error) {
+        error = shipmentsError
+      }
+    }
+    
+    // Combine both types of orders
+    const warehouseOrdersList = (warehouseOrders || []).map((wo: any) => ({
+      ...wo,
+      type: 'WAREHOUSE_ORDER',
+    }))
+    
+    const shipmentsList = (packedShipments || []).map((shipment: any) => {
+      const packages = Array.isArray(shipment.packages) 
+        ? shipment.packages 
+        : shipment.packages 
+          ? [shipment.packages] 
+          : []
+      
+      const items = Array.isArray(shipment.items) 
+        ? shipment.items 
+        : shipment.items 
+          ? [shipment.items] 
+          : []
+      
+      return {
+        id: shipment.id,
+        type: 'SHIPMENT',
+        shipmentId: shipment.id,
+        packingOrderNumber: shipment.packingOrderNumber,
+        status: shipment.status,
+        createdAt: shipment.createdAt,
+        calculatedPriceEur: shipment.calculatedPriceEur,
+        Client: shipment.Client,
+        packages: packages,
+        warehouseOrders: items.map((item: any) => item.warehouseOrder).filter(Boolean),
+      }
+    })
+    
+    // Combine and sort by createdAt (newest first)
+    orders = [...warehouseOrdersList, ...shipmentsList].sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime()
+      const dateB = new Date(b.createdAt).getTime()
+      return dateB - dateA
+    })
+    
+    console.log(`[WAREHOUSE ORDERS - PACKED] Found ${warehouseOrdersList.length} warehouse orders and ${shipmentsList.length} packed shipments`)
   } else {
-    // For other statuses (AT_WAREHOUSE, PACKED), fetch WarehouseOrders
+    // For other statuses (AT_WAREHOUSE), fetch WarehouseOrders
     let query = supabase
       .from('WarehouseOrder')
       .select('id, status, createdAt, warehouseLocation, notes, receivedAt, clientId, sourceDeliveryId, Client:clientId(displayName, clientCode), sourceDelivery:sourceDeliveryId(id, deliveryNumber, supplierName, goodsDescription)')
@@ -262,10 +361,14 @@ export default async function WarehouseOrdersPage({
                         <>
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium text-gray-900">
-                              Shipment #{order.shipmentId.slice(-8)}
+                              {order.packingOrderNumber ? `Zlecenie pakowania: ${order.packingOrderNumber}` : `Shipment #${order.shipmentId.slice(-8)}`}
                             </p>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Gotowe do wysyłki
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              order.status === 'QUOTED' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {order.status === 'QUOTED' ? 'Spakowane' : 'Gotowe do wysyłki'}
                             </span>
                           </div>
                           <div className="mt-2 flex items-center text-sm text-gray-500">

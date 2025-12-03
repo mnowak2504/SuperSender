@@ -51,13 +51,16 @@ export default async function PackShipmentPage({
     )
   }
 
-  // Fetch warehouse orders for this shipment
+  // Fetch warehouse orders for this shipment with packed status
   const { data: shipmentItems } = await supabase
     .from('ShipmentItem')
-    .select('warehouseOrderId')
+    .select('warehouseOrderId, isPacked')
     .eq('shipmentId', id)
 
   const warehouseOrderIds = shipmentItems?.map((item: any) => item.warehouseOrderId) || []
+  const packedStatusMap = new Map(
+    shipmentItems?.map((item: any) => [item.warehouseOrderId, item.isPacked || false]) || []
+  )
 
   if (warehouseOrderIds.length === 0) {
     return (
@@ -74,6 +77,7 @@ export default async function PackShipmentPage({
     .from('WarehouseOrder')
     .select(`
       id,
+      internalTrackingNumber,
       warehouseLocation,
       sourceDelivery:sourceDeliveryId(
         deliveryNumber,
@@ -111,6 +115,7 @@ export default async function PackShipmentPage({
           internalTrackingNumber: wo.internalTrackingNumber,
           warehouseLocation: wo.warehouseLocation,
           sourceDelivery: wo.sourceDelivery,
+          isPacked: packedStatusMap.get(wo.id) || false,
         }))}
       />
     </div>
