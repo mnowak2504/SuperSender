@@ -255,7 +255,7 @@ export default async function WarehouseOrdersPage({
       }
     })
     
-    console.log(`[WAREHOUSE ORDERS - PACKED] Found ${warehouseOrdersList.length} warehouse orders and ${shipmentsList.length} packed shipments`)
+    console.log(`[WAREHOUSE ORDERS - PACKED] Found ${orders.length} packed shipments`)
   } else {
     // For other statuses (AT_WAREHOUSE), fetch WarehouseOrders
     let query = supabase
