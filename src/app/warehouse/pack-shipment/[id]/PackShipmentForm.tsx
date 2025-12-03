@@ -213,9 +213,13 @@ export default function PackShipmentForm({ shipmentId, warehouseOrders }: PackSh
 
       {/* Warehouse Orders List with Checkboxes */}
       <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">
+        <h3 className="text-sm font-semibold text-gray-900 mb-2">
           Zamówienia do spakowania ({packedOrders.size}/{warehouseOrders.length}):
         </h3>
+        <p className="text-xs text-gray-600 mb-3">
+          <strong>Krok 1:</strong> Zaznacz checkbox przy każdym zamówieniu, które zostało fizycznie spakowane. 
+          Formularz wymiarów pojawi się dopiero po zaznaczeniu wszystkich zamówień.
+        </p>
         <ul className="space-y-2">
           {warehouseOrders.map((wo) => {
             const isPacked = packedOrders.has(wo.id)
@@ -223,7 +227,7 @@ export default function PackShipmentForm({ shipmentId, warehouseOrders }: PackSh
               <li 
                 key={wo.id} 
                 className={`text-sm bg-white p-3 rounded border transition-colors ${
-                  isPacked ? 'border-green-300 bg-green-50' : 'border-gray-200'
+                  isPacked ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-blue-300'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -232,7 +236,7 @@ export default function PackShipmentForm({ shipmentId, warehouseOrders }: PackSh
                       type="checkbox"
                       checked={isPacked}
                       onChange={() => toggleOrderPacked(wo.id)}
-                      className="mt-1 w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                      className="mt-1 w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500 focus:ring-2 cursor-pointer"
                       disabled={loading}
                     />
                     <div className="flex-1">
@@ -253,7 +257,7 @@ export default function PackShipmentForm({ shipmentId, warehouseOrders }: PackSh
                       )}
                     </div>
                     {isPacked && (
-                      <span className="text-xs font-medium text-green-700">Spakowane</span>
+                      <span className="text-xs font-medium text-green-700 whitespace-nowrap">✓ Spakowane</span>
                     )}
                   </label>
                 </div>
@@ -263,7 +267,7 @@ export default function PackShipmentForm({ shipmentId, warehouseOrders }: PackSh
         </ul>
         {!allOrdersPacked && (
           <div className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
-            ⚠️ Zaznacz wszystkie zamówienia jako spakowane, aby móc wprowadzić wymiary
+            ⚠️ <strong>Zaznacz wszystkie zamówienia jako spakowane powyżej</strong>, aby odblokować formularz wymiarów wysyłki.
           </div>
         )}
       </div>
