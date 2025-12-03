@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { User, MapPin, CreditCard, Bell, Lock } from 'lucide-react'
 import ProfileTab from './ProfileTab'
 import AddressesTab from './AddressesTab'
@@ -11,16 +11,20 @@ import SecurityTab from './SecurityTab'
 
 export default function SettingsTabs() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const tabFromUrl = searchParams?.get('tab') || 'profile'
   const [activeTab, setActiveTab] = useState(tabFromUrl)
 
   useEffect(() => {
     // Update active tab when URL changes
     const tab = searchParams?.get('tab') || 'profile'
-    if (tab !== activeTab) {
-      setActiveTab(tab)
-    }
-  }, [searchParams, activeTab])
+    setActiveTab(tab)
+  }, [searchParams])
+
+  const handleTabClick = (tabId: string) => {
+    setActiveTab(tabId)
+    router.push(`/client/settings?tab=${tabId}`, { scroll: false })
+  }
 
   const tabs = [
     { id: 'profile', label: 'Profile & Account', icon: User },
@@ -40,7 +44,7 @@ export default function SettingsTabs() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
                 className={`
                   flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
                   ${

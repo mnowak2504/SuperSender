@@ -47,14 +47,32 @@ export async function updateMonthlyAdditionalCharges(
       .eq('clientId', clientId)
       .single()
 
+    // Get effective limit (base limit + paid overspace that hasn't expired)
+    const baseLimitCbm = capacity?.limitCbm || client.limitCbm || (client.plan as any)?.spaceLimitCbm || 0
+    
+    // Check for active paid overspace (not expired - within 1 month from charge date)
+    const now = new Date()
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 days ago
+    
+    const { data: activeOverspaceCharges } = await supabase
+      .from('MonthlyAdditionalCharges')
+      .select('overSpacePaidCbm, overSpaceChargedAt')
+      .eq('clientId', clientId)
+      .not('overSpaceChargedAt', 'is', null)
+      .gte('overSpaceChargedAt', oneMonthAgo.toISOString())
+      .gt('overSpacePaidCbm', 0)
+    
+    // Sum up all active paid overspace
+    const activePaidCbm = activeOverspaceCharges?.reduce((sum, charge) => {
+      return sum + (charge.overSpacePaidCbm || 0)
+    }, 0) || 0
+    
+    // Effective limit = base limit + active paid overspace
+    const effectiveLimitCbm = baseLimitCbm + activePaidCbm
+    
     const usedCbm = capacity?.usedCbm || client.usedCbm || 0
-    const limitCbm = capacity?.limitCbm || client.limitCbm || (client.plan as any)?.spaceLimitCbm || 0
 
-    // Calculate over-space charge
-    const overSpaceRateEur = (client.plan as any)?.overSpaceRateEur || client.individualOverSpaceRateEur || 20 // Default €20/CBM
-    const overSpaceAmountEur = calculateOverSpaceCharge(usedCbm, limitCbm, overSpaceRateEur)
-
-    // Get existing charges to preserve additionalServicesAmountEur
+    // Get existing charges first (needed to calculate increase)
     const { data: existingCharges } = await supabase
       .from('MonthlyAdditionalCharges')
       .select('*')
@@ -62,6 +80,20 @@ export async function updateMonthlyAdditionalCharges(
       .eq('month', targetMonth)
       .eq('year', targetYear)
       .single()
+
+    // Calculate over-space charge based on effective limit
+    const overSpaceRateEur = (client.plan as any)?.overSpaceRateEur || client.individualOverSpaceRateEur || 20 // Default €20/CBM
+    const overSpaceAmountEur = calculateOverSpaceCharge(usedCbm, effectiveLimitCbm, overSpaceRateEur)
+    
+    // Calculate how much NEW space was paid for (only the increase, not total)
+    let newOverSpacePaidCbm = 0
+    const previousOverSpaceAmount = existingCharges?.overSpaceAmountEur || 0
+    const overSpaceIncrease = overSpaceAmountEur - previousOverSpaceAmount
+    
+    if (overSpaceIncrease > 0 && overSpaceRateEur > 0) {
+      // Calculate how much m³ was paid for the increase: increase amount / rate
+      newOverSpacePaidCbm = overSpaceIncrease / overSpaceRateEur
+    }
 
     const generateCUID = () => {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -77,14 +109,33 @@ export async function updateMonthlyAdditionalCharges(
     const totalAmountEur = overSpaceAmountEur + additionalServicesAmountEur
 
     if (existingCharges) {
-      // Update existing charges
+      // Check if overspace charge increased (new charge was added)
+      const previousOverSpaceAmount = existingCharges.overSpaceAmountEur || 0
+      const overSpaceIncreased = overSpaceAmountEur > previousOverSpaceAmount
+      
+      // If overspace increased, update chargedAt and paidCbm
+      const updateData: any = {
+        overSpaceAmountEur,
+        totalAmountEur,
+        updatedAt: new Date().toISOString(),
+      }
+      
+      if (overSpaceIncreased && newOverSpacePaidCbm > 0) {
+        // New overspace was charged - update charge date and add to paid CBM
+        // If this is the first time charging, set chargedAt. Otherwise, keep the original date
+        if (!existingCharges.overSpaceChargedAt) {
+          updateData.overSpaceChargedAt = new Date().toISOString()
+        }
+        updateData.overSpacePaidCbm = (existingCharges.overSpacePaidCbm || 0) + newOverSpacePaidCbm
+      } else if (overSpaceAmountEur === 0 && previousOverSpaceAmount > 0) {
+        // Overspace was cleared (client reduced usage below threshold)
+        // Keep existing chargedAt and paidCbm for historical tracking
+        // Don't reset them - they represent what was paid for and remain valid for 1 month
+      }
+      
       const { error: updateError } = await supabase
         .from('MonthlyAdditionalCharges')
-        .update({
-          overSpaceAmountEur,
-          totalAmountEur,
-          updatedAt: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', existingCharges.id)
 
       if (updateError) {
@@ -93,17 +144,25 @@ export async function updateMonthlyAdditionalCharges(
       }
     } else {
       // Create new charges record
+      const insertData: any = {
+        id: generateCUID(),
+        clientId: clientId,
+        month: targetMonth,
+        year: targetYear,
+        overSpaceAmountEur,
+        additionalServicesAmountEur: 0, // Will be added separately for local collection, etc.
+        totalAmountEur,
+      }
+      
+      // If overspace was charged, set charge date and paid CBM
+      if (overSpaceAmountEur > 0 && newOverSpacePaidCbm > 0) {
+        insertData.overSpaceChargedAt = new Date().toISOString()
+        insertData.overSpacePaidCbm = newOverSpacePaidCbm
+      }
+      
       const { error: insertError } = await supabase
         .from('MonthlyAdditionalCharges')
-        .insert({
-          id: generateCUID(),
-          clientId: clientId,
-          month: targetMonth,
-          year: targetYear,
-          overSpaceAmountEur,
-          additionalServicesAmountEur: 0, // Will be added separately for local collection, etc.
-          totalAmountEur,
-        })
+        .insert(insertData)
 
       if (insertError) {
         console.error('[updateMonthlyAdditionalCharges] Error creating charges:', insertError)

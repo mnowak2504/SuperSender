@@ -226,7 +226,8 @@ export async function POST(req: NextRequest) {
         console.error('Error creating invoice for additional charges:', invoiceError)
         // Continue with shipment creation even if invoice creation fails
       } else {
-        // Reset additional charges after creating invoice
+        // Reset charge amounts after creating invoice (but keep overSpacePaidCbm and overSpaceChargedAt
+        // so that paid space remains available for 1 month from charge date)
         await supabase
           .from('MonthlyAdditionalCharges')
           .update({
@@ -234,6 +235,7 @@ export async function POST(req: NextRequest) {
             additionalServicesAmountEur: 0,
             totalAmountEur: 0,
             updatedAt: new Date().toISOString(),
+            // Keep overSpacePaidCbm and overSpaceChargedAt - paid space is available for 1 month
           })
           .eq('id', additionalCharges.id)
 
