@@ -515,24 +515,24 @@ export default async function ClientDashboard() {
           </Link>
         </div>
 
-      {/* Total Outstanding */}
+      {/* Additional Charges Due Now */}
       {totalOutstanding > 0 && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg mb-8">
+        <div className="bg-orange-50 border-l-4 border-orange-300 p-4 rounded-r-lg mb-8">
           <div className="flex items-start">
             <div className="flex-shrink-0">
-              <AlertCircle className="h-5 w-5 text-red-600" />
+              <AlertCircle className="h-5 w-5 text-orange-600" />
             </div>
             <div className="ml-3 flex-1">
-              <h3 className="text-sm font-medium text-red-800">Total Outstanding</h3>
-              <p className="mt-1 text-lg font-bold text-red-900">
+              <h3 className="text-sm font-medium text-orange-800">Additional charges due now</h3>
+              <p className="mt-1 text-lg font-bold text-orange-900">
                 €{totalOutstanding.toFixed(2)}
               </p>
-              <p className="text-xs text-red-600 mt-1">
-                You have unpaid invoices. Please settle your account to avoid service interruption.
+              <p className="text-xs text-orange-700 mt-1">
+                Please settle your account now.
               </p>
               <Link
                 href="/client/invoices"
-                className="inline-block mt-2 text-sm font-medium text-red-800 hover:text-red-900 underline"
+                className="inline-block mt-2 text-sm font-medium text-orange-800 hover:text-orange-900 underline"
               >
                 View Invoices →
               </Link>

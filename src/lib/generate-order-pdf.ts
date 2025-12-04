@@ -92,10 +92,10 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
       yPos += 20
       doc.font('Helvetica-Bold')
         .fillColor(gray)
-        .text('Due Date:', 50, yPos)
+        .text('Issue Date:', 50, yPos)
         .fillColor('#000000')
         .font('Helvetica')
-        .text(new Date(orderData.dueDate).toLocaleDateString('en-GB', {
+        .text(new Date(orderData.orderDate).toLocaleDateString('en-GB', {
           year: 'numeric',
           month: 'long',
           day: 'numeric'

@@ -65,19 +65,21 @@ export default async function InvoicesPage() {
   const invoicesWithStatus = allInvoices.map((invoice) => {
     let status = invoice.status
     let statusLabel = status
-    let dueDateInfo = ''
+    const issueDate = new Date(invoice.createdAt)
+    const now = new Date()
+    
+    // Check if invoice is more than 1 month old (overdue for admin contact)
+    const oneMonthAgo = new Date(now)
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    const isOverOneMonthOld = issueDate < oneMonthAgo && status !== 'PAID'
 
-    // If status is ISSUED, check if it's overdue
+    // If status is ISSUED, check if it's overdue (more than 1 month)
     if (status === 'ISSUED') {
-      const dueDate = new Date(invoice.dueDate)
-      const now = new Date()
-      
-      if (dueDate < now) {
+      if (isOverOneMonthOld) {
         status = 'OVERDUE'
         statusLabel = 'Overdue'
       } else {
         statusLabel = 'Due'
-        dueDateInfo = formatDate(invoice.dueDate)
       }
     } else if (status === 'PAID') {
       statusLabel = 'Paid'
@@ -87,7 +89,7 @@ export default async function InvoicesPage() {
       ...invoice,
       calculatedStatus: status,
       statusLabel,
-      dueDateInfo,
+      isOverOneMonthOld,
     }
   })
 
@@ -183,7 +185,7 @@ export default async function InvoicesPage() {
                         Amount
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Due Date
+                        Issue Date
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
@@ -208,8 +210,8 @@ export default async function InvoicesPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                           {formatCurrency(invoice.amountEur, invoice.currency || 'EUR')}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {invoice.dueDateInfo || formatDate(invoice.dueDate)}
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${invoice.isOverOneMonthOld ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                          {formatDate(invoice.createdAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
@@ -218,9 +220,6 @@ export default async function InvoicesPage() {
                             )}`}
                           >
                             {invoice.statusLabel}
-                            {invoice.calculatedStatus === 'ISSUED' && invoice.dueDateInfo && (
-                              <span className="ml-1 text-xs">({invoice.dueDateInfo})</span>
-                            )}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

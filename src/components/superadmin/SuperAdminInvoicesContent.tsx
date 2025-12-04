@@ -279,7 +279,7 @@ export default function SuperAdminInvoicesContent() {
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Termin płatności
+                Data wystawienia
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Data utworzenia
@@ -301,7 +301,12 @@ export default function SuperAdminInvoicesContent() {
               </tr>
             ) : (
               invoices.map((invoice) => {
-                const isOverdue = invoice.status === 'ISSUED' && new Date(invoice.dueDate) < new Date()
+                // Check if invoice is more than 1 month old (overdue for admin contact)
+                const issueDate = new Date(invoice.createdAt)
+                const now = new Date()
+                const oneMonthAgo = new Date(now)
+                oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+                const isOverOneMonthOld = issueDate < oneMonthAgo && invoice.status !== 'PAID'
                 const canMarkAsPaid = invoice.status !== 'PAID'
                 
                 // Calculate VAT (23% Polish standard)
@@ -311,7 +316,7 @@ export default function SuperAdminInvoicesContent() {
                 const vatAmount = totalWithVat - subtotal
 
                 return (
-                  <tr key={invoice.id} className="hover:bg-gray-50">
+                  <tr key={invoice.id} className={`hover:bg-gray-50 ${isOverOneMonthOld ? 'bg-red-50' : ''}`}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {editingInvoiceId === invoice.id ? (
                         <div className="flex items-center gap-2">
@@ -394,10 +399,10 @@ export default function SuperAdminInvoicesContent() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(invoice)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{formatDate(invoice.dueDate)}</div>
-                      {isOverdue && (
-                        <div className="text-xs text-red-600">Przeterminowana</div>
+                    <td className={`px-6 py-4 whitespace-nowrap ${isOverOneMonthOld ? 'text-red-600 font-semibold' : ''}`}>
+                      <div className="text-sm">{formatDate(invoice.createdAt)}</div>
+                      {isOverOneMonthOld && (
+                        <div className="text-xs text-red-600 font-semibold">Wymaga kontaktu z klientem</div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

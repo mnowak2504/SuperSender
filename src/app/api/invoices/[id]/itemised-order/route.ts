@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
+import { generateOrderPDF } from '@/lib/generate-order-pdf'
 
 export const runtime = 'nodejs'
 
 /**
  * GET /api/invoices/[id]/itemised-order
- * Get itemised breakdown of charges for an order/invoice
+ * Generate PDF with itemised breakdown of charges for an order/invoice
  */
 export async function GET(
   req: NextRequest,
@@ -24,10 +25,18 @@ export async function GET(
     const userId = (session.user as any)?.id
     const clientId = (session.user as any)?.clientId
 
-    // Fetch invoice
+    // Fetch invoice with client info
     const { data: invoice, error: invoiceError } = await supabase
       .from('Invoice')
-      .select('*')
+      .select(`
+        *,
+        Client:clientId(
+          id,
+          displayName,
+          clientCode,
+          email
+        )
+      `)
       .eq('id', id)
       .single()
 
@@ -55,14 +64,6 @@ export async function GET(
     const year = invoiceDate.getFullYear()
 
     // Try to get historical charges
-    // Note: Since charges are reset after invoice creation, we'll reconstruct from invoice amount
-    // In production, you might want to store itemised details in a separate table
-
-    // For now, we'll create a breakdown based on typical charges
-    // This is a simplified version - in production store the actual breakdown
-    const items = []
-
-    // Try to get any remaining charges data
     const { data: charges } = await supabase
       .from('MonthlyAdditionalCharges')
       .select('*')
@@ -81,6 +82,8 @@ export async function GET(
       .lt('createdAt', new Date(year, month, 1).toISOString())
 
     // Build itemised breakdown
+    const items: Array<{ description: string; quantity: number; unitPrice: number; total: number }> = []
+
     // Over-space charges
     if (charges && charges.overSpaceAmountEur > 0) {
       // Calculate over-space details
@@ -90,7 +93,6 @@ export async function GET(
       items.push({
         description: 'Over-space storage',
         quantity: overSpaceCbm,
-        unit: 'm³',
         unitPrice: overSpaceRate,
         total: charges.overSpaceAmountEur,
       })
@@ -105,7 +107,6 @@ export async function GET(
         items.push({
           description: 'Local collection service',
           quantity: localCollections?.length || 1,
-          unit: 'collection',
           unitPrice: localCollectionTotal / (localCollections?.length || 1),
           total: localCollectionTotal,
         })
@@ -117,7 +118,6 @@ export async function GET(
         items.push({
           description: 'Additional services',
           quantity: 1,
-          unit: 'service',
           unitPrice: remaining,
           total: remaining,
         })
@@ -129,7 +129,6 @@ export async function GET(
       items.push({
         description: 'Additional Services and Storage Charges',
         quantity: 1,
-        unit: 'order',
         unitPrice: invoice.amountEur,
         total: invoice.amountEur,
       })
@@ -140,18 +139,37 @@ export async function GET(
     const subtotal = invoice.amountEur / (1 + vatRate)
     const vatAmount = invoice.amountEur - subtotal
 
-    return NextResponse.json({
+    // Prepare order data for PDF generation
+    const orderData = {
       orderNumber: invoice.invoiceNumber || `ORD-${invoice.id.slice(-8).toUpperCase()}`,
-      orderDate: invoice.createdAt,
+      orderDate: invoice.createdAt, // Use createdAt as issue date
+      clientName: (invoice.Client as any)?.displayName || 'Unknown',
+      clientCode: (invoice.Client as any)?.clientCode || 'N/A',
+      clientEmail: (invoice.Client as any)?.email || '',
       items: items,
       subtotal: subtotal,
       vatRate: vatRate,
       vatAmount: vatAmount,
       total: invoice.amountEur,
       currency: invoice.currency || 'EUR',
+      dueDate: invoice.createdAt, // Use createdAt instead of dueDate (payment due immediately)
+    }
+
+    // Generate PDF
+    const pdfBuffer = await generateOrderPDF(orderData)
+
+    // Convert Buffer to Uint8Array for NextResponse
+    const uint8Array = new Uint8Array(pdfBuffer)
+
+    // Return PDF
+    return new NextResponse(uint8Array, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="proforma-${orderData.orderNumber}.pdf"`,
+      },
     })
   } catch (error) {
-    console.error('Error fetching itemised order:', error)
+    console.error('Error generating itemised order PDF:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
