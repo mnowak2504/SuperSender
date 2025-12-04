@@ -55,6 +55,35 @@ export async function POST(
 
     const clientId = quote.clientId
 
+    // Check if there's a DeliveryExpected created from this local collection quote
+    // (when client converted it to order)
+    // Look for DeliveryExpected with clientReference containing the quote ID
+    const quoteIdShort = quote.id.slice(-8).toUpperCase()
+    const { data: relatedDelivery, error: deliverySearchError } = await supabase
+      .from('DeliveryExpected')
+      .select('id, status')
+      .eq('clientId', clientId)
+      .like('clientReference', `%Local Collection Quote #${quoteIdShort}%`)
+      .eq('status', 'EXPECTED')
+      .single()
+
+    let sourceDeliveryId: string | null = null
+    if (relatedDelivery && !deliverySearchError) {
+      // Update DeliveryExpected status to RECEIVED
+      const { error: updateDeliveryError } = await supabase
+        .from('DeliveryExpected')
+        .update({
+          status: 'RECEIVED',
+        })
+        .eq('id', relatedDelivery.id)
+
+      if (updateDeliveryError) {
+        console.warn('Could not update DeliveryExpected status:', updateDeliveryError)
+      } else {
+        sourceDeliveryId = relatedDelivery.id
+      }
+    }
+
     // Generate ID for WarehouseOrder
     const generateCUID = () => {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -101,6 +130,7 @@ export async function POST(
     const insertData: any = {
       id: warehouseOrderId,
       clientId,
+      sourceDeliveryId: sourceDeliveryId, // Link to DeliveryExpected if it exists
       status: condition === 'NO_REMARKS' ? 'AT_WAREHOUSE' : 'DAMAGED',
       packedLengthCm: Math.round(quote.lengthCm),
       packedWidthCm: Math.round(quote.widthCm),

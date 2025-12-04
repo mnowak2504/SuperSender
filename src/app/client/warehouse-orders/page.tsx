@@ -4,7 +4,105 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import ClientLayout from '@/components/ClientLayout'
 import Link from 'next/link'
-import { ArrowRight, Package } from 'lucide-react'
+import { ArrowRight, Package, Edit2, Check, X, Loader2 } from 'lucide-react'
+
+function EditableDescription({ deliveryId, initialValue, onUpdate }: { deliveryId: string; initialValue: string; onUpdate: () => void }) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [value, setValue] = useState(initialValue)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setValue(initialValue)
+  }, [initialValue])
+
+  const handleSave = async () => {
+    if (value.trim() === initialValue.trim()) {
+      setIsEditing(false)
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const res = await fetch(`/api/client/deliveries/${deliveryId}/description`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goodsDescription: value.trim() }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to update description')
+      }
+
+      setIsEditing(false)
+      onUpdate()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update')
+      setLoading(false)
+    }
+  }
+
+  const handleCancel = () => {
+    setValue(initialValue)
+    setIsEditing(false)
+    setError(null)
+  }
+
+  if (isEditing) {
+    return (
+      <div className="space-y-1">
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          rows={2}
+          disabled={loading}
+        />
+        {error && (
+          <p className="text-xs text-red-600">{error}</p>
+        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSave}
+            disabled={loading}
+            className="p-1 text-green-600 hover:text-green-700 disabled:opacity-50"
+            title="Save"
+          >
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Check className="w-4 h-4" />
+            )}
+          </button>
+          <button
+            onClick={handleCancel}
+            disabled={loading}
+            className="p-1 text-red-600 hover:text-red-700 disabled:opacity-50"
+            title="Cancel"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-start gap-2 group">
+      <span className="flex-1">{value}</span>
+      <button
+        onClick={() => setIsEditing(true)}
+        className="opacity-0 group-hover:opacity-100 p-1 text-blue-600 hover:text-blue-700 transition-opacity"
+        title="Edit description"
+      >
+        <Edit2 className="w-4 h-4" />
+      </button>
+    </div>
+  )
+}
 
 function formatDate(date: Date | string | null): string {
   if (!date) return '-'
@@ -222,6 +320,7 @@ export default function WarehouseOrdersPage() {
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Description
+                          <span className="ml-1 text-xs text-gray-400 font-normal">(editable)</span>
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Location
@@ -271,7 +370,15 @@ export default function WarehouseOrdersPage() {
                               {delivery?.supplierName || 'Unknown'}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-500">
-                              {delivery?.goodsDescription || 'No description'}
+                              {order.status === 'AT_WAREHOUSE' && delivery?.id ? (
+                                <EditableDescription
+                                  deliveryId={delivery.id}
+                                  initialValue={delivery.goodsDescription || 'No description'}
+                                  onUpdate={() => fetchOrders()}
+                                />
+                              ) : (
+                                <span>{delivery?.goodsDescription || 'No description'}</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {order.warehouseLocation || '-'}
