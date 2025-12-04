@@ -88,10 +88,20 @@ export async function POST(
           .single()
 
         if (invoiceError) {
-          console.error('Error creating transport invoice:', invoiceError)
-          // Continue even if invoice creation fails
+          console.error('[Transport Choice] Error creating transport invoice:', invoiceError)
+          console.error('[Transport Choice] Invoice data:', {
+            id: invoiceId,
+            clientId: clientId,
+            type: 'PROFORMA',
+            amountEur: transportPrice,
+            currency: 'EUR',
+            status: 'ISSUED',
+            dueDate: dueDate.toISOString(),
+          })
+          // Don't fail the request, but log the error for debugging
         } else {
-          console.log(`[Transport Choice] Created proforma invoice ${invoiceId} for transport: €${transportPrice}`)
+          console.log(`[Transport Choice] ✅ Created proforma invoice ${invoiceId} for transport: €${transportPrice}`)
+          console.log('[Transport Choice] Invoice details:', invoice)
         }
       }
     } else if (transportChoice === 'OWN_TRANSPORT') {
