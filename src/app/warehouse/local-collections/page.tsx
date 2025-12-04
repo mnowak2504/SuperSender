@@ -176,16 +176,6 @@ export default async function LocalCollectionsPage() {
                           <p className="text-sm text-yellow-900">{quote.adminNotes}</p>
                         </div>
                       )}
-
-                      {/* Price */}
-                      {quote.quotedPriceEur && (
-                        <div className="mt-3">
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Cena:</span>{' '}
-                            <span className="text-lg font-bold text-green-600">€{quote.quotedPriceEur.toFixed(2)}</span>
-                          </p>
-                        </div>
-                      )}
                     </div>
                     <div className="ml-4 flex-shrink-0">
                       <Link

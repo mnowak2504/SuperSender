@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Edit2, Save, X } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Edit2, Save, X, FileText, Link } from 'lucide-react'
 
 interface Invoice {
   id: string
@@ -266,7 +266,13 @@ export default function SuperAdminInvoicesContent() {
                 Typ
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Kwota
+                Kwota netto
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                VAT
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Kwota brutto
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
@@ -288,7 +294,7 @@ export default function SuperAdminInvoicesContent() {
           <tbody className="bg-white divide-y divide-gray-200">
             {invoices.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan={11} className="px-6 py-8 text-center text-sm text-gray-500">
                   Brak faktur
                 </td>
               </tr>
@@ -296,6 +302,12 @@ export default function SuperAdminInvoicesContent() {
               invoices.map((invoice) => {
                 const isOverdue = invoice.status === 'ISSUED' && new Date(invoice.dueDate) < new Date()
                 const canMarkAsPaid = invoice.status !== 'PAID'
+                
+                // Calculate VAT (23% Polish standard)
+                const vatRate = 0.23
+                const totalWithVat = invoice.amountEur
+                const subtotal = totalWithVat / (1 + vatRate)
+                const vatAmount = totalWithVat - subtotal
 
                 return (
                   <tr key={invoice.id} className="hover:bg-gray-50">
@@ -364,7 +376,18 @@ export default function SuperAdminInvoicesContent() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-medium text-gray-900">
-                        {formatCurrency(invoice.amountEur, invoice.currency)}
+                        {formatCurrency(subtotal, invoice.currency)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-600">
+                        {formatCurrency(vatAmount, invoice.currency)}
+                      </span>
+                      <div className="text-xs text-gray-500">(23%)</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-bold text-gray-900">
+                        {formatCurrency(totalWithVat, invoice.currency)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -398,25 +421,67 @@ export default function SuperAdminInvoicesContent() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {canMarkAsPaid && (
-                        <button
-                          onClick={() => handleMarkAsPaid(invoice.id)}
-                          disabled={updating === invoice.id}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-                        >
-                          {updating === invoice.id ? (
-                            <>
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                              Zapisywanie...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="w-3 h-3" />
-                              Oznacz jako zapłaconą
-                            </>
-                          )}
-                        </button>
-                      )}
+                      <div className="flex flex-col gap-2 items-end">
+                        {/* Download links for OPERATIONS invoices */}
+                        {invoice.type === 'OPERATIONS' && (
+                          <div className="flex gap-2">
+                            <a
+                              href={`/api/invoices/${invoice.id}/order-pdf`}
+                              download
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 border border-blue-300 rounded hover:bg-blue-50"
+                              title="Pobierz PDF zamówienia"
+                            >
+                              <FileText className="w-3 h-3" />
+                              PDF
+                            </a>
+                            <a
+                              href={`/api/invoices/${invoice.id}/itemised-order`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs text-green-600 hover:text-green-800 border border-green-300 rounded hover:bg-green-50"
+                              title="Zobacz szczegóły zamówienia"
+                            >
+                              Szczegóły
+                            </a>
+                          </div>
+                        )}
+                        
+                        {/* Request payment link button for TRANSPORT invoices */}
+                        {invoice.type === 'TRANSPORT' && invoice.status === 'ISSUED' && !invoice.paymentMethod && (
+                          <button
+                            onClick={() => {
+                              // TODO: Implement request payment link
+                              alert('Funkcja żądania linku płatniczego będzie wkrótce dostępna')
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700"
+                            title="Żądaj linku płatniczego"
+                          >
+                            <Link className="w-3 h-3" />
+                            Żądaj linku
+                          </button>
+                        )}
+                        
+                        {/* Mark as paid button */}
+                        {canMarkAsPaid && (
+                          <button
+                            onClick={() => handleMarkAsPaid(invoice.id)}
+                            disabled={updating === invoice.id}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                          >
+                            {updating === invoice.id ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Zapisywanie...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-3 h-3" />
+                                Oznacz jako zapłaconą
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )

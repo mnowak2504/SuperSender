@@ -64,6 +64,11 @@ interface CustomerProfileContentProps {
   timeline: TimelineItem[]
   deliveryPhotos: DeliveryPhoto[]
   isSuperAdmin?: boolean
+  additionalCharges?: {
+    overSpaceAmountEur: number
+    additionalServicesAmountEur: number
+    totalAmountEur: number
+  } | null
 }
 
 export default function CustomerProfileContent({
@@ -71,6 +76,7 @@ export default function CustomerProfileContent({
   timeline,
   deliveryPhotos,
   isSuperAdmin = false,
+  additionalCharges = null,
 }: CustomerProfileContentProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
   
@@ -205,6 +211,34 @@ export default function CustomerProfileContent({
               </div>
             </div>
           </div>
+
+          {/* Additional Charges This Month */}
+          {additionalCharges && additionalCharges.totalAmountEur > 0 && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg p-4">
+              <h2 className="text-lg font-semibold text-yellow-900 mb-3">Additional Charges This Month</h2>
+              <div className="space-y-2 text-sm">
+                {additionalCharges.overSpaceAmountEur > 0 && (
+                  <div className="flex justify-between text-yellow-800">
+                    <span>Over-space storage:</span>
+                    <span className="font-medium">€{additionalCharges.overSpaceAmountEur.toFixed(2)}</span>
+                  </div>
+                )}
+                {additionalCharges.additionalServicesAmountEur > 0 && (
+                  <div className="flex justify-between text-yellow-800">
+                    <span>Additional services:</span>
+                    <span className="font-medium">€{additionalCharges.additionalServicesAmountEur.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-2 border-t border-yellow-200 font-semibold text-yellow-900">
+                  <span>Total:</span>
+                  <span>€{additionalCharges.totalAmountEur.toFixed(2)}</span>
+                </div>
+                <p className="text-xs text-yellow-700 mt-2">
+                  These charges will be included in the order when client requests a shipment.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Subscription Management */}
           <SubscriptionManager

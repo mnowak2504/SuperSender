@@ -63,6 +63,24 @@ export async function GET(req: NextRequest) {
       .select('clientId, usedCbm, limitCbm, usagePercent, isOverLimit')
       .in('clientId', clientIds.length > 0 ? clientIds : [''])
     
+    // Get active paid overspace for clients (within 1 month from charge date)
+    const now = new Date()
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const { data: activeOverspaceCharges } = await supabase
+      .from('MonthlyAdditionalCharges')
+      .select('clientId, overSpacePaidCbm, overSpaceChargedAt')
+      .in('clientId', clientIds.length > 0 ? clientIds : [''])
+      .not('overSpaceChargedAt', 'is', null)
+      .gte('overSpaceChargedAt', oneMonthAgo.toISOString())
+      .gt('overSpacePaidCbm', 0)
+    
+    // Create map of active paid overspace per client
+    const activePaidCbmMap = new Map<string, number>()
+    activeOverspaceCharges?.forEach((charge: any) => {
+      const current = activePaidCbmMap.get(charge.clientId) || 0
+      activePaidCbmMap.set(charge.clientId, current + (charge.overSpacePaidCbm || 0))
+    })
+    
     // Get deliveries this month
     const startOfMonth = new Date()
     startOfMonth.setDate(1)
@@ -110,11 +128,17 @@ export async function GET(req: NextRequest) {
 
       const capacity = capacities?.find(c => c.clientId === client.id)
       
-      // Get limit from capacity, client.limitCbm, or plan
+      // Get base limit from capacity, client.limitCbm, or plan
       const planLimit = (Array.isArray(client.Plan) && client.Plan.length > 0 
         ? (client.Plan[0] as any)?.spaceLimitCbm 
         : (client.Plan as any)?.spaceLimitCbm) || 0
-      const limitCbm = capacity?.limitCbm || client.limitCbm || planLimit || 0
+      const baseLimitCbm = capacity?.limitCbm || client.limitCbm || planLimit || 0
+      
+      // Get active paid overspace for this client
+      const activePaidCbm = activePaidCbmMap.get(client.id) || 0
+      
+      // Effective limit = base limit + active paid overspace (same as client dashboard)
+      const limitCbm = baseLimitCbm + activePaidCbm
       const usedCbm = capacity?.usedCbm || 0
       const usagePercent = limitCbm > 0 ? (usedCbm / limitCbm) * 100 : 0
 

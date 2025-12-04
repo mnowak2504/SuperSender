@@ -214,19 +214,47 @@ export default async function InvoicesPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {invoice.calculatedStatus !== 'PAID' && invoice.revolutLink && (
-                            <a
-                              href={invoice.revolutLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-900 font-medium"
-                            >
-                              Pay Now
-                            </a>
-                          )}
-                          {invoice.calculatedStatus === 'PAID' && (
-                            <span className="text-gray-400">Paid</span>
-                          )}
+                          <div className="flex items-center gap-3">
+                            {/* Download links for OPERATIONS invoices */}
+                            {invoice.type === 'OPERATIONS' && (
+                              <>
+                                <a
+                                  href={`/api/invoices/${invoice.id}/order-pdf`}
+                                  download
+                                  className="text-blue-600 hover:text-blue-900 font-medium text-xs"
+                                  title="Download Order PDF"
+                                >
+                                  PDF
+                                </a>
+                                <a
+                                  href={`/api/invoices/${invoice.id}/itemised-order`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-green-600 hover:text-green-900 font-medium text-xs"
+                                  title="View Itemised Order"
+                                >
+                                  Details
+                                </a>
+                              </>
+                            )}
+                            
+                            {/* Pay Now link */}
+                            {invoice.calculatedStatus !== 'PAID' && invoice.revolutLink && (
+                              <a
+                                href={invoice.revolutLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-900 font-medium"
+                              >
+                                Pay Now
+                              </a>
+                            )}
+                            
+                            {/* Paid status */}
+                            {invoice.calculatedStatus === 'PAID' && (
+                              <span className="text-gray-400">Paid</span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

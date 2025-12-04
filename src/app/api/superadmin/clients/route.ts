@@ -257,6 +257,25 @@ export async function GET(req: NextRequest) {
       return acc
     }, {} as Record<string, any[]>)
 
+    // Get active paid overspace for all clients (within 1 month from charge date)
+    const now = new Date()
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const clientIdsForOverspace = (clients || []).map((c: any) => c.id)
+    const { data: activeOverspaceCharges } = await supabase
+      .from('MonthlyAdditionalCharges')
+      .select('clientId, overSpacePaidCbm, overSpaceChargedAt')
+      .in('clientId', clientIdsForOverspace.length > 0 ? clientIdsForOverspace : [''])
+      .not('overSpaceChargedAt', 'is', null)
+      .gte('overSpaceChargedAt', oneMonthAgo.toISOString())
+      .gt('overSpacePaidCbm', 0)
+    
+    // Create map of active paid overspace per client
+    const activePaidCbmMap = new Map<string, number>()
+    activeOverspaceCharges?.forEach((charge: any) => {
+      const current = activePaidCbmMap.get(charge.clientId) || 0
+      activePaidCbmMap.set(charge.clientId, current + (charge.overSpacePaidCbm || 0))
+    })
+
     // Format clients with all statistics
     const formattedClients = (clients || []).map((client: any) => {
       const capacity = warehouseCapacityMap[client.id] || {}
@@ -266,9 +285,15 @@ export async function GET(req: NextRequest) {
       const salesOwner = client.salesOwnerId ? salesOwnerMap[client.salesOwnerId] : null
       const plan = client.planId ? planMap[client.planId] : null
 
-      // Get limit from capacity, client.limitCbm, or plan
+      // Get base limit from capacity, client.limitCbm, or plan
       const planLimit = plan ? planLimitMap.get(plan.id) || 0 : 0
-      const limitCbm = capacity.limitCbm || client.limitCbm || planLimit || 0
+      const baseLimitCbm = capacity.limitCbm || client.limitCbm || planLimit || 0
+      
+      // Get active paid overspace for this client
+      const activePaidCbm = activePaidCbmMap.get(client.id) || 0
+      
+      // Effective limit = base limit + active paid overspace (same as client dashboard)
+      const limitCbm = baseLimitCbm + activePaidCbm
       const usedCbm = capacity.usedCbm || 0
       const usagePercent = limitCbm > 0 ? (usedCbm / limitCbm) * 100 : 0
       const isOverLimit = usedCbm > limitCbm

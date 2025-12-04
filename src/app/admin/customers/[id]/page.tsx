@@ -155,6 +155,18 @@ export default async function CustomerProfilePage({
     createdAt: (wo.sourceDelivery as any)?.createdAt || wo.id,
   })) || []
 
+  // Fetch current month additional charges
+  const now = new Date()
+  const currentMonth = now.getMonth() + 1
+  const currentYear = now.getFullYear()
+  const { data: additionalCharges } = await supabase
+    .from('MonthlyAdditionalCharges')
+    .select('*')
+    .eq('clientId', id)
+    .eq('month', currentMonth)
+    .eq('year', currentYear)
+    .single()
+
   return (
     <CustomerProfileContent
       client={{
@@ -166,6 +178,7 @@ export default async function CustomerProfilePage({
       timeline={timeline}
       deliveryPhotos={deliveryPhotos}
       isSuperAdmin={role === 'SUPERADMIN'}
+      additionalCharges={additionalCharges || null}
     />
   )
 }
