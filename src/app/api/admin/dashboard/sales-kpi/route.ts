@@ -90,10 +90,11 @@ export async function GET(req: NextRequest) {
     const paidOnTimePercent = totalInvoices > 0 ? (paidOnTime / totalInvoices) * 100 : 0
 
     // 5. Local Collection Quotes Awaiting Quote (REQUESTED status)
+    // Show all REQUESTED quotes (same as /api/admin/local-collection-quotes endpoint)
+    // Admin can see all local collection quotes, not just for assigned clients
     const { data: localCollectionQuotes, error: localQuotesError } = await supabase
       .from('LocalCollectionQuote')
       .select('id, clientId')
-      .in('clientId', clientIds.length > 0 ? clientIds : [''])
       .eq('status', 'REQUESTED')
 
     return NextResponse.json({
