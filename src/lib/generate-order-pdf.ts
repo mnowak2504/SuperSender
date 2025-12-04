@@ -28,8 +28,13 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
     try {
       const doc = new PDFDocument({ 
         size: 'A4',
-        margins: { top: 50, bottom: 50, left: 50, right: 50 }
+        margins: { top: 50, bottom: 50, left: 50, right: 50 },
+        autoFirstPage: true,
+        bufferPages: true
       })
+      
+      // Use standard fonts that don't require external files
+      // PDFKit has built-in support for standard fonts
 
       const buffers: Buffer[] = []
       doc.on('data', buffers.push.bind(buffers))
@@ -51,10 +56,11 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
       doc.fill()
       doc.fillColor('#FFFFFF')
       doc.fontSize(24)
-      doc.font('Helvetica-Bold')
+      // Use standard font names that don't require external files
+      doc.font('Times-Bold')
       doc.text('MAK CONSULTING', 50, 30, { align: 'left' })
       doc.fontSize(12)
-      doc.font('Helvetica')
+      doc.font('Times-Roman')
       doc.text('Supersender by MAK Consulting', 50, 55, { align: 'left' })
       doc.fontSize(10)
       doc.text('For Better Business Results', 50, 75, { align: 'left' })
@@ -62,7 +68,7 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
       // Order title
       doc.fillColor('#000000')
       doc.fontSize(20)
-      doc.font('Helvetica-Bold')
+      doc.font('Times-Bold')
       doc.text('ORDER', 50, 140, { align: 'left' })
 
       // Order details section
@@ -70,19 +76,19 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
 
       // Order number and date
       doc.fontSize(10)
-        .font('Helvetica-Bold')
+        .font('Times-Bold')
         .fillColor(gray)
         .text('Order Number:', 50, yPos)
         .fillColor('#000000')
-        .font('Helvetica')
+        .font('Times-Roman')
         .text(orderData.orderNumber, 150, yPos)
 
       yPos += 20
-      doc.font('Helvetica-Bold')
+      doc.font('Times-Bold')
         .fillColor(gray)
         .text('Order Date:', 50, yPos)
         .fillColor('#000000')
-        .font('Helvetica')
+        .font('Times-Roman')
         .text(new Date(orderData.orderDate).toLocaleDateString('en-GB', {
           year: 'numeric',
           month: 'long',
@@ -90,11 +96,11 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
         }), 150, yPos)
 
       yPos += 20
-      doc.font('Helvetica-Bold')
+      doc.font('Times-Bold')
         .fillColor(gray)
         .text('Issue Date:', 50, yPos)
         .fillColor('#000000')
-        .font('Helvetica')
+        .font('Times-Roman')
         .text(new Date(orderData.orderDate).toLocaleDateString('en-GB', {
           year: 'numeric',
           month: 'long',
@@ -104,13 +110,13 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
       // Client information
       yPos += 40
       doc.fontSize(12)
-        .font('Helvetica-Bold')
+        .font('Times-Bold')
         .fillColor(darkBlue)
         .text('Bill To:', 50, yPos)
 
       yPos += 20
       doc.fontSize(10)
-        .font('Helvetica')
+        .font('Times-Roman')
         .fillColor('#000000')
         .text(orderData.clientName, 50, yPos)
         .text(`Client Code: ${orderData.clientCode}`, 50, yPos + 15)
@@ -128,7 +134,7 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
       doc.fill()
       doc.fillColor('#FFFFFF')
       doc.fontSize(10)
-      doc.font('Helvetica-Bold')
+      doc.font('Times-Bold')
       doc.text('Description', 60, tableTop + 10)
       doc.text('Quantity', 350, tableTop + 10, { width: 60, align: 'right' })
       doc.text('Unit Price', 420, tableTop + 10, { width: 80, align: 'right' })
@@ -137,7 +143,7 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
       // Table rows
       yPos = tableTop + 30
       doc.fillColor('#000000')
-        .font('Helvetica')
+        .font('Times-Roman')
 
       orderData.items.forEach((item, index) => {
         const rowY = yPos + (index * itemHeight)
@@ -170,7 +176,7 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
       let currentY = totalsY + 15
 
       doc.fontSize(10)
-      doc.font('Helvetica')
+      doc.font('Times-Roman')
       doc.fillColor('#000000')
       doc.text('Subtotal:', totalsX + 10, currentY, { width: 100 })
       doc.text(`${orderData.currency} ${orderData.subtotal.toFixed(2)}`, totalsX + 110, currentY, { width: 80, align: 'right' })
@@ -180,7 +186,7 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
       doc.text(`${orderData.currency} ${orderData.vatAmount.toFixed(2)}`, totalsX + 110, currentY, { width: 80, align: 'right' })
 
       currentY += 25
-      doc.font('Helvetica-Bold')
+      doc.font('Times-Bold')
       doc.fontSize(12)
       doc.fillColor(darkBlue)
       doc.text('Total:', totalsX + 10, currentY, { width: 100 })
@@ -189,13 +195,13 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
       // Payment information
       const paymentY = totalsY + 120
       doc.fontSize(12)
-      doc.font('Helvetica-Bold')
+      doc.font('Times-Bold')
       doc.fillColor(darkBlue)
       doc.text('Payment Information', 50, paymentY)
 
       const paymentInfoY = paymentY + 25
       doc.fontSize(10)
-      doc.font('Helvetica')
+      doc.font('Times-Roman')
       doc.fillColor('#000000')
       doc.text(`Account Holder: ${BANK_TRANSFER_INFO.accountHolder}`, 50, paymentInfoY)
       doc.text(`Currency: ${BANK_TRANSFER_INFO.currency}`, 50, paymentInfoY + 15)
@@ -208,7 +214,7 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
       // Footer
       const footerY = doc.page.height - 50
       doc.fontSize(8)
-        .font('Helvetica')
+        .font('Times-Roman')
         .fillColor(gray)
         .text('This is an order document. Invoice will be generated separately and sent via email.', 50, footerY, {
           align: 'center',
