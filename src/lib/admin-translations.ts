@@ -36,7 +36,6 @@ export const adminTranslations = {
   local_collection: 'Lokalny odbiór',
   to_pack: 'Do pakowania',
   shipping_requests: 'Zapytania o wysyłkę',
-  ready_to_ship: 'Gotowe do wysyłki',
   missing_data: 'Brakujące dane',
   no_photos_dimensions: 'Brak wymiarów',
   shipped_today: 'Wysłane dzisiaj',
