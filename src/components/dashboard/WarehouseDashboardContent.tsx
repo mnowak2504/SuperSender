@@ -70,7 +70,7 @@ export default function WarehouseDashboardContent() {
             size="large"
           />
         </Link>
-        <Link href="/admin/local-collection-quotes?status=ACCEPTED" className="block">
+        <Link href="/warehouse/local-collections" className="block">
           <KPICard
             title={adminTranslations.local_collection}
             value={data.localCollection.count}

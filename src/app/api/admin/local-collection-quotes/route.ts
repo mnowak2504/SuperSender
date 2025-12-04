@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const statusFilter = searchParams.get('status') // Optional: REQUESTED, QUOTED, ACCEPTED, etc.
+    const statusFilter = searchParams.get('status') // Optional: REQUESTED, QUOTED, READY_FOR_COLLECTION, COMPLETED, CANCELLED
 
     let query = supabase
       .from('LocalCollectionQuote')
@@ -30,7 +30,12 @@ export async function GET(req: NextRequest) {
       .order('createdAt', { ascending: false })
 
     if (statusFilter) {
-      query = query.eq('status', statusFilter)
+      if (statusFilter === 'READY_FOR_COLLECTION') {
+        // READY_FOR_COLLECTION = ACCEPTED or SCHEDULED
+        query = query.in('status', ['ACCEPTED', 'SCHEDULED'])
+      } else {
+        query = query.eq('status', statusFilter)
+      }
     }
 
     const { data: quotes, error } = await query
@@ -55,8 +60,7 @@ export async function GET(req: NextRequest) {
     const counts = {
       REQUESTED: allQuotes?.filter(q => q.status === 'REQUESTED').length || 0,
       QUOTED: allQuotes?.filter(q => q.status === 'QUOTED').length || 0,
-      ACCEPTED: allQuotes?.filter(q => q.status === 'ACCEPTED').length || 0,
-      SCHEDULED: allQuotes?.filter(q => q.status === 'SCHEDULED').length || 0,
+      READY_FOR_COLLECTION: allQuotes?.filter(q => q.status === 'ACCEPTED' || q.status === 'SCHEDULED').length || 0,
       COMPLETED: allQuotes?.filter(q => q.status === 'COMPLETED').length || 0,
       CANCELLED: allQuotes?.filter(q => q.status === 'CANCELLED').length || 0,
       ALL: allQuotes?.length || 0,

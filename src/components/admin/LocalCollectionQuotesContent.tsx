@@ -53,16 +53,14 @@ export default function LocalCollectionQuotesContent() {
   const [counts, setCounts] = useState<{
     REQUESTED: number
     QUOTED: number
-    ACCEPTED: number
-    SCHEDULED: number
+    READY_FOR_COLLECTION: number
     COMPLETED: number
     CANCELLED: number
     ALL: number
   }>({
     REQUESTED: 0,
     QUOTED: 0,
-    ACCEPTED: 0,
-    SCHEDULED: 0,
+    READY_FOR_COLLECTION: 0,
     COMPLETED: 0,
     CANCELLED: 0,
     ALL: 0,
@@ -195,7 +193,7 @@ export default function LocalCollectionQuotesContent() {
       </div>
 
       {/* Status Filter */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => setStatusFilter('REQUESTED')}
           className={`px-4 py-2 text-sm font-medium rounded-md ${
@@ -217,14 +215,34 @@ export default function LocalCollectionQuotesContent() {
           Wycenione ({counts.QUOTED})
         </button>
         <button
-          onClick={() => setStatusFilter('')}
+          onClick={() => setStatusFilter('READY_FOR_COLLECTION')}
           className={`px-4 py-2 text-sm font-medium rounded-md ${
-            statusFilter === ''
+            statusFilter === 'READY_FOR_COLLECTION'
               ? 'bg-blue-600 text-white'
               : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
           }`}
         >
-          Wszystkie ({counts.ALL})
+          Zaakceptowane, gotowe do odbioru ({counts.READY_FOR_COLLECTION})
+        </button>
+        <button
+          onClick={() => setStatusFilter('COMPLETED')}
+          className={`px-4 py-2 text-sm font-medium rounded-md ${
+            statusFilter === 'COMPLETED'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          Odebrane ({counts.COMPLETED})
+        </button>
+        <button
+          onClick={() => setStatusFilter('CANCELLED')}
+          className={`px-4 py-2 text-sm font-medium rounded-md ${
+            statusFilter === 'CANCELLED'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          Odrzucone ({counts.CANCELLED})
         </button>
       </div>
 
