@@ -7,10 +7,12 @@ import Link from 'next/link'
 interface CustomQuote {
   id: string
   clientId: string
-  customQuoteRequestedAt: string
+  customQuoteRequestedAt: string | null
   calculatedPriceEur: number | null
   status: string
   clientTransportChoice: string | null
+  paymentMethod: string | null
+  acceptedAt: string | null
   Client: {
     displayName: string
     clientCode: string
@@ -81,6 +83,13 @@ export default function CustomQuotesSection() {
         </span>
       )
     }
+    if (quote.status === 'QUOTED' && quote.calculatedPriceEur) {
+      return (
+        <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+          Ready for Client Choice
+        </span>
+      )
+    }
     if (quote.status === 'AWAITING_ACCEPTANCE' && quote.calculatedPriceEur) {
       return (
         <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
@@ -133,6 +142,9 @@ export default function CustomQuotesSection() {
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Payment Method
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Time Pending
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -142,7 +154,8 @@ export default function CustomQuotesSection() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {quotes.map((quote) => {
-              const timePending = calculateTimePending(quote.customQuoteRequestedAt)
+              const requestDate = quote.customQuoteRequestedAt || quote.acceptedAt
+              const timePending = requestDate ? calculateTimePending(requestDate) : { hours: 0, color: 'text-gray-600' }
               const dimensions = getTotalDimensions(quote.packages)
               
               return (
@@ -158,13 +171,13 @@ export default function CustomQuotesSection() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(quote.customQuoteRequestedAt).toLocaleDateString('en-US', {
+                    {requestDate ? new Date(requestDate).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit',
-                    })}
+                    }) : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {quote.deliveryAddress 
@@ -187,6 +200,19 @@ export default function CustomQuotesSection() {
                     {getStatusBadge(quote)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    {quote.paymentMethod ? (
+                      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                        quote.paymentMethod === 'BANK_TRANSFER' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {quote.paymentMethod === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Payment Link Requested'}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`text-sm font-medium ${timePending.color}`}>
                       {timePending.hours}h
                     </span>
@@ -202,6 +228,9 @@ export default function CustomQuotesSection() {
                     )}
                     {quote.calculatedPriceEur && quote.status === 'AWAITING_ACCEPTANCE' && (
                       <span className="text-green-600 font-medium">Sent</span>
+                    )}
+                    {quote.clientTransportChoice === 'ACCEPT' && quote.calculatedPriceEur && (
+                      <span className="text-green-600 font-medium">Accepted</span>
                     )}
                   </td>
                 </tr>

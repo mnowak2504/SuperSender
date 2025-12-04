@@ -48,14 +48,48 @@ export async function GET(req: NextRequest) {
     const revenueMTD = calculateRevenue(invoicesMTD || [])
     const revenueYTD = calculateRevenue(invoicesYTD || [])
 
-    // Warehouse capacity
+    // Warehouse capacity - get from WarehouseCapacity AND from Client/Plan for clients without capacity records
     const { data: capacity } = await supabase
       .from('WarehouseCapacity')
-      .select('usedCbm, limitCbm')
-      .not('limitCbm', 'eq', 0)
+      .select('usedCbm, limitCbm, clientId')
 
-    const totalUsedCbm = capacity?.reduce((sum, c) => sum + (c.usedCbm || 0), 0) || 0
-    const totalLimitCbm = capacity?.reduce((sum, c) => sum + (c.limitCbm || 0), 0) || 0
+    // Get all clients with their limits (from Client.limitCbm or Plan.spaceLimitCbm)
+    const { data: allClients } = await supabase
+      .from('Client')
+      .select(`
+        id,
+        limitCbm,
+        Plan:planId(spaceLimitCbm)
+      `)
+
+    // Create a map of client limits
+    const clientLimitMap = new Map<string, number>()
+    ;(allClients || []).forEach((client: any) => {
+      const limit = client.limitCbm || (client.Plan?.spaceLimitCbm || 0)
+      if (limit > 0) {
+        clientLimitMap.set(client.id, limit)
+      }
+    })
+
+    // Calculate totals
+    let totalUsedCbm = 0
+    let totalLimitCbm = 0
+    const clientsWithCapacity = new Set<string>()
+
+    // Sum from WarehouseCapacity records
+    ;(capacity || []).forEach((c: any) => {
+      totalUsedCbm += c.usedCbm || 0
+      totalLimitCbm += c.limitCbm || 0
+      clientsWithCapacity.add(c.clientId)
+    })
+
+    // Add limits for clients without WarehouseCapacity records
+    clientLimitMap.forEach((limit, clientId) => {
+      if (!clientsWithCapacity.has(clientId)) {
+        totalLimitCbm += limit
+      }
+    })
+
     const capacityPercent = totalLimitCbm > 0 ? (totalUsedCbm / totalLimitCbm) * 100 : 0
 
     // Over capacity clients

@@ -22,7 +22,7 @@ export async function POST(
     }
 
     const body = await req.json()
-    const { transportChoice, ownTransportVehicleReg, ownTransportTrailerReg, ownTransportCarrier, ownTransportTrackingNumber, ownTransportPlannedLoadingDate } = body
+    const { transportChoice, paymentMethod, ownTransportVehicleReg, ownTransportTrailerReg, ownTransportCarrier, ownTransportTrackingNumber, ownTransportPlannedLoadingDate } = body
 
     if (!['ACCEPT', 'REQUEST_CUSTOM', 'OWN_TRANSPORT'].includes(transportChoice)) {
       return NextResponse.json({ error: 'Invalid transport choice' }, { status: 400 })
@@ -55,6 +55,9 @@ export async function POST(
       updateData.status = 'AWAITING_PAYMENT'
       updateData.acceptedAt = new Date().toISOString()
       updateData.proposedPriceEur = shipment.calculatedPriceEur || shipment.proposedPriceEur
+      if (paymentMethod && ['BANK_TRANSFER', 'PAYMENT_LINK_REQUESTED'].includes(paymentMethod)) {
+        updateData.paymentMethod = paymentMethod
+      }
     } else if (transportChoice === 'OWN_TRANSPORT') {
       updateData.transportMode = 'CLIENT_OWN'
       updateData.status = 'READY_FOR_LOADING'

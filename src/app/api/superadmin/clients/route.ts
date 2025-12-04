@@ -136,6 +136,16 @@ export async function GET(req: NextRequest) {
       }
     }
     
+    // Get Plan limits for clients without WarehouseCapacity records
+    const { data: plans } = await supabase
+      .from('Plan')
+      .select('id, spaceLimitCbm')
+    
+    const planLimitMap = new Map<string, number>()
+    ;(plans || []).forEach((plan: any) => {
+      planLimitMap.set(plan.id, plan.spaceLimitCbm || 0)
+    })
+    
     // Only query related data if we have clients
     let invoices: any[] = []
     let deliveries: any[] = []
@@ -256,6 +266,13 @@ export async function GET(req: NextRequest) {
       const salesOwner = client.salesOwnerId ? salesOwnerMap[client.salesOwnerId] : null
       const plan = client.planId ? planMap[client.planId] : null
 
+      // Get limit from capacity, client.limitCbm, or plan
+      const planLimit = plan ? planLimitMap.get(plan.id) || 0 : 0
+      const limitCbm = capacity.limitCbm || client.limitCbm || planLimit || 0
+      const usedCbm = capacity.usedCbm || 0
+      const usagePercent = limitCbm > 0 ? (usedCbm / limitCbm) * 100 : 0
+      const isOverLimit = usedCbm > limitCbm
+
       return {
         id: client.id,
         displayName: client.displayName,
@@ -272,10 +289,10 @@ export async function GET(req: NextRequest) {
         subscriptionEndDate: client.subscriptionEndDate || null,
         salesOwner: salesOwner,
         salesOwnerId: client.salesOwnerId,
-        usedCbm: capacity.usedCbm || 0,
-        limitCbm: capacity.limitCbm || 0,
-        usagePercent: capacity.usagePercent || 0,
-        isOverLimit: capacity.isOverLimit || false,
+        usedCbm: usedCbm,
+        limitCbm: limitCbm,
+        usagePercent: usagePercent,
+        isOverLimit: isOverLimit,
         users: usersByClientId[client.id] || [],
         invoices,
         deliveries,

@@ -15,6 +15,7 @@ interface Invoice {
   createdAt: string
   paidAt: string | null
   invoiceNumber: string | null
+  paymentMethod?: string | null // 'BANK_TRANSFER', 'PAYMENT_LINK_REQUESTED'
   client?: {
     id: string
     displayName: string
@@ -276,6 +277,9 @@ export default function SuperAdminInvoicesContent() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Data utworzenia
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Metoda płatności
+              </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Akcje
               </th>
@@ -284,7 +288,7 @@ export default function SuperAdminInvoicesContent() {
           <tbody className="bg-white divide-y divide-gray-200">
             {invoices.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-sm text-gray-500">
+                <td colSpan={9} className="px-6 py-8 text-center text-sm text-gray-500">
                   Brak faktur
                 </td>
               </tr>
@@ -378,6 +382,19 @@ export default function SuperAdminInvoicesContent() {
                         <div className="text-xs text-green-600">
                           Zapłacona: {formatDate(invoice.paidAt)}
                         </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {invoice.type === 'TRANSPORT' && invoice.paymentMethod ? (
+                        <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                          invoice.paymentMethod === 'BANK_TRANSFER' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {invoice.paymentMethod === 'BANK_TRANSFER' ? 'Przelew bankowy' : 'Link płatniczy żądany'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

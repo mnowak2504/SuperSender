@@ -73,7 +73,7 @@ export default function TransportChoicePanel({
     }
   }, [currentChoice, shipmentId])
 
-  const handleChoice = async (transportChoice: string) => {
+  const handleChoice = async (transportChoice: string, paymentMethod?: string) => {
     if (transportChoice === 'OWN_TRANSPORT' && !showOwnTransportForm && choice !== 'OWN_TRANSPORT') {
       // First time selecting - can save without details
       setLoading(true)
@@ -161,6 +161,9 @@ export default function TransportChoicePanel({
 
     try {
       const body: any = { transportChoice }
+      if (paymentMethod) {
+        body.paymentMethod = paymentMethod
+      }
 
       const res = await fetch(`/api/client/shipments/${shipmentId}/transport-choice`, {
         method: 'POST',
@@ -176,8 +179,9 @@ export default function TransportChoicePanel({
       setChoice(transportChoice)
       
       if (transportChoice === 'ACCEPT') {
-        // Redirect to payment
-        router.push(`/client/shipments/${shipmentId}/payment`)
+        // Show success message and redirect to dashboard
+        // Payment link will be sent by admin/superadmin
+        router.push('/client/dashboard')
       } else {
         // Redirect to dashboard after saving transport choice
         router.push('/client/dashboard')
@@ -249,19 +253,27 @@ export default function TransportChoicePanel({
               </div>
               <p className="text-sm text-gray-600 mb-4">
                 Proceed with the automatically calculated transport price of <strong>€{calculatedPrice.toFixed(2)}</strong>.
-                You will be redirected to payment.
+                Choose your payment method below.
               </p>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Euro className="w-4 h-4" />
-                <span>Secure payment via Revolut</span>
+              <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800 mb-4">
+                <strong>Account activated immediately.</strong> Payment link will be sent within 1 working day.
               </div>
             </div>
+          </div>
+          <div className="flex gap-3 mt-4">
             <button
-              onClick={() => handleChoice('ACCEPT')}
+              onClick={() => handleChoice('ACCEPT', 'BANK_TRANSFER')}
               disabled={loading || choice === 'ACCEPT'}
-              className="ml-4 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Accept & Pay
+              Pay by Bank Transfer
+            </button>
+            <button
+              onClick={() => handleChoice('ACCEPT', 'PAYMENT_LINK_REQUESTED')}
+              disabled={loading || choice === 'ACCEPT'}
+              className="flex-1 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Request Payment Link
             </button>
           </div>
         </div>

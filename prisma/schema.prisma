@@ -219,6 +219,7 @@ model ShipmentOrder {
   transportPricing   TransportPricing? @relation(fields: [transportPricingId], references: [id])
   transportPricingId String?
   clientTransportChoice String?      // 'ACCEPT', 'REQUEST_CUSTOM', 'OWN_TRANSPORT'
+  paymentMethod         String?      // 'BANK_TRANSFER', 'PAYMENT_LINK_REQUESTED' (when ACCEPT is chosen)
   customQuoteRequestedAt DateTime?
   salesOwner         User?           @relation(fields: [salesOwnerId], references: [id])
   salesOwnerId       String?
@@ -268,6 +269,7 @@ model Invoice {
   revolutState      String?       // PENDING, COMPLETED, DECLINED, CANCELLED
   providerCustomerId String?      // For payment provider customer reuse
   revolutPaymentId  String?       // Revolut payment ID (for webhook matching)
+  paymentMethod     String?       // 'BANK_TRANSFER', 'PAYMENT_LINK_REQUESTED' (for TRANSPORT invoices)
   dueDate           DateTime
   createdAt         DateTime      @default(now())
   paidAt            DateTime?

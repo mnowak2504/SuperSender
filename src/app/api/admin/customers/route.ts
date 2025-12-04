@@ -109,6 +109,14 @@ export async function GET(req: NextRequest) {
       const paymentStatus = latestInvoice?.status === 'PAID' ? 'PAID' : latestInvoice ? 'PENDING' : 'NO_INVOICE'
 
       const capacity = capacities?.find(c => c.clientId === client.id)
+      
+      // Get limit from capacity, client.limitCbm, or plan
+      const planLimit = (Array.isArray(client.Plan) && client.Plan.length > 0 
+        ? (client.Plan[0] as any)?.spaceLimitCbm 
+        : (client.Plan as any)?.spaceLimitCbm) || 0
+      const limitCbm = capacity?.limitCbm || client.limitCbm || planLimit || 0
+      const usedCbm = capacity?.usedCbm || 0
+      const usagePercent = limitCbm > 0 ? (usedCbm / limitCbm) * 100 : 0
 
       // Check activity (last 30 days)
       const thirtyDaysAgo = new Date()
@@ -123,9 +131,9 @@ export async function GET(req: NextRequest) {
         country: client.country,
         plan: (Array.isArray(client.Plan) && client.Plan.length > 0 ? (client.Plan[0] as any)?.name : (client.Plan as any)?.name) || 'No Plan',
         planId: client.planId,
-        storageUsed: capacity?.usedCbm || 0,
-        storageLimit: capacity?.limitCbm || client.limitCbm || 0,
-        storagePercent: capacity?.usagePercent || 0,
+        storageUsed: usedCbm,
+        storageLimit: limitCbm,
+        storagePercent: usagePercent,
         deliveriesThisMonth: deliveries,
         dispatchesThisMonth: dispatches,
         customQuotes: customQuotesCount,

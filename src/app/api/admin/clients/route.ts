@@ -49,9 +49,12 @@ export async function GET(req: NextRequest) {
         clientCode,
         status,
         country,
+        limitCbm,
+        planId,
         salesOwnerId,
         salesOwner: salesOwnerId (name, email),
-        warehouseCapacity: WarehouseCapacity (*)
+        warehouseCapacity: WarehouseCapacity (*),
+        Plan:planId(spaceLimitCbm)
       `)
 
     // Apply country filter for ADMIN
@@ -94,16 +97,26 @@ export async function GET(req: NextRequest) {
     // Format clients with capacity data
     const formattedClients = (clients || []).map((client: any) => {
       const capacity = client.warehouseCapacity?.[0] || {}
+      
+      // Get limit from capacity, client.limitCbm, or plan
+      const planLimit = (Array.isArray(client.Plan) && client.Plan.length > 0
+        ? (client.Plan[0] as any)?.spaceLimitCbm
+        : (client.Plan as any)?.spaceLimitCbm) || 0
+      const limitCbm = capacity.limitCbm || client.limitCbm || planLimit || 0
+      const usedCbm = capacity.usedCbm || 0
+      const usagePercent = limitCbm > 0 ? (usedCbm / limitCbm) * 100 : 0
+      const isOverLimit = usedCbm > limitCbm
+      
       return {
         id: client.id,
         displayName: client.displayName,
         email: client.email,
         clientCode: client.clientCode,
         status: client.status,
-        usedCbm: capacity.usedCbm || 0,
-        limitCbm: capacity.limitCbm || 0,
-        usagePercent: capacity.usagePercent || 0,
-        isOverLimit: capacity.isOverLimit || false,
+        usedCbm: usedCbm,
+        limitCbm: limitCbm,
+        usagePercent: usagePercent,
+        isOverLimit: isOverLimit,
         salesOwner: client.salesOwner,
         overdueInvoices: overdueCounts[client.id] || 0,
         lastShipment: lastShipmentMap[client.id],

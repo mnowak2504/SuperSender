@@ -62,7 +62,19 @@ export async function GET(req: NextRequest) {
       }, { status: 500 })
     }
 
-    return NextResponse.json({ invoices: invoices || [] })
+    // Map invoices and add paymentMethod from ShipmentOrder if available
+    const mappedInvoices = (invoices || []).map((invoice: any) => {
+      // If invoice has shipmentOrder relation, use its paymentMethod
+      // Otherwise use invoice's own paymentMethod field
+      const paymentMethod = invoice.shipmentOrder?.paymentMethod || invoice.paymentMethod || null
+      return {
+        ...invoice,
+        paymentMethod,
+        shipmentOrder: undefined // Remove nested object from response
+      }
+    })
+
+    return NextResponse.json({ invoices: mappedInvoices })
   } catch (error) {
     console.error('Error in GET /api/superadmin/invoices:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

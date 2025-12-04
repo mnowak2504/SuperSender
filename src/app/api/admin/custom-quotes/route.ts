@@ -27,8 +27,14 @@ export async function GET(req: NextRequest) {
 
     const clientIds = assignedClients?.map(c => c.id) || []
 
-    // Get custom quote requests
-    const { data: quotes, error: quotesError } = await supabase
+    // Get custom quote requests AND shipments with calculated prices (for admin visibility)
+    // Show:
+    // 1. Custom quote requests (customQuoteRequestedAt IS NOT NULL)
+    // 2. Shipments with calculated prices ready for client choice (status = QUOTED AND calculatedPriceEur IS NOT NULL)
+    // 3. Shipments with calculated prices that client has accepted (calculatedPriceEur IS NOT NULL AND clientTransportChoice = 'ACCEPT')
+    
+    // First, get custom quote requests
+    const { data: customQuotes, error: customQuotesError } = await supabase
       .from('ShipmentOrder')
       .select(`
         id,
@@ -37,6 +43,9 @@ export async function GET(req: NextRequest) {
         calculatedPriceEur,
         status,
         clientTransportChoice,
+        paymentMethod,
+        acceptedAt,
+        createdAt,
         Client:clientId(displayName, clientCode),
         deliveryAddress:deliveryAddressId(city, country),
         Package(widthCm, lengthCm, heightCm, weightKg)
@@ -44,6 +53,68 @@ export async function GET(req: NextRequest) {
       .in('clientId', clientIds.length > 0 ? clientIds : [''])
       .not('customQuoteRequestedAt', 'is', null)
       .order('customQuoteRequestedAt', { ascending: false })
+
+    // Then, get quotes ready for client choice (QUOTED status - packed by warehouse, waiting for client)
+    const { data: quotedShipments, error: quotedError } = await supabase
+      .from('ShipmentOrder')
+      .select(`
+        id,
+        clientId,
+        customQuoteRequestedAt,
+        calculatedPriceEur,
+        status,
+        clientTransportChoice,
+        paymentMethod,
+        acceptedAt,
+        createdAt,
+        Client:clientId(displayName, clientCode),
+        deliveryAddress:deliveryAddressId(city, country),
+        Package(widthCm, lengthCm, heightCm, weightKg)
+      `)
+      .in('clientId', clientIds.length > 0 ? clientIds : [''])
+      .eq('status', 'QUOTED')
+      .not('calculatedPriceEur', 'is', null)
+      .order('createdAt', { ascending: false })
+
+    // Then, get accepted shipments with calculated prices
+    const { data: acceptedQuotes, error: acceptedQuotesError } = await supabase
+      .from('ShipmentOrder')
+      .select(`
+        id,
+        clientId,
+        customQuoteRequestedAt,
+        calculatedPriceEur,
+        status,
+        clientTransportChoice,
+        paymentMethod,
+        acceptedAt,
+        createdAt,
+        Client:clientId(displayName, clientCode),
+        deliveryAddress:deliveryAddressId(city, country),
+        Package(widthCm, lengthCm, heightCm, weightKg)
+      `)
+      .in('clientId', clientIds.length > 0 ? clientIds : [''])
+      .not('calculatedPriceEur', 'is', null)
+      .eq('clientTransportChoice', 'ACCEPT')
+      .order('acceptedAt', { ascending: false })
+
+    const quotesError = customQuotesError || quotedError || acceptedQuotesError
+    // Combine all results, removing duplicates by id
+    const quotesMap = new Map()
+    ;(customQuotes || []).forEach((q: any) => quotesMap.set(q.id, q))
+    ;(quotedShipments || []).forEach((q: any) => {
+      // Only add if not already in map (to avoid duplicates)
+      if (!quotesMap.has(q.id)) {
+        quotesMap.set(q.id, q)
+      }
+    })
+    ;(acceptedQuotes || []).forEach((q: any) => {
+      // Only add if not already in map (to avoid duplicates)
+      if (!quotesMap.has(q.id)) {
+        quotesMap.set(q.id, q)
+      }
+    })
+    const quotes = Array.from(quotesMap.values())
 
     if (quotesError) {
       console.error('Error fetching custom quotes:', quotesError)
