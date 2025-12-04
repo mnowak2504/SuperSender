@@ -143,9 +143,9 @@ export async function GET(
     const orderData = {
       orderNumber: invoice.invoiceNumber || `ORD-${invoice.id.slice(-8).toUpperCase()}`,
       orderDate: invoice.createdAt, // Use createdAt as issue date
-      clientName: (invoice.Client as any)?.displayName || 'Unknown',
-      clientCode: (invoice.Client as any)?.clientCode || 'N/A',
-      clientEmail: (invoice.Client as any)?.email || '',
+      clientName: client?.displayName || 'Unknown',
+      clientCode: client?.clientCode || 'N/A',
+      clientEmail: client?.email || '',
       items: items,
       subtotal: subtotal,
       vatRate: vatRate,
@@ -155,8 +155,22 @@ export async function GET(
       dueDate: invoice.createdAt, // Use createdAt instead of dueDate (payment due immediately)
     }
 
+    console.log('[itemised-order] Generating PDF with orderData:', {
+      orderNumber: orderData.orderNumber,
+      itemsCount: orderData.items.length,
+      total: orderData.total,
+      clientName: orderData.clientName,
+    })
+
     // Generate PDF
-    const pdfBuffer = await generateOrderPDF(orderData)
+    let pdfBuffer: Buffer
+    try {
+      pdfBuffer = await generateOrderPDF(orderData)
+      console.log('[itemised-order] PDF generated successfully, size:', pdfBuffer.length)
+    } catch (pdfError) {
+      console.error('[itemised-order] Error in generateOrderPDF:', pdfError)
+      throw pdfError
+    }
 
     // Convert Buffer to Uint8Array for NextResponse
     const uint8Array = new Uint8Array(pdfBuffer)
@@ -169,8 +183,16 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('Error generating itemised order PDF:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[itemised-order] Error generating itemised order PDF:', error)
+    console.error('[itemised-order] Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+    })
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
