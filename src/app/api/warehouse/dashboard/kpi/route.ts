@@ -17,24 +17,29 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const todayISO = today.toISOString()
+    // Incoming orders (DeliveryExpected with status EXPECTED)
+    const { count: incomingOrdersCount } = await supabase
+      .from('DeliveryExpected')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'EXPECTED')
 
-    // Received today (m³ and count)
-    const { data: receivedToday } = await supabase
-      .from('Package')
-      .select('volumeCbm, weightKg, warehouseOrderId, WarehouseOrder:warehouseOrderId(createdAt)')
-      .gte('createdAt', todayISO)
-
-    const receivedTodayCbm = receivedToday?.reduce((sum, p) => sum + (p.volumeCbm || 0), 0) || 0
-    const receivedTodayCount = receivedToday?.length || 0
+    // Local collection (LocalCollectionQuote with status ACCEPTED or SCHEDULED)
+    const { count: localCollectionCount } = await supabase
+      .from('LocalCollectionQuote')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['ACCEPTED', 'SCHEDULED'])
 
     // Shipping requests to pack (status: REQUESTED)
     const { count: toPackCount } = await supabase
       .from('ShipmentOrder')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'REQUESTED')
+
+    // Ready to ship (status: READY_FOR_LOADING or AWAITING_ACCEPTANCE)
+    const { count: readyToShipCount } = await supabase
+      .from('ShipmentOrder')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['READY_FOR_LOADING', 'AWAITING_ACCEPTANCE'])
 
     // Missing data (no dimensions)
     // Check WarehouseOrders that:
@@ -127,31 +132,22 @@ export async function GET(req: NextRequest) {
       return true
     }).slice(0, 10)
 
-    // Shipped today
-    const { data: shippedToday } = await supabase
-      .from('WarehouseOrder')
-      .select('id, packedWeightKg')
-      .eq('status', 'SHIPPED')
-      .gte('packedAt', todayISO)
-
-    const shippedTodayCount = shippedToday?.length || 0
-    const shippedTodayWeight = shippedToday?.reduce((sum, o) => sum + (o.packedWeightKg || 0), 0) || 0
-
     return NextResponse.json({
-      receivedToday: {
-        cbm: receivedTodayCbm,
-        count: receivedTodayCount,
+      incomingOrders: {
+        count: incomingOrdersCount || 0,
+      },
+      localCollection: {
+        count: localCollectionCount || 0,
       },
       toPack: {
         count: toPackCount || 0, // Shipping requests to pack
       },
+      readyToShip: {
+        count: readyToShipCount || 0,
+      },
       missingData: {
         count: ordersWithoutData?.length || 0,
         items: ordersWithoutData || [],
-      },
-      shippedToday: {
-        count: shippedTodayCount,
-        weight: shippedTodayWeight,
       },
     })
   } catch (error) {

@@ -10,7 +10,7 @@ interface KPICardProps {
     isPositive?: boolean
   }
   icon?: LucideIcon
-  color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple'
+  color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'orange'
   size?: 'default' | 'large'
 }
 
@@ -29,6 +29,7 @@ export default function KPICard({
     yellow: 'bg-yellow-50 text-yellow-600',
     red: 'bg-red-50 text-red-600',
     purple: 'bg-purple-50 text-purple-600',
+    orange: 'bg-orange-50 text-orange-600',
   }
 
   const textSize = size === 'large' ? 'text-3xl' : 'text-2xl'

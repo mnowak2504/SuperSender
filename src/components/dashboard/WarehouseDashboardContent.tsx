@@ -9,10 +9,11 @@ import { formatVolumeCbm } from '@/lib/warehouse-calculations'
 import { adminTranslations } from '@/lib/admin-translations'
 
 interface DashboardData {
-  receivedToday: { cbm: number; count: number }
+  incomingOrders: { count: number }
+  localCollection: { count: number }
   toPack: { count: number }
+  readyToShip: { count: number }
   missingData: { count: number; items: any[] }
-  shippedToday: { count: number; weight: number }
 }
 
 export default function WarehouseDashboardContent() {
@@ -59,38 +60,46 @@ export default function WarehouseDashboardContent() {
 
       {/* Day Header KPIs */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <KPICard
-          title={adminTranslations.received_today}
-          value={`${formatVolumeCbm(data.receivedToday.cbm)}`}
-          subtitle={`${data.receivedToday.count} ${adminTranslations.items}`}
-          icon={Package}
-          color="green"
-          size="large"
-        />
-        <KPICard
-          title={adminTranslations.to_pack}
-          value={data.toPack.count}
-          subtitle={adminTranslations.shipping_requests}
-          icon={Truck}
-          color="yellow"
-          size="large"
-        />
-        <KPICard
-          title={adminTranslations.missing_data}
-          value={data.missingData.count}
-          subtitle={adminTranslations.no_photos_dimensions}
-          icon={AlertTriangle}
-          color="red"
-          size="large"
-        />
-        <KPICard
-          title={adminTranslations.shipped_today}
-          value={`${data.shippedToday.count}`}
-          subtitle={`${data.shippedToday.weight.toFixed(1)} kg`}
-          icon={CheckCircle}
-          color="blue"
-          size="large"
-        />
+        <Link href="/warehouse/expected-deliveries" className="block">
+          <KPICard
+            title={adminTranslations.incoming_orders}
+            value={data.incomingOrders.count}
+            subtitle={adminTranslations.view_all}
+            icon={Package}
+            color="green"
+            size="large"
+          />
+        </Link>
+        <Link href="/admin/local-collection-quotes?status=ACCEPTED" className="block">
+          <KPICard
+            title={adminTranslations.local_collection}
+            value={data.localCollection.count}
+            subtitle={adminTranslations.view_all}
+            icon={Truck}
+            color="orange"
+            size="large"
+          />
+        </Link>
+        <Link href="/warehouse/orders?status=TO_PACK" className="block">
+          <KPICard
+            title={adminTranslations.to_pack}
+            value={data.toPack.count}
+            subtitle={adminTranslations.view_all}
+            icon={Package}
+            color="yellow"
+            size="large"
+          />
+        </Link>
+        <Link href="/warehouse/orders?status=READY_TO_SHIP" className="block">
+          <KPICard
+            title={adminTranslations.ready_to_ship}
+            value={data.readyToShip.count}
+            subtitle={adminTranslations.view_all}
+            icon={CheckCircle}
+            color="blue"
+            size="large"
+          />
+        </Link>
       </div>
 
       {/* Loading Window Alert */}
