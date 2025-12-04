@@ -33,8 +33,9 @@ export function generateOrderPDF(orderData: OrderData): Promise<Buffer> {
         bufferPages: true
       })
       
-      // Use standard fonts that don't require external files
-      // PDFKit has built-in support for standard fonts
+      // Set default font to Times-Roman immediately to avoid Helvetica.afm loading
+      // PDFKit tries to load Helvetica by default, which causes ENOENT errors in serverless environments
+      doc.font('Times-Roman')
 
       const buffers: Buffer[] = []
       doc.on('data', buffers.push.bind(buffers))
