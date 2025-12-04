@@ -34,6 +34,39 @@ export async function checkActiveSubscription(clientId: string): Promise<{
       }
     }
 
+    // Check if there's a subscription invoice with PAYMENT_LINK_REQUESTED status
+    // If so, subscription should be active even if not yet paid
+    const { data: subscriptionInvoice } = await supabase
+      .from('Invoice')
+      .select('paymentMethod, status, subscriptionStartDate, subscriptionEndDate, subscriptionPeriod')
+      .eq('clientId', clientId)
+      .eq('type', 'SUBSCRIPTION')
+      .eq('paymentMethod', 'PAYMENT_LINK_REQUESTED')
+      .neq('status', 'PAID')
+      .order('createdAt', { ascending: false })
+      .limit(1)
+      .single()
+
+    // If payment link requested, subscription is active
+    if (subscriptionInvoice && subscriptionInvoice.paymentMethod === 'PAYMENT_LINK_REQUESTED') {
+      const startDate = subscriptionInvoice.subscriptionStartDate ? new Date(subscriptionInvoice.subscriptionStartDate) : new Date()
+      let endDate = subscriptionInvoice.subscriptionEndDate ? new Date(subscriptionInvoice.subscriptionEndDate) : null
+      
+      // Calculate end date if not provided
+      if (!endDate && subscriptionInvoice.subscriptionPeriod) {
+        const months = parseInt(subscriptionInvoice.subscriptionPeriod) || 1
+        endDate = new Date(startDate)
+        endDate.setMonth(endDate.getMonth() + months)
+      }
+      
+      return {
+        hasActiveSubscription: true,
+        status: 'ACTIVE',
+        subscriptionStartDate: startDate,
+        subscriptionEndDate: endDate,
+      }
+    }
+
     // No plan = no subscription
     if (!client.planId) {
       return {

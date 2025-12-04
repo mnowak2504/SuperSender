@@ -2,8 +2,9 @@ import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import ClientLayout from '@/components/ClientLayout'
-import ClientHeader from '@/components/ClientHeader'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import BankTransferInfo from '@/components/invoices/BankTransferInfo'
 import { getBankTransferTitle } from '@/lib/bank-transfer-info'
 
@@ -110,7 +111,8 @@ export default async function InvoicesPage() {
       case 'TRANSPORT':
         return 'Transport (MAK)'
       case 'OPERATIONS':
-        return 'Operations'
+      case 'PROFORMA':
+        return 'Proforma'
       default:
         return type
     }
@@ -136,11 +138,19 @@ export default async function InvoicesPage() {
 
   return (
     <ClientLayout>
-      <ClientHeader title="Invoices" showBackButton={true} backButtonHref="/client/dashboard" backButtonLabel="Dashboard" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Invoices</h1>
-          <p className="text-gray-600">View all your invoices and payment history</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Invoices</h1>
+            <p className="text-gray-600">View all your invoices and payment history</p>
+          </div>
+          <Link
+            href="/client/dashboard"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Return to Dashboard
+          </Link>
         </div>
 
         {invoicesWithStatus.length === 0 ? (
@@ -215,27 +225,17 @@ export default async function InvoicesPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center gap-3">
-                            {/* Download links for OPERATIONS invoices */}
-                            {invoice.type === 'OPERATIONS' && (
-                              <>
-                                <a
-                                  href={`/api/invoices/${invoice.id}/order-pdf`}
-                                  download
-                                  className="text-blue-600 hover:text-blue-900 font-medium text-xs"
-                                  title="Download Order PDF"
-                                >
-                                  PDF
-                                </a>
-                                <a
-                                  href={`/api/invoices/${invoice.id}/itemised-order`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-green-600 hover:text-green-900 font-medium text-xs"
-                                  title="View Itemised Order"
-                                >
-                                  Details
-                                </a>
-                              </>
+                            {/* Download link for PROFORMA invoices */}
+                            {(invoice.type === 'OPERATIONS' || invoice.type === 'PROFORMA') && (
+                              <a
+                                href={`/api/invoices/${invoice.id}/itemised-order`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-900 font-medium text-xs"
+                                title="Download Itemised Proforma Invoice"
+                              >
+                                Download PDF
+                              </a>
                             )}
                             
                             {/* Pay Now link */}

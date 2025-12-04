@@ -173,9 +173,51 @@ export default async function ClientDashboard() {
   
   // Check subscription status with dates
   const now = new Date()
-  const hasActiveSubscription = !!client?.planId
-  const subscriptionEndDate = client?.subscriptionEndDate ? new Date(client.subscriptionEndDate) : null
-  const subscriptionStartDate = client?.subscriptionStartDate ? new Date(client.subscriptionStartDate) : null
+  
+  // Check if there's a subscription invoice with PAYMENT_LINK_REQUESTED status
+  // If so, subscription should be active even if not yet paid
+  let hasPaymentLinkRequested = false
+  let paymentLinkRequestedInvoice: any = null
+  if (clientId) {
+    const { data: subscriptionInvoice } = await supabase
+      .from('Invoice')
+      .select('paymentMethod, status, subscriptionStartDate, subscriptionEndDate, subscriptionPlanId, subscriptionPeriod')
+      .eq('clientId', clientId)
+      .eq('type', 'SUBSCRIPTION')
+      .eq('paymentMethod', 'PAYMENT_LINK_REQUESTED')
+      .neq('status', 'PAID')
+      .order('createdAt', { ascending: false })
+      .limit(1)
+      .single()
+    
+    if (subscriptionInvoice) {
+      hasPaymentLinkRequested = true
+      paymentLinkRequestedInvoice = subscriptionInvoice
+    }
+  }
+  
+  // Subscription is active if has planId OR payment link requested
+  const hasActiveSubscription = !!client?.planId || hasPaymentLinkRequested
+  
+  // Use dates from payment link requested invoice if available, otherwise from client
+  let subscriptionEndDate = client?.subscriptionEndDate ? new Date(client.subscriptionEndDate) : null
+  let subscriptionStartDate = client?.subscriptionStartDate ? new Date(client.subscriptionStartDate) : null
+  
+  if (hasPaymentLinkRequested && paymentLinkRequestedInvoice) {
+    if (paymentLinkRequestedInvoice.subscriptionStartDate) {
+      subscriptionStartDate = new Date(paymentLinkRequestedInvoice.subscriptionStartDate)
+    }
+    if (paymentLinkRequestedInvoice.subscriptionEndDate) {
+      subscriptionEndDate = new Date(paymentLinkRequestedInvoice.subscriptionEndDate)
+    } else if (paymentLinkRequestedInvoice.subscriptionStartDate && paymentLinkRequestedInvoice.subscriptionPeriod) {
+      // Calculate end date from start date and period
+      const startDate = new Date(paymentLinkRequestedInvoice.subscriptionStartDate)
+      const months = parseInt(paymentLinkRequestedInvoice.subscriptionPeriod) || 1
+      subscriptionEndDate = new Date(startDate)
+      subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + months)
+    }
+  }
+  
   const isSubscriptionExpired = subscriptionEndDate ? subscriptionEndDate < now : false
   const isSubscriptionPending = subscriptionStartDate ? subscriptionStartDate > now : false
   const daysUntilExpiry = subscriptionEndDate ? Math.ceil((subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null
@@ -211,6 +253,20 @@ export default async function ClientDashboard() {
     
     if (proformas) {
       pendingProformas = proformas
+    }
+  }
+
+  // Fetch all outstanding invoices (not paid)
+  let totalOutstanding = 0
+  if (clientId) {
+    const { data: outstandingInvoices } = await supabase
+      .from('Invoice')
+      .select('amountEur, status')
+      .eq('clientId', clientId)
+      .neq('status', 'PAID')
+    
+    if (outstandingInvoices) {
+      totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + (inv.amountEur || 0), 0)
     }
   }
 
@@ -458,6 +514,32 @@ export default async function ClientDashboard() {
             </div>
           </Link>
         </div>
+
+      {/* Total Outstanding */}
+      {totalOutstanding > 0 && (
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg mb-8">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-medium text-red-800">Total Outstanding</h3>
+              <p className="mt-1 text-lg font-bold text-red-900">
+                €{totalOutstanding.toFixed(2)}
+              </p>
+              <p className="text-xs text-red-600 mt-1">
+                You have unpaid invoices. Please settle your account to avoid service interruption.
+              </p>
+              <Link
+                href="/client/invoices"
+                className="inline-block mt-2 text-sm font-medium text-red-800 hover:text-red-900 underline"
+              >
+                View Invoices →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
         {/* Shipments in Preparation */}
         {shipmentsInPrep.length > 0 && (

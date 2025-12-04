@@ -46,6 +46,7 @@ enum InvoiceType {
   SUBSCRIPTION
   TRANSPORT
   OPERATIONS
+  PROFORMA
 }
 
 enum InvoiceStatus {

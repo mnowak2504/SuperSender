@@ -26,7 +26,7 @@ export async function PUT(
     }
 
     const body = await req.json()
-    const { status, paidAt, invoiceNumber } = body
+    const { status, paidAt, invoiceNumber, paymentMethod } = body
 
     // Build update object
     const updateData: any = {}
@@ -52,9 +52,17 @@ export async function PUT(
       updateData.invoiceNumber = invoiceNumber || null
     }
 
+    // Update paymentMethod if provided
+    if (paymentMethod !== undefined) {
+      if (paymentMethod && !['BANK_TRANSFER', 'PAYMENT_LINK_REQUESTED'].includes(paymentMethod)) {
+        return NextResponse.json({ error: 'Invalid paymentMethod' }, { status: 400 })
+      }
+      updateData.paymentMethod = paymentMethod || null
+    }
+
     // At least one field must be provided
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: 'At least one field (status or invoiceNumber) is required' }, { status: 400 })
+      return NextResponse.json({ error: 'At least one field (status, invoiceNumber, or paymentMethod) is required' }, { status: 400 })
     }
 
     console.log('[API /superadmin/invoices/[id] PUT] Updating invoice:', {
@@ -90,6 +98,33 @@ export async function PUT(
 
     if (!updatedInvoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
+    }
+
+    // If payment link requested for subscription invoice, activate subscription immediately
+    if (paymentMethod === 'PAYMENT_LINK_REQUESTED' && updatedInvoice.type === 'SUBSCRIPTION' && updatedInvoice.subscriptionStartDate && updatedInvoice.subscriptionPeriod && updatedInvoice.subscriptionPlanId) {
+      const startDate = new Date(updatedInvoice.subscriptionStartDate)
+      startDate.setHours(0, 0, 0, 0)
+      
+      const endDate = new Date(startDate)
+      const months = parseInt(updatedInvoice.subscriptionPeriod) || 1
+      endDate.setMonth(endDate.getMonth() + months)
+      endDate.setHours(23, 59, 59, 999)
+      
+      // Update client with plan and subscription dates (activate immediately)
+      const { error: updateClientError } = await supabase
+        .from('Client')
+        .update({
+          planId: updatedInvoice.subscriptionPlanId,
+          subscriptionStartDate: startDate.toISOString(),
+          subscriptionEndDate: endDate.toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', updatedInvoice.clientId)
+
+      if (updateClientError) {
+        console.error('Error activating subscription after payment link requested:', updateClientError)
+        // Don't fail the request, but log the error
+      }
     }
 
     // If marking subscription invoice as paid, activate the subscription

@@ -7,7 +7,7 @@ import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Edit2, Save, X, File
 interface Invoice {
   id: string
   clientId: string
-  type: 'SUBSCRIPTION' | 'TRANSPORT' | 'OPERATIONS'
+  type: 'SUBSCRIPTION' | 'TRANSPORT' | 'OPERATIONS' | 'PROFORMA'
   amountEur: number
   currency: string
   status: 'ISSUED' | 'PAID' | 'OVERDUE'
@@ -177,7 +177,8 @@ export default function SuperAdminInvoicesContent() {
       case 'TRANSPORT':
         return 'Transport'
       case 'OPERATIONS':
-        return 'Operacje'
+      case 'PROFORMA':
+        return 'Proforma'
       default:
         return type
     }
@@ -408,7 +409,7 @@ export default function SuperAdminInvoicesContent() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {invoice.type === 'TRANSPORT' && invoice.paymentMethod ? (
+                      {invoice.paymentMethod ? (
                         <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
                           invoice.paymentMethod === 'BANK_TRANSFER' 
                             ? 'bg-blue-100 text-blue-800' 
@@ -422,42 +423,97 @@ export default function SuperAdminInvoicesContent() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex flex-col gap-2 items-end">
-                        {/* Download links for OPERATIONS invoices */}
-                        {invoice.type === 'OPERATIONS' && (
-                          <div className="flex gap-2">
-                            <a
-                              href={`/api/invoices/${invoice.id}/order-pdf`}
-                              download
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 border border-blue-300 rounded hover:bg-blue-50"
-                              title="Pobierz PDF zamówienia"
-                            >
-                              <FileText className="w-3 h-3" />
-                              PDF
-                            </a>
-                            <a
-                              href={`/api/invoices/${invoice.id}/itemised-order`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs text-green-600 hover:text-green-800 border border-green-300 rounded hover:bg-green-50"
-                              title="Zobacz szczegóły zamówienia"
-                            >
-                              Szczegóły
-                            </a>
-                          </div>
+                        {/* Download link for PROFORMA invoices */}
+                        {(invoice.type === 'OPERATIONS' || invoice.type === 'PROFORMA') && (
+                          <a
+                            href={`/api/invoices/${invoice.id}/itemised-order`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 border border-blue-300 rounded hover:bg-blue-50"
+                            title="Pobierz szczegóły zamówienia PDF"
+                          >
+                            <FileText className="w-3 h-3" />
+                            Pobierz PDF
+                          </a>
                         )}
                         
-                        {/* Request payment link button for TRANSPORT invoices */}
-                        {invoice.type === 'TRANSPORT' && invoice.status === 'ISSUED' && !invoice.paymentMethod && (
+                        {/* Request payment link button for TRANSPORT and SUBSCRIPTION invoices */}
+                        {(invoice.type === 'TRANSPORT' || invoice.type === 'SUBSCRIPTION') && invoice.status === 'ISSUED' && !invoice.paymentMethod && (
                           <button
-                            onClick={() => {
-                              // TODO: Implement request payment link
-                              alert('Funkcja żądania linku płatniczego będzie wkrótce dostępna')
+                            onClick={async () => {
+                              if (!confirm('Czy na pewno chcesz żądać linku płatniczego dla tej faktury? Konto klienta zostanie aktywowane natychmiast.')) {
+                                return
+                              }
+
+                              try {
+                                setUpdating(invoice.id)
+                                setError('')
+
+                                // Update invoice to mark payment link as requested
+                                const res = await fetch(`/api/superadmin/invoices/${invoice.id}`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    paymentMethod: 'PAYMENT_LINK_REQUESTED',
+                                  }),
+                                })
+
+                                if (!res.ok) {
+                                  const errorData = await res.json().catch(() => ({ error: 'Failed to update invoice' }))
+                                  throw new Error(errorData.error || errorData.details || 'Failed to request payment link')
+                                }
+
+                                // If subscription invoice, activate subscription immediately
+                                if (invoice.type === 'SUBSCRIPTION') {
+                                  // Get invoice details to activate subscription
+                                  const invoiceRes = await fetch(`/api/superadmin/invoices/${invoice.id}`)
+                                  if (invoiceRes.ok) {
+                                    const invoiceData = await invoiceRes.json()
+                                    const invoiceDetails = invoiceData.invoice
+                                    
+                                    if (invoiceDetails.subscriptionPlanId && invoiceDetails.subscriptionStartDate) {
+                                      // Activate subscription
+                                      const activateRes = await fetch(`/api/superadmin/clients/${invoice.clientId}`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          planId: invoiceDetails.subscriptionPlanId,
+                                          subscriptionStartDate: invoiceDetails.subscriptionStartDate,
+                                          subscriptionEndDate: invoiceDetails.subscriptionEndDate || null,
+                                        }),
+                                      })
+                                      
+                                      if (!activateRes.ok) {
+                                        console.warn('Failed to activate subscription, but payment link was requested')
+                                      }
+                                    }
+                                  }
+                                }
+
+                                // Refresh invoices
+                                await fetchInvoices()
+                              } catch (err) {
+                                console.error('Error requesting payment link:', err)
+                                setError(err instanceof Error ? err.message : 'Failed to request payment link')
+                              } finally {
+                                setUpdating(null)
+                              }
                             }}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700"
+                            disabled={updating === invoice.id}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Żądaj linku płatniczego"
                           >
-                            <Link className="w-3 h-3" />
-                            Żądaj linku
+                            {updating === invoice.id ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Zapisywanie...
+                              </>
+                            ) : (
+                              <>
+                                <Link className="w-3 h-3" />
+                                Żądaj linku
+                              </>
+                            )}
                           </button>
                         )}
                         

@@ -44,9 +44,9 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Only OPERATIONS invoices have itemised breakdown
-    if (invoice.type !== 'OPERATIONS') {
-      return NextResponse.json({ error: 'Itemised order only available for operations invoices' }, { status: 400 })
+    // Only PROFORMA (and legacy OPERATIONS) invoices have itemised breakdown
+    if (invoice.type !== 'OPERATIONS' && invoice.type !== 'PROFORMA') {
+      return NextResponse.json({ error: 'Itemised order only available for proforma invoices' }, { status: 400 })
     }
 
     // Get the month/year when invoice was created

@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
         .insert({
           id: invoiceId,
           clientId: clientId,
-          type: 'OPERATIONS',
+          type: 'PROFORMA',
           amountEur: additionalCharges.totalAmountEur,
           currency: 'EUR',
           status: 'ISSUED',
