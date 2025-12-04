@@ -99,6 +99,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Delete existing packages for this shipment (if any) to avoid duplicates
+    // This allows updating dimensions without creating duplicate packages
+    const { error: deletePackagesError } = await supabase
+      .from('Package')
+      .delete()
+      .eq('shipmentId', shipmentId)
+
+    if (deletePackagesError) {
+      console.warn('Could not delete existing packages (may not exist):', deletePackagesError)
+      // Continue anyway - this is not critical
+    }
+
     // Create Package records linked to ShipmentOrder (not WarehouseOrder)
     const packageInserts = items.map((item: any) => {
       const volumeCbm = calculateVolumeCbm(item.widthCm, item.lengthCm, item.heightCm)
@@ -220,56 +232,66 @@ export async function POST(req: NextRequest) {
     }
 
     // Update ShipmentOrder with calculated price and status
-    // After packing, status changes to QUOTED (ready for client to choose transport)
+    // After packing, status ALWAYS changes to QUOTED (ready for client to choose transport)
+    // Even if transport price is 0 or not calculated, the shipment is packed and ready
+    const updateData: any = {
+      status: 'QUOTED',
+    }
+    
     if (transportPrice > 0) {
-      const { error: updateShipmentError } = await supabase
+      updateData.calculatedPriceEur = transportPrice
+      updateData.transportPricingId = transportPricingId
+    }
+
+    const { error: updateShipmentError } = await supabase
+      .from('ShipmentOrder')
+      .update(updateData)
+      .eq('id', shipmentId)
+
+    if (updateShipmentError) {
+      console.error('Error updating shipment order:', updateShipmentError)
+      return NextResponse.json(
+        { error: 'Failed to update shipment order', details: updateShipmentError.message },
+        { status: 500 }
+      )
+    }
+
+    // Get client info for email (only if price was calculated)
+    if (transportPrice > 0) {
+      const { data: shipmentData } = await supabase
         .from('ShipmentOrder')
-        .update({
-          calculatedPriceEur: transportPrice,
-          transportPricingId: transportPricingId,
-          status: 'QUOTED',
-        })
+        .select('clientId, Client:clientId(email, displayName)')
         .eq('id', shipmentId)
+        .single()
 
-      if (updateShipmentError) {
-        console.error('Error updating shipment order:', updateShipmentError)
-      } else {
-        // Get client info for email
-        const { data: shipmentData } = await supabase
-          .from('ShipmentOrder')
-          .select('clientId, Client:clientId(email, displayName)')
-          .eq('id', shipmentId)
-          .single()
+      if (shipmentData) {
+        const clientEmail = (shipmentData.Client as any)?.email
+        const clientName = (shipmentData.Client as any)?.displayName
 
-        if (shipmentData) {
-          const clientEmail = (shipmentData.Client as any)?.email
-          const clientName = (shipmentData.Client as any)?.displayName
+        // Try to call Edge Function to send email
+        try {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-          // Try to call Edge Function to send email
-          try {
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-            const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-            if (supabaseUrl && supabaseAnonKey) {
-              await fetch(`${supabaseUrl}/functions/v1/send-shipment-ready-email`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${supabaseAnonKey}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  shipmentId,
-                  clientEmail,
-                  clientName,
-                  calculatedPrice: transportPrice,
-                }),
-              }).catch((err) => {
-                console.warn('Could not call email function:', err)
-              })
-            }
-          } catch (emailError) {
-            console.warn('Email notification error:', emailError)
+          if (supabaseUrl && supabaseAnonKey) {
+            await fetch(`${supabaseUrl}/functions/v1/send-shipment-ready-email`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${supabaseAnonKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                shipmentId,
+                clientEmail,
+                clientName,
+                calculatedPrice: transportPrice,
+              }),
+            }).catch((err) => {
+              console.warn('Could not call email function:', err)
+            })
           }
+        } catch (emailError) {
+          console.warn('Email notification error:', emailError)
         }
       }
     }
@@ -278,7 +300,7 @@ export async function POST(req: NextRequest) {
       {
         message: 'Shipment packed successfully',
         shipmentId,
-        status: 'AWAITING_ACCEPTANCE',
+        status: 'QUOTED',
         shipmentType,
         totalPallets: shipmentType === 'PALLET' ? totalPallets : null,
         totalVolume,
