@@ -184,6 +184,14 @@ export async function POST(req: NextRequest) {
     const currentMonth = now.getMonth() + 1
     const currentYear = now.getFullYear()
 
+    // First, update additional charges to ensure we have the latest values
+    try {
+      const { updateMonthlyAdditionalCharges } = await import('@/lib/update-additional-charges')
+      await updateMonthlyAdditionalCharges(clientId, currentMonth, currentYear)
+    } catch (updateError) {
+      console.warn('Could not update additional charges before creating invoice:', updateError)
+    }
+
     const { data: additionalCharges } = await supabase
       .from('MonthlyAdditionalCharges')
       .select('*')
@@ -194,13 +202,14 @@ export async function POST(req: NextRequest) {
 
     let invoiceId: string | null = null
 
-    // Create proforma if there are any additional charges (even if totalAmountEur is 0 due to previous invoice)
-    // We check individual amounts to ensure we capture all charges
-    if (additionalCharges && (additionalCharges.overSpaceAmountEur > 0 || additionalCharges.additionalServicesAmountEur > 0)) {
-      // Calculate total from individual amounts (may differ from totalAmountEur if already reset)
-      const totalCharges = (additionalCharges.overSpaceAmountEur || 0) + (additionalCharges.additionalServicesAmountEur || 0)
-      
-      if (totalCharges > 0) {
+    // Create proforma if there are any additional charges
+    // Check both individual amounts and totalAmountEur to catch all cases
+    const overSpaceAmount = additionalCharges?.overSpaceAmountEur || 0
+    const additionalServicesAmount = additionalCharges?.additionalServicesAmountEur || 0
+    const totalAmount = additionalCharges?.totalAmountEur || 0
+    const totalCharges = Math.max(totalAmount, overSpaceAmount + additionalServicesAmount)
+    
+    if (additionalCharges && totalCharges > 0) {
         // Create invoice for additional charges
         const generateCUID = () => {
           const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'

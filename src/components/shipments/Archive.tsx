@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Package, CheckCircle } from 'lucide-react'
+import { ChevronDown, ChevronRight, Package, CheckCircle, ChevronUp } from 'lucide-react'
 
 interface ArchivedShipment {
   id: string
@@ -28,6 +28,7 @@ interface ArchiveProps {
 
 export default function Archive({ shipments }: ArchiveProps) {
   const [expandedShipments, setExpandedShipments] = useState<Set<string>>(new Set())
+  const [isCollapsed, setIsCollapsed] = useState(true)
 
   const toggleShipment = (shipmentId: string) => {
     const newExpanded = new Set(expandedShipments)
@@ -86,9 +87,26 @@ export default function Archive({ shipments }: ArchiveProps) {
             </p>
           </div>
         </div>
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          {isCollapsed ? (
+            <>
+              <span>Show</span>
+              <ChevronDown className="w-4 h-4" />
+            </>
+          ) : (
+            <>
+              <span>Hide</span>
+              <ChevronUp className="w-4 h-4" />
+            </>
+          )}
+        </button>
       </div>
 
-      <div className="space-y-3">
+      {!isCollapsed && (
+        <div className="space-y-3">
         {shipments.map((shipment) => {
           const isExpanded = expandedShipments.has(shipment.id)
           const totalOrders = shipment.items?.length || 0
@@ -174,7 +192,8 @@ export default function Archive({ shipments }: ArchiveProps) {
             </div>
           )
         })}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

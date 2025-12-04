@@ -42,12 +42,12 @@ export async function GET(req: NextRequest) {
       .lt('createdAt', sevenDaysAgo.toISOString())
 
     // 3. Quotes Awaiting Action (custom quote requests)
+    // Include both customQuoteRequestedAt IS NOT NULL and clientTransportChoice = 'REQUEST_CUSTOM'
     const { data: customQuotes, error: quotesError } = await supabase
       .from('ShipmentOrder')
-      .select('id, customQuoteRequestedAt, clientId')
+      .select('id, customQuoteRequestedAt, clientId, clientTransportChoice')
       .in('clientId', clientIds.length > 0 ? clientIds : [''])
-      .not('customQuoteRequestedAt', 'is', null)
-      .eq('status', 'AWAITING_ACCEPTANCE')
+      .or('customQuoteRequestedAt.not.is.null,clientTransportChoice.eq.REQUEST_CUSTOM')
 
     // Count quotes by time pending (excluding weekends)
     const now = new Date()

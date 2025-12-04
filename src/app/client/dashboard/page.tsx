@@ -557,13 +557,6 @@ export default async function ClientDashboard() {
           </div>
         )}
 
-        {/* Archive */}
-        {archivedShipments.length > 0 && (
-          <div className="mb-8">
-            <Archive shipments={archivedShipments} />
-          </div>
-        )}
-
         {/* Local Collection Quotes Section */}
         <div className="mb-8">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -1112,6 +1105,13 @@ Tel. +48 534 759 809 (for couriers only)`}
             )}
           </div>
         </div>
+
+        {/* Archive - at the bottom, collapsible */}
+        {archivedShipments.length > 0 && (
+          <div className="mb-8">
+            <Archive shipments={archivedShipments} />
+          </div>
+        )}
       </div>
     </div>
   )

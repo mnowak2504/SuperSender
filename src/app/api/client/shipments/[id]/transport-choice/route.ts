@@ -56,9 +56,10 @@ export async function POST(
       updateData.acceptedAt = new Date().toISOString()
       updateData.proposedPriceEur = shipment.calculatedPriceEur || shipment.proposedPriceEur
       
-      // Create proforma invoice for transport
+      // Always create proforma invoice for transport (even if price is 0, admin can update it later)
       const transportPrice = shipment.calculatedPriceEur || shipment.proposedPriceEur || 0
-      if (transportPrice > 0) {
+      // Create invoice regardless of price - admin can update it if needed
+      if (true) { // Always create invoice
         const generateCUID = () => {
           const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
           let result = 'inv'

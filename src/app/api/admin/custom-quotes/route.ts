@@ -29,11 +29,11 @@ export async function GET(req: NextRequest) {
 
     // Get custom quote requests AND shipments with calculated prices (for admin visibility)
     // Show:
-    // 1. Custom quote requests (customQuoteRequestedAt IS NOT NULL)
+    // 1. Custom quote requests (customQuoteRequestedAt IS NOT NULL OR clientTransportChoice = 'REQUEST_CUSTOM')
     // 2. Shipments with calculated prices ready for client choice (status = QUOTED AND calculatedPriceEur IS NOT NULL)
     // 3. Shipments with calculated prices that client has accepted (calculatedPriceEur IS NOT NULL AND clientTransportChoice = 'ACCEPT')
     
-    // First, get custom quote requests
+    // First, get custom quote requests (both with customQuoteRequestedAt and REQUEST_CUSTOM choice)
     const { data: customQuotes, error: customQuotesError } = await supabase
       .from('ShipmentOrder')
       .select(`
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
         Package(widthCm, lengthCm, heightCm, weightKg)
       `)
       .in('clientId', clientIds.length > 0 ? clientIds : [''])
-      .not('customQuoteRequestedAt', 'is', null)
+      .or('customQuoteRequestedAt.not.is.null,clientTransportChoice.eq.REQUEST_CUSTOM')
       .order('customQuoteRequestedAt', { ascending: false })
 
     // Then, get quotes ready for client choice (QUOTED status - packed by warehouse, waiting for client)
