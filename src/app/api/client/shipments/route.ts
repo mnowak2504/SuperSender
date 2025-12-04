@@ -257,7 +257,6 @@ export async function POST(req: NextRequest) {
 
           console.log(`[Shipment ${shipmentOrderId}] Created invoice ${invoiceId} for additional charges: €${totalCharges}`)
         }
-      }
     }
 
     // Fetch the complete shipment with items
