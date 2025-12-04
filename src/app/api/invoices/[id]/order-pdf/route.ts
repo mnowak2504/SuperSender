@@ -124,8 +124,14 @@ export async function GET(
     // Generate PDF
     const pdfBuffer = await generateOrderPDF(orderData)
 
+    // Convert Buffer to ArrayBuffer for NextResponse
+    const arrayBuffer = pdfBuffer.buffer.slice(
+      pdfBuffer.byteOffset,
+      pdfBuffer.byteOffset + pdfBuffer.byteLength
+    )
+
     // Return PDF
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(arrayBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="order-${orderData.orderNumber}.pdf"`,
