@@ -191,15 +191,21 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
                     })}
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    {(shipment.status === 'QUOTED' || shipment.status === 'AWAITING_ACCEPTANCE') && shipment.calculatedPriceEur ? (
+                    {(shipment.status === 'QUOTED' || shipment.status === 'AWAITING_ACCEPTANCE') ? (
                       <div className="space-y-3">
                         <div className="bg-green-50 border border-green-200 rounded-md p-3">
                           <p className="text-sm font-medium text-green-900 mb-1">
                             ✅ Ready for transport selection!
                           </p>
-                          <p className="text-sm text-green-700">
-                            Calculated price: <strong>€{shipment.calculatedPriceEur.toFixed(2)}</strong>
-                          </p>
+                          {shipment.calculatedPriceEur ? (
+                            <p className="text-sm text-green-700">
+                              Calculated price: <strong>€{shipment.calculatedPriceEur.toFixed(2)}</strong>
+                            </p>
+                          ) : (
+                            <p className="text-sm text-green-700">
+                              Please choose your transport method to proceed.
+                            </p>
+                          )}
                         </div>
                         <Link
                           href={`/client/shipments/${shipment.id}/transport-choice`}

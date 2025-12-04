@@ -48,9 +48,10 @@ export default async function TransportChoicePage({
     redirect('/unauthorized')
   }
 
-  // Check if warehouse has packed and calculated price
+  // Check if warehouse has packed
   // Status should be QUOTED (after packing) or AWAITING_ACCEPTANCE (after transport choice)
-  if (shipment.status === 'REQUESTED' || (!shipment.calculatedPriceEur && shipment.status !== 'QUOTED')) {
+  // Price may not be calculated yet, but shipment is ready for transport choice
+  if (shipment.status === 'REQUESTED') {
     // Warehouse is still packing - show waiting message
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
