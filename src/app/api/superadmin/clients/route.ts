@@ -137,12 +137,12 @@ export async function GET(req: NextRequest) {
     }
     
     // Get Plan limits for clients without WarehouseCapacity records
-    const { data: plans } = await supabase
+    const { data: planLimitsData } = await supabase
       .from('Plan')
       .select('id, spaceLimitCbm')
     
     const planLimitMap = new Map<string, number>()
-    ;(plans || []).forEach((plan: any) => {
+    ;(planLimitsData || []).forEach((plan: any) => {
       planLimitMap.set(plan.id, plan.spaceLimitCbm || 0)
     })
     
