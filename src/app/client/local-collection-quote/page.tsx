@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import ClientLayout from '@/components/ClientLayout'
 import RequestLocalCollectionQuote from '@/components/client/RequestLocalCollectionQuote'
 import AcceptQuoteAndSchedule from '@/components/client/AcceptQuoteAndSchedule'
-import { Truck, Loader2, CheckCircle, Clock, XCircle } from 'lucide-react'
+import { Truck, Loader2, CheckCircle, Clock, XCircle, Package } from 'lucide-react'
 
 export default function LocalCollectionQuotePage() {
   const router = useRouter()
@@ -190,6 +190,41 @@ export default function LocalCollectionQuotePage() {
                   <div className="mb-4">
                     <p className="text-xs text-gray-500 mb-1">Notes</p>
                     <p className="text-sm text-gray-700">{quote.clientNotes}</p>
+                  </div>
+                )}
+
+                {/* Convert to Order button for ACCEPTED/SCHEDULED quotes */}
+                {(quote.status === 'ACCEPTED' || quote.status === 'SCHEDULED') && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={async () => {
+                        if (confirm('Convert this local collection quote to a delivery order? This will create a new order that the warehouse can receive.')) {
+                          try {
+                            const res = await fetch(`/api/client/local-collection-quote/${quote.id}/convert-to-order`, {
+                              method: 'POST',
+                            })
+                            if (res.ok) {
+                              const data = await res.json()
+                              alert(`Successfully converted to delivery order! Delivery number: ${data.delivery.deliveryNumber}`)
+                              fetchQuotes()
+                            } else {
+                              const errorData = await res.json()
+                              alert(errorData.error || 'Failed to convert quote to order')
+                            }
+                          } catch (err) {
+                            console.error('Error converting quote to order:', err)
+                            alert('Failed to convert quote to order')
+                          }
+                        }
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                    >
+                      <Package className="w-4 h-4" />
+                      Convert to Delivery Order
+                    </button>
+                    <p className="text-xs text-gray-500 mt-2">
+                      This will create a delivery order that the warehouse can receive, so you don't need to report it manually.
+                    </p>
                   </div>
                 )}
               </div>

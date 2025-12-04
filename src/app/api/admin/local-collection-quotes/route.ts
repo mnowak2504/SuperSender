@@ -43,7 +43,29 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    return NextResponse.json({ quotes: quotes || [] })
+    // Get counts for all statuses (for tab badges)
+    const { data: allQuotes, error: countsError } = await supabase
+      .from('LocalCollectionQuote')
+      .select('status')
+
+    if (countsError) {
+      console.error('Error fetching quote counts:', countsError)
+    }
+
+    const counts = {
+      REQUESTED: allQuotes?.filter(q => q.status === 'REQUESTED').length || 0,
+      QUOTED: allQuotes?.filter(q => q.status === 'QUOTED').length || 0,
+      ACCEPTED: allQuotes?.filter(q => q.status === 'ACCEPTED').length || 0,
+      SCHEDULED: allQuotes?.filter(q => q.status === 'SCHEDULED').length || 0,
+      COMPLETED: allQuotes?.filter(q => q.status === 'COMPLETED').length || 0,
+      CANCELLED: allQuotes?.filter(q => q.status === 'CANCELLED').length || 0,
+      ALL: allQuotes?.length || 0,
+    }
+
+    return NextResponse.json({ 
+      quotes: quotes || [],
+      counts 
+    })
   } catch (error) {
     console.error('Error in GET /api/admin/local-collection-quotes:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

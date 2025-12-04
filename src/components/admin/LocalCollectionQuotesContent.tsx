@@ -50,6 +50,23 @@ export default function LocalCollectionQuotesContent() {
   const [adminNotes, setAdminNotes] = useState<string>('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [counts, setCounts] = useState<{
+    REQUESTED: number
+    QUOTED: number
+    ACCEPTED: number
+    SCHEDULED: number
+    COMPLETED: number
+    CANCELLED: number
+    ALL: number
+  }>({
+    REQUESTED: 0,
+    QUOTED: 0,
+    ACCEPTED: 0,
+    SCHEDULED: 0,
+    COMPLETED: 0,
+    CANCELLED: 0,
+    ALL: 0,
+  })
 
   useEffect(() => {
     fetchQuotes()
@@ -63,6 +80,9 @@ export default function LocalCollectionQuotesContent() {
       if (res.ok) {
         const data = await res.json()
         setQuotes(data.quotes || [])
+        if (data.counts) {
+          setCounts(data.counts)
+        }
       } else {
         const errorData = await res.json()
         setError(errorData.error || 'Failed to fetch quotes')
@@ -184,7 +204,7 @@ export default function LocalCollectionQuotesContent() {
               : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
           }`}
         >
-          Oczekujące ({quotes.filter(q => q.status === 'REQUESTED').length})
+          Oczekujące ({counts.REQUESTED})
         </button>
         <button
           onClick={() => setStatusFilter('QUOTED')}
@@ -194,7 +214,7 @@ export default function LocalCollectionQuotesContent() {
               : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
           }`}
         >
-          Wycenione ({quotes.filter(q => q.status === 'QUOTED').length})
+          Wycenione ({counts.QUOTED})
         </button>
         <button
           onClick={() => setStatusFilter('')}
@@ -204,7 +224,7 @@ export default function LocalCollectionQuotesContent() {
               : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
           }`}
         >
-          Wszystkie ({quotes.length})
+          Wszystkie ({counts.ALL})
         </button>
       </div>
 
