@@ -138,36 +138,31 @@ export default async function ClientDashboard() {
 
   // Get base limit from plan if not in capacity
   let baseLimitCbm = warehouseCapacity?.limitCbm || client?.limitCbm || 0
+  let bufferCbm = 0
   if (!baseLimitCbm && client?.planId) {
     const { data: planData } = await supabase
       .from('Plan')
-      .select('spaceLimitCbm')
+      .select('spaceLimitCbm, bufferCbm')
       .eq('id', client.planId)
       .single()
     if (planData) {
       baseLimitCbm = planData.spaceLimitCbm || 0
+      bufferCbm = planData.bufferCbm || 0
+    }
+  } else if (client?.planId) {
+    // Get buffer even if we have baseLimitCbm
+    const { data: planData } = await supabase
+      .from('Plan')
+      .select('bufferCbm')
+      .eq('id', client.planId)
+      .single()
+    if (planData) {
+      bufferCbm = planData.bufferCbm || 0
     }
   }
-
-  // Get active paid overspace (within 1 month from charge date)
-  const now = new Date()
-  const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 days ago
   
-  const { data: activeOverspaceCharges } = await supabase
-    .from('MonthlyAdditionalCharges')
-    .select('overSpacePaidCbm, overSpaceChargedAt')
-    .eq('clientId', clientId)
-    .not('overSpaceChargedAt', 'is', null)
-    .gte('overSpaceChargedAt', oneMonthAgo.toISOString())
-    .gt('overSpacePaidCbm', 0)
-  
-  // Sum up all active paid overspace
-  const activePaidCbm = activeOverspaceCharges?.reduce((sum, charge) => {
-    return sum + (charge.overSpacePaidCbm || 0)
-  }, 0) || 0
-  
-  // Effective limit = base limit + active paid overspace
-  const limitCbm = baseLimitCbm + activePaidCbm
+  // Effective limit = base limit + buffer (buffer is free, overspace doesn't increase limit anymore)
+  const limitCbm = baseLimitCbm + bufferCbm
 
   const usedCbm = warehouseCapacity?.usedCbm || client?.usedCbm || 0
   const spaceUsagePct = limitCbm > 0 ? (usedCbm / limitCbm) * 100 : 0

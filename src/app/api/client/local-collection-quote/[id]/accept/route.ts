@@ -107,11 +107,27 @@ export async function POST(
       )
     }
 
-    // Add local collection cost to MonthlyAdditionalCharges
-    const localCollectionCost = updatedQuote.quotedPriceEur || 0
+    // Apply Professional plan discount (15% off) if applicable
+    // Get client's plan to check for discount
+    const { data: clientData } = await supabase
+      .from('Client')
+      .select('planId, Plan:planId(name, localPickupDiscountPercent)')
+      .eq('id', clientId)
+      .single()
 
-    if (localCollectionCost > 0) {
-      await addAdditionalServiceCharge(clientId, localCollectionCost)
+    let finalPrice = updatedQuote.quotedPriceEur || 0
+    
+    if (clientData?.Plan && (clientData.Plan as any).localPickupDiscountPercent) {
+      const discountPercent = (clientData.Plan as any).localPickupDiscountPercent || 0
+      if (discountPercent > 0 && finalPrice > 0) {
+        // Apply discount (e.g., 15% for Professional)
+        finalPrice = finalPrice * (1 - discountPercent / 100)
+      }
+    }
+
+    // Add local collection cost to MonthlyAdditionalCharges (with discount applied)
+    if (finalPrice > 0) {
+      await addAdditionalServiceCharge(clientId, finalPrice)
     }
 
     // TODO: Send notification email to sales rep/admin about scheduled collection

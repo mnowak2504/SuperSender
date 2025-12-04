@@ -158,15 +158,17 @@ model Client {
 }
 
 model Plan {
-  id                 String   @id @default(cuid())
-  name               String
-  deliveriesPerMonth Int
-  spaceLimitCbm      Float
-  overSpaceRateEur   Float
-  operationsRateEur  Float
-  clients            Client[]
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  name                    String
+  deliveriesPerMonth      Int
+  spaceLimitCbm           Float
+  bufferCbm               Float?   @default(0) // Free buffer space (e.g., 5m³ for Professional)
+  overSpaceRateEur        Float
+  operationsRateEur       Float
+  localPickupDiscountPercent Float? @default(0) // Discount percentage for local pickup (e.g., 15% for Professional)
+  clients                 Client[]
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 }
 
 model DeliveryExpected {

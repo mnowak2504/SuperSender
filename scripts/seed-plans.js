@@ -29,24 +29,26 @@ const generateCUID = () => {
 const plans = [
   {
     name: 'Basic',
-    deliveriesPerMonth: 4,
+    deliveriesPerMonth: 7,
     spaceLimitCbm: 2.5,
     overSpaceRateEur: 20.0,
     operationsRateEur: 59.0,
   },
   {
     name: 'Standard',
-    deliveriesPerMonth: 8,
+    deliveriesPerMonth: 14,
     spaceLimitCbm: 5.0,
     overSpaceRateEur: 20.0,
     operationsRateEur: 99.0,
   },
   {
     name: 'Professional',
-    deliveriesPerMonth: 12,
-    spaceLimitCbm: 20.0, // 15 CBM + 5 CBM buffer
+    deliveriesPerMonth: 28,
+    spaceLimitCbm: 20.0, // 15 CBM + 5 CBM buffer (buffer is handled separately in calculations)
+    bufferCbm: 5.0, // Free buffer space
     overSpaceRateEur: 20.0,
     operationsRateEur: 229.0,
+    localPickupDiscountPercent: 15.0, // 15% discount on local pickup
   },
   {
     name: 'Enterprise',

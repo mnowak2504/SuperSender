@@ -136,14 +136,16 @@ export async function GET(req: NextRequest) {
       }
     }
     
-    // Get Plan limits for clients without WarehouseCapacity records
+    // Get Plan limits and buffers for clients without WarehouseCapacity records
     const { data: planLimitsData } = await supabase
       .from('Plan')
-      .select('id, spaceLimitCbm')
+      .select('id, spaceLimitCbm, bufferCbm')
     
     const planLimitMap = new Map<string, number>()
+    const planBufferMap = new Map<string, number>()
     ;(planLimitsData || []).forEach((plan: any) => {
       planLimitMap.set(plan.id, plan.spaceLimitCbm || 0)
+      planBufferMap.set(plan.id, plan.bufferCbm || 0)
     })
     
     // Only query related data if we have clients
@@ -257,24 +259,8 @@ export async function GET(req: NextRequest) {
       return acc
     }, {} as Record<string, any[]>)
 
-    // Get active paid overspace for all clients (within 1 month from charge date)
-    const now = new Date()
-    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-    const clientIdsForOverspace = (clients || []).map((c: any) => c.id)
-    const { data: activeOverspaceCharges } = await supabase
-      .from('MonthlyAdditionalCharges')
-      .select('clientId, overSpacePaidCbm, overSpaceChargedAt')
-      .in('clientId', clientIdsForOverspace.length > 0 ? clientIdsForOverspace : [''])
-      .not('overSpaceChargedAt', 'is', null)
-      .gte('overSpaceChargedAt', oneMonthAgo.toISOString())
-      .gt('overSpacePaidCbm', 0)
-    
-    // Create map of active paid overspace per client
-    const activePaidCbmMap = new Map<string, number>()
-    activeOverspaceCharges?.forEach((charge: any) => {
-      const current = activePaidCbmMap.get(charge.clientId) || 0
-      activePaidCbmMap.set(charge.clientId, current + (charge.overSpacePaidCbm || 0))
-    })
+    // Note: Overspace no longer increases limit - it's charged weekly pro-rata
+    // We don't need to fetch active overspace charges for limit calculation
 
     // Format clients with all statistics
     const formattedClients = (clients || []).map((client: any) => {
@@ -287,13 +273,11 @@ export async function GET(req: NextRequest) {
 
       // Get base limit from capacity, client.limitCbm, or plan
       const planLimit = plan ? planLimitMap.get(plan.id) || 0 : 0
+      const planBuffer = plan ? (planBufferMap.get(plan.id) || (plan as any).bufferCbm || 0) : 0
       const baseLimitCbm = capacity.limitCbm || client.limitCbm || planLimit || 0
       
-      // Get active paid overspace for this client
-      const activePaidCbm = activePaidCbmMap.get(client.id) || 0
-      
-      // Effective limit = base limit + active paid overspace (same as client dashboard)
-      const limitCbm = baseLimitCbm + activePaidCbm
+      // Effective limit = base limit + buffer (overspace doesn't increase limit anymore)
+      const limitCbm = baseLimitCbm + planBuffer
       const usedCbm = capacity.usedCbm || 0
       const usagePercent = limitCbm > 0 ? (usedCbm / limitCbm) * 100 : 0
       const isOverLimit = usedCbm > limitCbm

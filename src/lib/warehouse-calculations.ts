@@ -45,14 +45,17 @@ export function isOverLimit(usedCbm: number, limitCbm: number): boolean {
 }
 
 /**
- * Calculate over-space charge (only for m³ over limit)
- * Charge is applied when usage exceeds limit by 20% or more
+ * Calculate over-space charge (DEPRECATED - use calculateWeeklyOverspaceCharge instead)
+ * This function is kept for backward compatibility but should be replaced with weekly pro-rata logic
+ * @deprecated Use calculateWeeklyOverspaceCharge from './calculate-weekly-overspace'
  */
 export function calculateOverSpaceCharge(
   usedCbm: number,
   limitCbm: number,
   overSpaceRateEur: number
 ): number {
+  // Old logic - kept for backward compatibility
+  // New logic uses weekly pro-rata: €5/m³ per started week
   const threshold = limitCbm * 1.2 // 20% over limit threshold
   if (usedCbm <= threshold) return 0
   const overSpace = usedCbm - threshold // Only charge for space over 120% of limit

@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
         salesOwnerId,
         salesOwner: salesOwnerId (name, email),
         warehouseCapacity: WarehouseCapacity (*),
-        Plan:planId(spaceLimitCbm)
+        Plan:planId(spaceLimitCbm, bufferCbm)
       `)
 
     // Apply country filter for ADMIN
@@ -94,15 +94,24 @@ export async function GET(req: NextRequest) {
       return acc
     }, {} as Record<string, string>)
 
+    // Note: Overspace no longer increases limit - it's charged weekly pro-rata
+    // We don't need to fetch active overspace charges for limit calculation
+
     // Format clients with capacity data
     const formattedClients = (clients || []).map((client: any) => {
       const capacity = client.warehouseCapacity?.[0] || {}
       
-      // Get limit from capacity, client.limitCbm, or plan
+      // Get base limit from capacity, client.limitCbm, or plan
       const planLimit = (Array.isArray(client.Plan) && client.Plan.length > 0
         ? (client.Plan[0] as any)?.spaceLimitCbm
         : (client.Plan as any)?.spaceLimitCbm) || 0
-      const limitCbm = capacity.limitCbm || client.limitCbm || planLimit || 0
+      const baseLimitCbm = capacity.limitCbm || client.limitCbm || planLimit || 0
+      
+      // Get active paid overspace for this client
+      const activePaidCbm = activePaidCbmMap.get(client.id) || 0
+      
+      // Effective limit = base limit + active paid overspace (same as client dashboard)
+      const limitCbm = baseLimitCbm + activePaidCbm
       const usedCbm = capacity.usedCbm || 0
       const usagePercent = limitCbm > 0 ? (usedCbm / limitCbm) * 100 : 0
       const isOverLimit = usedCbm > limitCbm
