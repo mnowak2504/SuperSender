@@ -55,8 +55,43 @@ export async function POST(
       updateData.status = 'AWAITING_PAYMENT'
       updateData.acceptedAt = new Date().toISOString()
       updateData.proposedPriceEur = shipment.calculatedPriceEur || shipment.proposedPriceEur
-      if (paymentMethod && ['BANK_TRANSFER', 'PAYMENT_LINK_REQUESTED'].includes(paymentMethod)) {
-        updateData.paymentMethod = paymentMethod
+      
+      // Create proforma invoice for transport
+      const transportPrice = shipment.calculatedPriceEur || shipment.proposedPriceEur || 0
+      if (transportPrice > 0) {
+        const generateCUID = () => {
+          const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+          let result = 'inv'
+          for (let i = 0; i < 22; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length))
+          }
+          return result
+        }
+
+        const invoiceId = generateCUID()
+        const dueDate = new Date()
+        dueDate.setDate(dueDate.getDate() + 14) // 14 days to pay
+
+        const { data: invoice, error: invoiceError } = await supabase
+          .from('Invoice')
+          .insert({
+            id: invoiceId,
+            clientId: clientId,
+            type: 'PROFORMA',
+            amountEur: transportPrice,
+            currency: 'EUR',
+            status: 'ISSUED',
+            dueDate: dueDate.toISOString(),
+          })
+          .select()
+          .single()
+
+        if (invoiceError) {
+          console.error('Error creating transport invoice:', invoiceError)
+          // Continue even if invoice creation fails
+        } else {
+          console.log(`[Transport Choice] Created proforma invoice ${invoiceId} for transport: €${transportPrice}`)
+        }
       }
     } else if (transportChoice === 'OWN_TRANSPORT') {
       updateData.transportMode = 'CLIENT_OWN'

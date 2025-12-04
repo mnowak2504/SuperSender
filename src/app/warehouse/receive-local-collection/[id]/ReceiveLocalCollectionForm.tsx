@@ -18,6 +18,9 @@ export default function ReceiveLocalCollectionForm({ quote }: ReceiveLocalCollec
     warehouseLocation: '',
     warehouseInternalNumber: '',
     notes: '',
+    widthCm: '',
+    lengthCm: '',
+    heightCm: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,6 +37,9 @@ export default function ReceiveLocalCollectionForm({ quote }: ReceiveLocalCollec
           warehouseLocation: formData.warehouseLocation || null,
           warehouseInternalNumber: formData.warehouseInternalNumber || null,
           notes: formData.notes || null,
+          widthCm: parseFloat(formData.widthCm),
+          lengthCm: parseFloat(formData.lengthCm),
+          heightCm: parseFloat(formData.heightCm),
         }),
       })
 
@@ -211,6 +217,61 @@ export default function ReceiveLocalCollectionForm({ quote }: ReceiveLocalCollec
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             />
             <p className="mt-1 text-xs text-gray-500">Numer z fizycznej naklejki na zamówieniu.</p>
+          </div>
+
+          {/* Dimensions Section */}
+          <div className="border-t pt-4 mt-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Wymiary przesyłki (do obliczenia użytego miejsca)</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="lengthCm" className="block text-sm font-medium text-gray-700 mb-1">
+                  Długość (cm) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="lengthCm"
+                  step="0.1"
+                  min="0"
+                  value={formData.lengthCm}
+                  onChange={(e) => setFormData({ ...formData, lengthCm: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="widthCm" className="block text-sm font-medium text-gray-700 mb-1">
+                  Szerokość (cm) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="widthCm"
+                  step="0.1"
+                  min="0"
+                  value={formData.widthCm}
+                  onChange={(e) => setFormData({ ...formData, widthCm: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="heightCm" className="block text-sm font-medium text-gray-700 mb-1">
+                  Wysokość (cm) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="heightCm"
+                  step="0.1"
+                  min="0"
+                  value={formData.heightCm}
+                  onChange={(e) => setFormData({ ...formData, heightCm: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  required
+                />
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Wymiary podane przez klienta: {quote.widthCm} × {quote.lengthCm} × {quote.heightCm} cm
+            </p>
           </div>
 
           {/* Notes */}

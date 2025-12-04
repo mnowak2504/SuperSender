@@ -33,7 +33,15 @@ export async function POST(
 
     const { id } = await params
     const body = await req.json()
-    const { condition, warehouseLocation, warehouseInternalNumber, notes } = body
+    const { condition, warehouseLocation, warehouseInternalNumber, notes, widthCm, lengthCm, heightCm } = body
+
+    // Validate dimensions
+    if (!widthCm || !lengthCm || !heightCm || widthCm <= 0 || lengthCm <= 0 || heightCm <= 0) {
+      return NextResponse.json(
+        { error: 'Wymiary przesyłki są wymagane i muszą być większe od zera' },
+        { status: 400 }
+      )
+    }
 
     // Verify quote exists and is in ACCEPTED or SCHEDULED status
     const { data: quote, error: quoteError } = await supabase
@@ -103,11 +111,11 @@ export async function POST(
       console.warn('Could not generate internal tracking number:', err)
     }
 
-    // Calculate volume from quote dimensions
+    // Calculate volume from warehouse-provided dimensions (not quote dimensions)
     const volumeCbm = calculateVolumeCbm(
-      quote.widthCm,
-      quote.lengthCm,
-      quote.heightCm
+      widthCm,
+      lengthCm,
+      heightCm
     )
 
     // Build notes with condition info if damaged
@@ -132,10 +140,10 @@ export async function POST(
       clientId,
       sourceDeliveryId: sourceDeliveryId, // Link to DeliveryExpected if it exists
       status: condition === 'NO_REMARKS' ? 'AT_WAREHOUSE' : 'DAMAGED',
-      packedLengthCm: Math.round(quote.lengthCm),
-      packedWidthCm: Math.round(quote.widthCm),
-      packedHeightCm: Math.round(quote.heightCm),
-      packedWeightKg: quote.weightKg,
+      packedLengthCm: Math.round(lengthCm),
+      packedWidthCm: Math.round(widthCm),
+      packedHeightCm: Math.round(heightCm),
+      packedWeightKg: quote.weightKg, // Keep weight from quote
       warehouseLocation: warehouseLocation || null,
       warehouseInternalNumber: warehouseInternalNumber || null,
       notes: finalNotes || null,
@@ -166,10 +174,10 @@ export async function POST(
         id: packageId,
         warehouseOrderId: warehouseOrderId,
         type: 'PACKAGE',
-        widthCm: Math.round(quote.widthCm),
-        lengthCm: Math.round(quote.lengthCm),
-        heightCm: Math.round(quote.heightCm),
-        weightKg: quote.weightKg,
+        widthCm: Math.round(widthCm),
+        lengthCm: Math.round(lengthCm),
+        heightCm: Math.round(heightCm),
+        weightKg: quote.weightKg, // Keep weight from quote
         volumeCbm: volumeCbm,
       })
 

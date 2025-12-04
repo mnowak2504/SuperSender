@@ -179,6 +179,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check for additional charges and create invoice if any exist
+    // Always create a new proforma if there are additional charges, even if other proformas exist
     const now = new Date()
     const currentMonth = now.getMonth() + 1
     const currentYear = now.getFullYear()
@@ -193,53 +194,60 @@ export async function POST(req: NextRequest) {
 
     let invoiceId: string | null = null
 
-    if (additionalCharges && additionalCharges.totalAmountEur > 0) {
-      // Create invoice for additional charges
-      const generateCUID = () => {
-        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-        let result = 'inv'
-        for (let i = 0; i < 22; i++) {
-          result += chars.charAt(Math.floor(Math.random() * chars.length))
+    // Create proforma if there are any additional charges (even if totalAmountEur is 0 due to previous invoice)
+    // We check individual amounts to ensure we capture all charges
+    if (additionalCharges && (additionalCharges.overSpaceAmountEur > 0 || additionalCharges.additionalServicesAmountEur > 0)) {
+      // Calculate total from individual amounts (may differ from totalAmountEur if already reset)
+      const totalCharges = (additionalCharges.overSpaceAmountEur || 0) + (additionalCharges.additionalServicesAmountEur || 0)
+      
+      if (totalCharges > 0) {
+        // Create invoice for additional charges
+        const generateCUID = () => {
+          const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+          let result = 'inv'
+          for (let i = 0; i < 22; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length))
+          }
+          return result
         }
-        return result
-      }
 
-      invoiceId = generateCUID()
-      const dueDate = new Date()
-      dueDate.setDate(dueDate.getDate() + 14) // 14 days to pay
+        invoiceId = generateCUID()
+        const dueDate = new Date()
+        dueDate.setDate(dueDate.getDate() + 14) // 14 days to pay
 
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('Invoice')
-        .insert({
-          id: invoiceId,
-          clientId: clientId,
-          type: 'PROFORMA',
-          amountEur: additionalCharges.totalAmountEur,
-          currency: 'EUR',
-          status: 'ISSUED',
-          dueDate: dueDate.toISOString(),
-        })
-        .select()
-        .single()
-
-      if (invoiceError) {
-        console.error('Error creating invoice for additional charges:', invoiceError)
-        // Continue with shipment creation even if invoice creation fails
-      } else {
-        // Reset charge amounts after creating invoice (but keep overSpacePaidCbm and overSpaceChargedAt
-        // so that paid space remains available for 1 month from charge date)
-        await supabase
-          .from('MonthlyAdditionalCharges')
-          .update({
-            overSpaceAmountEur: 0,
-            additionalServicesAmountEur: 0,
-            totalAmountEur: 0,
-            updatedAt: new Date().toISOString(),
-            // Keep overSpacePaidCbm and overSpaceChargedAt - paid space is available for 1 month
+        const { data: invoice, error: invoiceError } = await supabase
+          .from('Invoice')
+          .insert({
+            id: invoiceId,
+            clientId: clientId,
+            type: 'PROFORMA',
+            amountEur: totalCharges,
+            currency: 'EUR',
+            status: 'ISSUED',
+            dueDate: dueDate.toISOString(),
           })
-          .eq('id', additionalCharges.id)
+          .select()
+          .single()
 
-        console.log(`[Shipment ${shipmentOrderId}] Created invoice ${invoiceId} for additional charges: €${additionalCharges.totalAmountEur}`)
+        if (invoiceError) {
+          console.error('Error creating invoice for additional charges:', invoiceError)
+          // Continue with shipment creation even if invoice creation fails
+        } else {
+          // Reset charge amounts after creating invoice (but keep overSpacePaidCbm and overSpaceChargedAt
+          // so that paid space remains available for 1 month from charge date)
+          await supabase
+            .from('MonthlyAdditionalCharges')
+            .update({
+              overSpaceAmountEur: 0,
+              additionalServicesAmountEur: 0,
+              totalAmountEur: 0,
+              updatedAt: new Date().toISOString(),
+              // Keep overSpacePaidCbm and overSpaceChargedAt - paid space is available for 1 month
+            })
+            .eq('id', additionalCharges.id)
+
+          console.log(`[Shipment ${shipmentOrderId}] Created invoice ${invoiceId} for additional charges: €${totalCharges}`)
+        }
       }
     }
 

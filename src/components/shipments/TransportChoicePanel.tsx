@@ -249,31 +249,24 @@ export default function TransportChoicePanel({
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <CheckCircle className="w-6 h-6 text-green-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Accept Calculated Price</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Accept & Pay</h3>
               </div>
               <p className="text-sm text-gray-600 mb-4">
-                Proceed with the automatically calculated transport price of <strong>€{calculatedPrice.toFixed(2)}</strong>.
-                Choose your payment method below.
+                Accept the calculated transport price of <strong>€{calculatedPrice.toFixed(2)}</strong>.
+                A proforma invoice will be created which you can pay by bank transfer or payment link.
               </p>
               <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800 mb-4">
-                <strong>Account activated immediately.</strong> Payment link will be sent within 1 working day.
+                <strong>Account activated immediately.</strong> You will receive a proforma invoice that can be paid via bank transfer or by requesting a payment link.
               </div>
             </div>
           </div>
           <div className="flex gap-3 mt-4">
             <button
-              onClick={() => handleChoice('ACCEPT', 'BANK_TRANSFER')}
+              onClick={() => handleChoice('ACCEPT')}
               disabled={loading || choice === 'ACCEPT'}
               className="flex-1 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Pay by Bank Transfer
-            </button>
-            <button
-              onClick={() => handleChoice('ACCEPT', 'PAYMENT_LINK_REQUESTED')}
-              disabled={loading || choice === 'ACCEPT'}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Request Payment Link
+              Accept & Pay
             </button>
           </div>
         </div>

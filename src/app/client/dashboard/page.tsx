@@ -256,14 +256,16 @@ export default async function ClientDashboard() {
     }
   }
 
-  // Fetch all outstanding invoices (not paid)
+  // Fetch all outstanding PROFORMA invoices (status ISSUED, not paid)
+  // Sum all proformas waiting for payment
   let totalOutstanding = 0
   if (clientId) {
     const { data: outstandingInvoices } = await supabase
       .from('Invoice')
-      .select('amountEur, status')
+      .select('amountEur, status, type')
       .eq('clientId', clientId)
-      .neq('status', 'PAID')
+      .eq('type', 'PROFORMA')
+      .eq('status', 'ISSUED')
     
     if (outstandingInvoices) {
       totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + (inv.amountEur || 0), 0)

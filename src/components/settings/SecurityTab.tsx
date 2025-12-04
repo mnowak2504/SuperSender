@@ -73,6 +73,39 @@ export default function SecurityTab() {
         <p className="text-sm text-gray-500">Change your password and manage account security</p>
       </div>
 
+      {/* Password Reset Section */}
+      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+        <div className="flex items-center gap-2 mb-2">
+          <Lock className="w-5 h-5 text-blue-600" />
+          <h3 className="text-sm font-semibold text-gray-900">Reset Password</h3>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          If you forgot your password, click the button below to receive a password reset link via email.
+        </p>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const res = await fetch('/api/client/reset-password-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+              })
+              const data = await res.json()
+              if (res.ok) {
+                alert('Password reset link has been sent to your email address.')
+              } else {
+                alert(data.error || 'Failed to send password reset link')
+              }
+            } catch (err) {
+              alert('Failed to send password reset link. Please try again.')
+            }
+          }}
+          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+        >
+          Send Password Reset Link
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <div className="flex items-center gap-2 mb-2">
