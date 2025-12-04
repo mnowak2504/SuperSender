@@ -25,23 +25,30 @@ export async function GET(
     const userId = (session.user as any)?.id
     const clientId = (session.user as any)?.clientId
 
-    // Fetch invoice with client info
+    // Fetch invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from('Invoice')
-      .select(`
-        *,
-        Client:clientId(
-          id,
-          displayName,
-          clientCode,
-          email
-        )
-      `)
+      .select('*')
       .eq('id', id)
       .single()
 
     if (invoiceError || !invoice) {
+      console.error('[itemised-order] Invoice fetch error:', invoiceError)
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
+    }
+
+    // Fetch client data separately
+    let client: any = null
+    const { data: clientData, error: clientError } = await supabase
+      .from('Client')
+      .select('id, displayName, clientCode, email')
+      .eq('id', invoice.clientId)
+      .single()
+
+    if (clientError) {
+      console.error('[itemised-order] Client fetch error:', clientError)
+    } else {
+      client = clientData
     }
 
     // Check permissions
