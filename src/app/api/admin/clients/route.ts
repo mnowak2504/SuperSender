@@ -105,13 +105,14 @@ export async function GET(req: NextRequest) {
       const planLimit = (Array.isArray(client.Plan) && client.Plan.length > 0
         ? (client.Plan[0] as any)?.spaceLimitCbm
         : (client.Plan as any)?.spaceLimitCbm) || 0
+      const planBuffer = (Array.isArray(client.Plan) && client.Plan.length > 0
+        ? (client.Plan[0] as any)?.bufferCbm
+        : (client.Plan as any)?.bufferCbm) || 0
       const baseLimitCbm = capacity.limitCbm || client.limitCbm || planLimit || 0
       
-      // Get active paid overspace for this client
-      const activePaidCbm = activePaidCbmMap.get(client.id) || 0
-      
-      // Effective limit = base limit + active paid overspace (same as client dashboard)
-      const limitCbm = baseLimitCbm + activePaidCbm
+      // Effective limit = base limit + buffer (overspace doesn't increase limit anymore)
+      // Buffer is free space included in plan (e.g., 5m³ for Professional)
+      const limitCbm = baseLimitCbm + planBuffer
       const usedCbm = capacity.usedCbm || 0
       const usagePercent = limitCbm > 0 ? (usedCbm / limitCbm) * 100 : 0
       const isOverLimit = usedCbm > limitCbm
