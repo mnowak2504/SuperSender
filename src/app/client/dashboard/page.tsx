@@ -311,7 +311,7 @@ export default async function ClientDashboard() {
         )
       `)
       .eq('clientId', clientId)
-      .in('status', ['REQUESTED', 'QUOTED', 'AWAITING_ACCEPTANCE', 'READY_FOR_LOADING'])
+      .in('status', ['REQUESTED', 'QUOTED', 'AWAITING_ACCEPTANCE', 'AWAITING_PAYMENT', 'READY_FOR_LOADING'])
       .order('createdAt', { ascending: false })
 
     if (!shipmentsError && shipmentsData) {

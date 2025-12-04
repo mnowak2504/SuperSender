@@ -77,6 +77,14 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
                   </span>
                 </span>
               )}
+              {shipments.filter(s => s.status === 'AWAITING_PAYMENT').length > 0 && (
+                <span>
+                  {' • '}
+                  <span className="text-blue-600 font-medium">
+                    {shipments.filter(s => s.status === 'AWAITING_PAYMENT').length} awaiting payment
+                  </span>
+                </span>
+              )}
               {shipments.filter(s => s.status === 'READY_FOR_LOADING').length > 0 && (
                 <span>
                   {' • '}
@@ -93,12 +101,13 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
       <div className="space-y-3">
         {shipments
           .sort((a, b) => {
-            // Sort: QUOTED/AWAITING_ACCEPTANCE first, then READY_FOR_LOADING, then REQUESTED
+            // Sort: QUOTED/AWAITING_ACCEPTANCE first, then AWAITING_PAYMENT, then READY_FOR_LOADING, then REQUESTED
             const statusOrder: Record<string, number> = {
               'QUOTED': 1,
               'AWAITING_ACCEPTANCE': 1,
-              'READY_FOR_LOADING': 2,
-              'REQUESTED': 3,
+              'AWAITING_PAYMENT': 2,
+              'READY_FOR_LOADING': 3,
+              'REQUESTED': 4,
             }
             const orderA = statusOrder[a.status] || 99
             const orderB = statusOrder[b.status] || 99
@@ -212,6 +221,32 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
                           className="inline-flex items-center justify-center w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
                         >
                           Choose Transport Method
+                        </Link>
+                      </div>
+                    ) : shipment.status === 'AWAITING_PAYMENT' ? (
+                      <div className="space-y-3">
+                        <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                          <p className="text-sm font-medium text-blue-900 mb-1">
+                            💳 Awaiting Payment
+                          </p>
+                          {shipment.calculatedPriceEur ? (
+                            <p className="text-sm text-blue-700">
+                              Transport price: <strong>€{shipment.calculatedPriceEur.toFixed(2)}</strong>
+                            </p>
+                          ) : (
+                            <p className="text-sm text-blue-700">
+                              A proforma invoice has been created. Please check your invoices section.
+                            </p>
+                          )}
+                          <p className="text-xs text-blue-600 mt-2">
+                            A proforma invoice has been created. You can pay by bank transfer or request a payment link.
+                          </p>
+                        </div>
+                        <Link
+                          href="/client/invoices"
+                          className="inline-flex items-center justify-center w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                          View Invoices
                         </Link>
                       </div>
                     ) : shipment.status === 'READY_FOR_LOADING' ? (
