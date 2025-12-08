@@ -309,7 +309,7 @@ export async function POST(req: NextRequest) {
         .limit(1)
         .single()
 
-      const setupFee = setupFeeData?.currentAmountEur || 119.0
+      const setupFee = setupFeeData?.currentAmountEur || 99.0
       finalAmount += setupFee
     }
 

@@ -28,7 +28,7 @@ interface Voucher {
 export default function PricingManagementContent() {
   const [setupFee, setSetupFee] = useState<SetupFee | null>(null)
   const [setupFeeForm, setSetupFeeForm] = useState({
-    currentAmountEur: 119.0,
+    currentAmountEur: 99.0,
     validUntil: '',
   })
   const [vouchers, setVouchers] = useState<Voucher[]>([])

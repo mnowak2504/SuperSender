@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
     if (!setupFee) {
       return NextResponse.json({
         setupFee: {
-          suggestedAmountEur: 119.0,
-          currentAmountEur: 119.0,
+          suggestedAmountEur: 99.0,
+          currentAmountEur: 99.0,
           validUntil: null,
           shouldCharge: true, // Default to charging if no client context
         },

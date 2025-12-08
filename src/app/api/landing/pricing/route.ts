@@ -35,8 +35,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Determine current setup fee amount
-    let setupFeeEur = setupFeeData?.suggestedAmountEur || 119.0
-    const suggestedAmountEur = setupFeeData?.suggestedAmountEur || 119.0
+    let setupFeeEur = setupFeeData?.suggestedAmountEur || 99.0
+    const suggestedAmountEur = setupFeeData?.suggestedAmountEur || 99.0
     
     // Check if promotional amount is valid
     if (setupFeeData?.currentAmountEur && setupFeeData.currentAmountEur !== suggestedAmountEur) {

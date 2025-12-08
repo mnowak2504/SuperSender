@@ -396,8 +396,8 @@ model TranslationCache {
 
 model SetupFee {
   id                String   @id @default(cuid())
-  suggestedAmountEur Float    @default(119.0) // Suggested setup fee (€119)
-  currentAmountEur   Float    @default(119.0) // Current promotional amount
+  suggestedAmountEur Float    @default(99.0) // Suggested setup fee (€99)
+  currentAmountEur   Float    @default(99.0) // Current promotional amount
   validUntil         DateTime? // Date until which current amount is valid (null = no expiration)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

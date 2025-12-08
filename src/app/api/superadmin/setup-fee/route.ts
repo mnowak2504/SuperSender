@@ -35,8 +35,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         setupFee: {
           id: 'default',
-          suggestedAmountEur: 119.0,
-          currentAmountEur: 119.0,
+          suggestedAmountEur: 99.0,
+          currentAmountEur: 99.0,
           validUntil: null,
         },
       })

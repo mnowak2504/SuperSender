@@ -16,7 +16,7 @@ interface Plan {
   id: string
   name: string
   operationsRateEur: number
-  promotionalPriceEur?: number | null
+  promotionalPriceEur?: number | null | undefined
 }
 
 interface SetupFee {
@@ -45,10 +45,17 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
     fetch('/api/landing/pricing')
       .then((res) => res.json())
       .then((data) => {
+        console.log('[LandingPage] Pricing data received:', data)
         if (data.plans) {
+          console.log('[LandingPage] Plans:', data.plans.map((p: Plan) => ({
+            name: p.name,
+            operationsRateEur: p.operationsRateEur,
+            promotionalPriceEur: p.promotionalPriceEur,
+          })))
           setPlans(data.plans)
         }
         if (data.setupFee) {
+          console.log('[LandingPage] Setup fee:', data.setupFee)
           setSetupFee(data.setupFee)
         }
       })
@@ -65,7 +72,8 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
     const originalPrice = plan.operationsRateEur
     const promotionalPrice = plan.promotionalPriceEur
     
-    if (promotionalPrice && promotionalPrice < originalPrice) {
+    // Check if promotional price exists and is valid (not null, not undefined, not 0, and less than original)
+    if (promotionalPrice != null && promotionalPrice > 0 && promotionalPrice < originalPrice) {
       return {
         original: originalPrice,
         promotional: promotionalPrice,
