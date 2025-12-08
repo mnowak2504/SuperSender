@@ -103,7 +103,7 @@ export async function PUT(req: NextRequest) {
         .from('SetupFee')
         .insert({
           id: 'setup_fee_1',
-          suggestedAmountEur: 119.0,
+          suggestedAmountEur: 99.0,
           currentAmountEur,
           validUntil: validUntil || null,
         })

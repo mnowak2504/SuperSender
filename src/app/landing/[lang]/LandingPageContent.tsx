@@ -72,8 +72,9 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
     const originalPrice = plan.operationsRateEur
     const promotionalPrice = plan.promotionalPriceEur
     
-    // Check if promotional price exists and is valid (not null, not undefined, not 0, and less than original)
-    if (promotionalPrice != null && promotionalPrice > 0 && promotionalPrice < originalPrice) {
+    // Check if promotional price exists and is valid (not null, not undefined, not 0)
+    // Show promotional price if it's different from original (can be higher or lower)
+    if (promotionalPrice != null && promotionalPrice > 0 && promotionalPrice !== originalPrice) {
       return {
         original: originalPrice,
         promotional: promotionalPrice,
@@ -310,12 +311,14 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
                     </h3>
                     <div className={`text-3xl font-bold mb-2 ${isPro ? 'text-white' : 'text-blue-600'}`}>
                       {priceInfo.isPromotional ? (
-                        <>
-                          <span className="line-through text-gray-400 text-2xl mr-2">
+                        <div className="flex flex-col">
+                          <span className={`line-through ${isPro ? 'text-blue-200' : 'text-gray-400'} text-xl mb-1`}>
                             €{priceInfo.original.toFixed(0)}/month
                           </span>
-                          <span>€{priceInfo.promotional!.toFixed(0)}/month</span>
-                        </>
+                          <span className={`${isPro ? 'text-white' : 'text-green-600'} text-3xl font-bold`}>
+                            €{priceInfo.promotional!.toFixed(0)}/month
+                          </span>
+                        </div>
                       ) : isEnterprise ? (
                         <span>{translations.pricing_enterprise_price}</span>
                       ) : (
@@ -456,18 +459,18 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
                       <td className="px-4 py-3 text-sm text-center text-gray-500">...</td>
                     </>
                   ) : (
-                    plans.map((plan) => {
+                      plans.map((plan) => {
                       const priceInfo = getPlanPrice(plan)
                       const isEnterprise = plan.name === 'Enterprise'
                       return (
                         <td key={plan.id} className="px-4 py-3 text-sm text-center text-gray-900">
                           {priceInfo.isPromotional ? (
-                            <>
-                              <span className="line-through text-gray-400 mr-2">
+                            <div className="flex flex-col items-center">
+                              <span className="line-through text-gray-400 text-xs mb-1">
                                 €{priceInfo.original.toFixed(0)}/month
                               </span>
-                              <span className="font-semibold">€{priceInfo.promotional!.toFixed(0)}/month</span>
-                            </>
+                              <span className="font-semibold text-green-600">€{priceInfo.promotional!.toFixed(0)}/month</span>
+                            </div>
                           ) : isEnterprise ? (
                             translations.pricing_enterprise_price
                           ) : (
