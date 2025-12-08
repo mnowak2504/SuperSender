@@ -31,6 +31,8 @@ export default function PricingManagementContent() {
     currentAmountEur: 99.0,
     validUntil: '',
   })
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [planForms, setPlanForms] = useState<Record<string, { operationsRateEur: number; promotionalPriceEur: string }>>({})
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [voucherForm, setVoucherForm] = useState({
     code: '',
@@ -39,6 +41,7 @@ export default function PricingManagementContent() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savingPlanId, setSavingPlanId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -48,8 +51,9 @@ export default function PricingManagementContent() {
 
   const fetchData = async () => {
     try {
-      const [setupFeeRes, vouchersRes] = await Promise.all([
+      const [setupFeeRes, plansRes, vouchersRes] = await Promise.all([
         fetch('/api/superadmin/setup-fee'),
+        fetch('/api/admin/plans'),
         fetch('/api/superadmin/vouchers'),
       ])
 
@@ -64,6 +68,22 @@ export default function PricingManagementContent() {
               : '',
           })
         }
+      }
+
+      if (plansRes.ok) {
+        const plansData = await plansRes.json()
+        const plansList = (plansData.plans || []).filter((p: Plan) => p.name !== 'Individual')
+        setPlans(plansList)
+        
+        // Initialize form data for each plan
+        const forms: Record<string, { operationsRateEur: number; promotionalPriceEur: string }> = {}
+        plansList.forEach((plan: Plan) => {
+          forms[plan.id] = {
+            operationsRateEur: plan.operationsRateEur,
+            promotionalPriceEur: plan.promotionalPriceEur?.toString() || '',
+          }
+        })
+        setPlanForms(forms)
       }
 
       if (vouchersRes.ok) {
@@ -105,6 +125,54 @@ export default function PricingManagementContent() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleSavePlan = async (planId: string) => {
+    setSavingPlanId(planId)
+    setError('')
+    setSuccess('')
+
+    try {
+      const formData = planForms[planId]
+      if (!formData) {
+        throw new Error('Plan form data not found')
+      }
+
+      const res = await fetch(`/api/superadmin/plans/${planId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operationsRateEur: parseFloat(formData.operationsRateEur.toString()),
+          promotionalPriceEur: formData.promotionalPriceEur === '' || formData.promotionalPriceEur === null 
+            ? null 
+            : parseFloat(formData.promotionalPriceEur),
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to save plan')
+      }
+
+      setSuccess(`Plan "${plans.find(p => p.id === planId)?.name}" updated successfully`)
+      await fetchData()
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to save plan')
+      setTimeout(() => setError(''), 5000)
+    } finally {
+      setSavingPlanId(null)
+    }
+  }
+
+  const handlePlanFormChange = (planId: string, field: 'operationsRateEur' | 'promotionalPriceEur', value: string | number) => {
+    setPlanForms(prev => ({
+      ...prev,
+      [planId]: {
+        ...prev[planId],
+        [field]: value,
+      },
+    }))
   }
 
   const handleCreateVoucher = async () => {
@@ -153,6 +221,87 @@ export default function PricingManagementContent() {
 
   return (
     <div className="space-y-6">
+      {/* Plan Management Section */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Package className="w-5 h-5" />
+          Plan Pricing Management
+        </h2>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-800">{success}</p>
+          </div>
+        )}
+
+        <div className="space-y-6">
+          {plans.map((plan) => (
+            <div key={plan.id} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
+                <div className="text-sm text-gray-500">
+                  {plan.deliveriesPerMonth} deliveries/month • {plan.spaceLimitCbm} CBM
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Original Monthly Price (€)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={planForms[plan.id]?.operationsRateEur || plan.operationsRateEur}
+                    onChange={(e) => handlePlanFormChange(plan.id, 'operationsRateEur', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Standard monthly subscription price</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Promotional Monthly Price (€)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={planForms[plan.id]?.promotionalPriceEur || ''}
+                    onChange={(e) => handlePlanFormChange(plan.id, 'promotionalPriceEur', e.target.value)}
+                    placeholder="Leave empty for no promotion"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {planForms[plan.id]?.promotionalPriceEur 
+                      ? `Will show: €${planForms[plan.id].operationsRateEur} → €${planForms[plan.id].promotionalPriceEur}`
+                      : 'Leave empty to remove promotion'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => handleSavePlan(plan.id)}
+                  disabled={savingPlanId === plan.id}
+                  className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  {savingPlanId === plan.id ? 'Saving...' : 'Save Plan'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Euro className="w-5 h-5" />
