@@ -362,7 +362,7 @@ export async function DELETE(
     }
 
     // 6. Delete WarehouseOrder (references Client and DeliveryExpected)
-    // First, get warehouse orders to delete related packages
+    // First, get warehouse orders to delete related records
     const { data: warehouseOrders } = await supabase
       .from('WarehouseOrder')
       .select('id')
@@ -370,7 +370,19 @@ export async function DELETE(
     
     if (warehouseOrders && warehouseOrders.length > 0) {
       const warehouseOrderIds = warehouseOrders.map(wo => wo.id)
-      // Delete packages linked to warehouse orders
+      
+      // 6a. Delete ShipmentItem that reference WarehouseOrder
+      for (const warehouseOrderId of warehouseOrderIds) {
+        const { error: deleteShipmentItemsError } = await supabase
+          .from('ShipmentItem')
+          .delete()
+          .eq('warehouseOrderId', warehouseOrderId)
+        if (deleteShipmentItemsError) {
+          console.error('Error deleting shipment items for warehouse order:', deleteShipmentItemsError)
+        }
+      }
+      
+      // 6b. Delete packages linked to warehouse orders
       for (const warehouseOrderId of warehouseOrderIds) {
         const { error: deleteWOPackagesError } = await supabase
           .from('Package')
