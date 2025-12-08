@@ -1,13 +1,22 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Euro, Save, Plus, X, Calendar, Tag } from 'lucide-react'
+import { Euro, Save, Plus, X, Calendar, Tag, Package } from 'lucide-react'
 
 interface SetupFee {
   id: string
   suggestedAmountEur: number
   currentAmountEur: number
   validUntil: string | null
+}
+
+interface Plan {
+  id: string
+  name: string
+  operationsRateEur: number
+  promotionalPriceEur: number | null
+  deliveriesPerMonth: number
+  spaceLimitCbm: number
 }
 
 interface Voucher {
