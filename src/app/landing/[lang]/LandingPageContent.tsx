@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { languages, type Language } from '@/lib/i18n'
@@ -12,8 +12,25 @@ interface LandingPageContentProps {
   translations: Record<string, string>
 }
 
+interface Plan {
+  id: string
+  name: string
+  operationsRateEur: number
+  promotionalPriceEur?: number | null
+}
+
+interface SetupFee {
+  suggestedAmountEur: number
+  currentAmountEur: number
+  isPromotional: boolean
+  validUntil: string | null
+}
+
 export default function LandingPageContent({ lang, translations }: LandingPageContentProps) {
   const pathname = usePathname()
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [setupFee, setSetupFee] = useState<SetupFee | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     trackPageVisit(pathname || '/', lang)
@@ -22,6 +39,57 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
       cleanupAnalytics()
     }
   }, [pathname, lang])
+
+  useEffect(() => {
+    // Fetch pricing data
+    fetch('/api/landing/pricing')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.plans) {
+          setPlans(data.plans)
+        }
+        if (data.setupFee) {
+          setSetupFee(data.setupFee)
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching pricing data:', error)
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [])
+
+  // Helper function to get plan price display
+  const getPlanPrice = (plan: Plan) => {
+    const originalPrice = plan.operationsRateEur
+    const promotionalPrice = plan.promotionalPriceEur
+    
+    if (promotionalPrice && promotionalPrice < originalPrice) {
+      return {
+        original: originalPrice,
+        promotional: promotionalPrice,
+        isPromotional: true,
+      }
+    }
+    
+    return {
+      original: originalPrice,
+      promotional: null,
+      isPromotional: false,
+    }
+  }
+
+  // Helper function to get plan name key for translations
+  const getPlanTranslationKey = (planName: string) => {
+    const nameMap: Record<string, string> = {
+      'Basic': 'basic',
+      'Standard': 'standard',
+      'Professional': 'pro',
+      'Enterprise': 'enterprise',
+    }
+    return nameMap[planName] || planName.toLowerCase()
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -196,166 +264,115 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
 
           {/* Pricing Plans Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-            {/* Basic Plan */}
-            <div className="bg-white border-2 border-gray-200 rounded-lg p-6 hover:shadow-xl transition">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
-                {translations.pricing_basic_name}
-              </h3>
-              <div className="text-3xl font-bold text-blue-600 mb-4">
-                {translations.pricing_basic_price}
-              </div>
-              <ul className="space-y-3 mb-6 text-sm">
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">{translations.pricing_basic_storage}</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">{translations.pricing_basic_deliveries}</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">{translations.pricing_basic_dispatches}</span>
-                </li>
-              </ul>
-              <p className="text-xs text-gray-500 mb-4 italic">{translations.pricing_basic_notes}</p>
-              <Link
-                href="/auth/signup"
-                className="block w-full bg-blue-600 text-white text-center px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold text-sm"
-              >
-                {translations.nav_signup}
-              </Link>
-            </div>
-
-            {/* Standard Plan */}
-            <div className="bg-white border-2 border-gray-200 rounded-lg p-6 hover:shadow-xl transition">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
-                {translations.pricing_standard_name}
-              </h3>
-              <div className="text-3xl font-bold text-blue-600 mb-4">
-                {translations.pricing_standard_price}
-              </div>
-              <ul className="space-y-3 mb-6 text-sm">
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">{translations.pricing_standard_storage}</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">{translations.pricing_standard_deliveries}</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">{translations.pricing_standard_dispatches}</span>
-                </li>
-              </ul>
-              <p className="text-xs text-gray-500 mb-4 italic">{translations.pricing_standard_notes}</p>
-              <Link
-                href="/auth/signup"
-                className="block w-full bg-blue-600 text-white text-center px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold text-sm"
-              >
-                {translations.nav_signup}
-              </Link>
-            </div>
-
-            {/* Professional Plan */}
-            <div className="bg-blue-600 border-2 border-blue-600 rounded-lg p-6 hover:shadow-xl transition transform scale-105 relative">
-              {translations.pricing_pro_popular && (
-                <div className="bg-blue-700 text-white text-xs font-semibold px-2 py-1 rounded-full inline-block mb-3 absolute top-4 right-4">
-                  {translations.pricing_pro_popular}
-                </div>
-              )}
-              <h3 className="text-xl font-bold text-white mb-3">
-                {translations.pricing_pro_name}
-              </h3>
-              <div className="text-3xl font-bold text-white mb-4">
-                {translations.pricing_pro_price}
-              </div>
-              <ul className="space-y-3 mb-6 text-sm">
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-300 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-white">{translations.pricing_pro_storage}</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-300 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-white">{translations.pricing_pro_deliveries}</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-300 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-white">{translations.pricing_pro_dispatches}</span>
-                </li>
-                {translations.pricing_pro_local_pickup_discount && (
-                  <li className="flex items-start">
-                    <svg className="w-4 h-4 text-green-300 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-white">{translations.pricing_pro_local_pickup_discount}</span>
-                  </li>
-                )}
-              </ul>
-              <p className="text-xs text-blue-100 mb-4 italic">{translations.pricing_pro_notes}</p>
-              <Link
-                href="/auth/signup"
-                className="block w-full bg-white text-blue-600 text-center px-4 py-2 rounded-lg hover:bg-gray-100 transition font-semibold text-sm"
-              >
-                {translations.nav_signup}
-              </Link>
-            </div>
-
-            {/* Enterprise Plan */}
-            <div className="bg-white border-2 border-gray-200 rounded-lg p-6 hover:shadow-xl transition">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
-                {translations.pricing_enterprise_name}
-              </h3>
-              <div className="text-3xl font-bold text-blue-600 mb-4">
-                {translations.pricing_enterprise_price}
-              </div>
-              <ul className="space-y-3 mb-6 text-sm">
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">{translations.pricing_enterprise_storage}</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">{translations.pricing_enterprise_deliveries}</span>
-                </li>
-                <li className="flex items-start">
-                  <svg className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">{translations.pricing_enterprise_dispatches}</span>
-                </li>
-              </ul>
-              <p className="text-xs text-gray-500 mb-4 italic">{translations.pricing_enterprise_notes}</p>
-              <Link
-                href={translations.pricing_enterprise_cta ? "#contact" : "/auth/signup"}
-                className="block w-full bg-blue-600 text-white text-center px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold text-sm"
-              >
-                {translations.pricing_enterprise_cta || translations.nav_signup}
-              </Link>
-            </div>
+            {loading ? (
+              <div className="col-span-4 text-center py-8 text-gray-500">Loading pricing...</div>
+            ) : (
+              plans.map((plan) => {
+                const planKey = getPlanTranslationKey(plan.name)
+                const priceInfo = getPlanPrice(plan)
+                const planTranslations = {
+                  name: translations[`pricing_${planKey}_name`] || plan.name,
+                  storage: translations[`pricing_${planKey}_storage`] || '',
+                  deliveries: translations[`pricing_${planKey}_deliveries`] || '',
+                  dispatches: translations[`pricing_${planKey}_dispatches`] || '',
+                  notes: translations[`pricing_${planKey}_notes`] || '',
+                  popular: translations[`pricing_${planKey}_popular`] || null,
+                  localPickupDiscount: translations[`pricing_${planKey}_local_pickup_discount`] || null,
+                }
+                
+                const isPro = plan.name === 'Professional'
+                const isEnterprise = plan.name === 'Enterprise'
+                
+                return (
+                  <div
+                    key={plan.id}
+                    className={`${
+                      isPro
+                        ? 'bg-blue-600 border-2 border-blue-600 transform scale-105 relative'
+                        : 'bg-white border-2 border-gray-200'
+                    } rounded-lg p-6 hover:shadow-xl transition`}
+                  >
+                    {planTranslations.popular && (
+                      <div className={`${isPro ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'} text-xs font-semibold px-2 py-1 rounded-full inline-block mb-3 absolute top-4 right-4`}>
+                        {planTranslations.popular}
+                      </div>
+                    )}
+                    <h3 className={`text-xl font-bold mb-3 ${isPro ? 'text-white' : 'text-gray-900'}`}>
+                      {planTranslations.name}
+                    </h3>
+                    <div className={`text-3xl font-bold mb-2 ${isPro ? 'text-white' : 'text-blue-600'}`}>
+                      {priceInfo.isPromotional ? (
+                        <>
+                          <span className="line-through text-gray-400 text-2xl mr-2">
+                            €{priceInfo.original.toFixed(0)}/month
+                          </span>
+                          <span>€{priceInfo.promotional!.toFixed(0)}/month</span>
+                        </>
+                      ) : isEnterprise ? (
+                        <span>{translations.pricing_enterprise_price}</span>
+                      ) : (
+                        <span>€{priceInfo.original.toFixed(0)}/month</span>
+                      )}
+                    </div>
+                    {setupFee && !isEnterprise && (
+                      <div className={`text-sm mb-4 ${isPro ? 'text-blue-100' : 'text-gray-600'}`}>
+                        {setupFee.isPromotional ? (
+                          <>
+                            <span className="line-through mr-2">Setup: €{setupFee.suggestedAmountEur.toFixed(0)}</span>
+                            <span className="font-semibold">Setup: €{setupFee.currentAmountEur.toFixed(0)}</span>
+                          </>
+                        ) : (
+                          <span>Setup: €{setupFee.currentAmountEur.toFixed(0)}</span>
+                        )}
+                      </div>
+                    )}
+                    <ul className={`space-y-3 mb-6 text-sm ${isPro ? 'text-white' : ''}`}>
+                      <li className="flex items-start">
+                        <svg className={`w-4 h-4 mr-2 mt-0.5 flex-shrink-0 ${isPro ? 'text-green-300' : 'text-green-500'}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className={isPro ? 'text-white' : 'text-gray-600'}>{planTranslations.storage}</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg className={`w-4 h-4 mr-2 mt-0.5 flex-shrink-0 ${isPro ? 'text-green-300' : 'text-green-500'}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className={isPro ? 'text-white' : 'text-gray-600'}>{planTranslations.deliveries}</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg className={`w-4 h-4 mr-2 mt-0.5 flex-shrink-0 ${isPro ? 'text-green-300' : 'text-green-500'}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className={isPro ? 'text-white' : 'text-gray-600'}>{planTranslations.dispatches}</span>
+                      </li>
+                      {planTranslations.localPickupDiscount && (
+                        <li className="flex items-start">
+                          <svg className={`w-4 h-4 mr-2 mt-0.5 flex-shrink-0 ${isPro ? 'text-green-300' : 'text-green-500'}`} fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className={isPro ? 'text-white' : 'text-gray-600'}>{planTranslations.localPickupDiscount}</span>
+                        </li>
+                      )}
+                    </ul>
+                    <p className={`text-xs mb-4 italic ${isPro ? 'text-blue-100' : 'text-gray-500'}`}>
+                      {planTranslations.notes}
+                    </p>
+                    <Link
+                      href={isEnterprise && translations.pricing_enterprise_cta ? "#contact" : "/auth/signup"}
+                      className={`block w-full text-center px-4 py-2 rounded-lg transition font-semibold text-sm ${
+                        isPro
+                          ? 'bg-white text-blue-600 hover:bg-gray-100'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                    >
+                      {isEnterprise && translations.pricing_enterprise_cta
+                        ? translations.pricing_enterprise_cta
+                        : translations.nav_signup}
+                    </Link>
+                  </div>
+                )
+              })
+            )}
           </div>
 
           {/* Additional Services */}
@@ -423,11 +440,69 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
               <tbody className="divide-y divide-gray-200">
                 <tr className="bg-white">
                   <td className="px-4 py-3 text-sm font-medium text-gray-700">Monthly price (incl. VAT)</td>
-                  <td className="px-4 py-3 text-sm text-center text-gray-900">{translations.pricing_basic_price}</td>
-                  <td className="px-4 py-3 text-sm text-center text-gray-900">{translations.pricing_standard_price}</td>
-                  <td className="px-4 py-3 text-sm text-center text-gray-900">{translations.pricing_pro_price}</td>
-                  <td className="px-4 py-3 text-sm text-center text-gray-900">{translations.pricing_enterprise_price}</td>
+                  {loading ? (
+                    <>
+                      <td className="px-4 py-3 text-sm text-center text-gray-500">...</td>
+                      <td className="px-4 py-3 text-sm text-center text-gray-500">...</td>
+                      <td className="px-4 py-3 text-sm text-center text-gray-500">...</td>
+                      <td className="px-4 py-3 text-sm text-center text-gray-500">...</td>
+                    </>
+                  ) : (
+                    plans.map((plan) => {
+                      const priceInfo = getPlanPrice(plan)
+                      const isEnterprise = plan.name === 'Enterprise'
+                      return (
+                        <td key={plan.id} className="px-4 py-3 text-sm text-center text-gray-900">
+                          {priceInfo.isPromotional ? (
+                            <>
+                              <span className="line-through text-gray-400 mr-2">
+                                €{priceInfo.original.toFixed(0)}/month
+                              </span>
+                              <span className="font-semibold">€{priceInfo.promotional!.toFixed(0)}/month</span>
+                            </>
+                          ) : isEnterprise ? (
+                            translations.pricing_enterprise_price
+                          ) : (
+                            `€${priceInfo.original.toFixed(0)}/month`
+                          )}
+                        </td>
+                      )
+                    })
+                  )}
                 </tr>
+                {setupFee && (
+                  <tr className="bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-700">Setup fee (one-time)</td>
+                    {loading ? (
+                      <>
+                        <td className="px-4 py-3 text-sm text-center text-gray-500">...</td>
+                        <td className="px-4 py-3 text-sm text-center text-gray-500">...</td>
+                        <td className="px-4 py-3 text-sm text-center text-gray-500">...</td>
+                        <td className="px-4 py-3 text-sm text-center text-gray-500">...</td>
+                      </>
+                    ) : (
+                      plans.map((plan) => {
+                        const isEnterprise = plan.name === 'Enterprise'
+                        return (
+                          <td key={plan.id} className="px-4 py-3 text-sm text-center text-gray-900">
+                            {isEnterprise ? (
+                              '-'
+                            ) : setupFee.isPromotional ? (
+                              <>
+                                <span className="line-through text-gray-400 mr-2">
+                                  €{setupFee.suggestedAmountEur.toFixed(0)}
+                                </span>
+                                <span className="font-semibold">€{setupFee.currentAmountEur.toFixed(0)}</span>
+                              </>
+                            ) : (
+                              `€${setupFee.currentAmountEur.toFixed(0)}`
+                            )}
+                          </td>
+                        )
+                      })
+                    )}
+                  </tr>
+                )}
                 <tr className="bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-700">Storage volume</td>
                   <td className="px-4 py-3 text-sm text-center text-gray-600">{translations.pricing_basic_storage}</td>

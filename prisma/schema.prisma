@@ -165,7 +165,8 @@ model Plan {
   spaceLimitCbm           Float
   bufferCbm               Float?   @default(0) // Free buffer space (e.g., 5m³ for Professional)
   overSpaceRateEur        Float
-  operationsRateEur       Float
+  operationsRateEur       Float   // Original monthly price
+  promotionalPriceEur     Float?  // Promotional monthly price (null = no promotion)
   localPickupDiscountPercent Float? @default(0) // Discount percentage for local pickup (e.g., 15% for Professional)
   clients                 Client[]
   createdAt               DateTime @default(now())
