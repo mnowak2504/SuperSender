@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     // Fetch all plans (excluding Individual)
     const { data: plans, error: plansError } = await supabase
       .from('Plan')
-      .select('*')
+      .select('id, name, operationsRateEur, promotionalPriceEur, deliveriesPerMonth, spaceLimitCbm, bufferCbm, overSpaceRateEur, localPickupDiscountPercent')
       .neq('name', 'Individual')
       .order('operationsRateEur', { ascending: true })
 
@@ -48,6 +48,13 @@ export async function GET(req: NextRequest) {
         setupFeeEur = setupFeeData.currentAmountEur
       }
     }
+
+    // Log plans for debugging
+    console.log('[Landing Pricing API] Plans fetched:', plans?.map((p: any) => ({
+      name: p.name,
+      operationsRateEur: p.operationsRateEur,
+      promotionalPriceEur: p.promotionalPriceEur,
+    })))
 
     return NextResponse.json({
       plans: plans || [],
