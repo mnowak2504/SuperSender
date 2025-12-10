@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
       // We need to fetch it again to get all required fields
       const { data: fetchedClient, error: fetchError } = await supabase
         .from('Client')
-        .select('id, planId, subscriptionDiscount, clientCode, email, subscriptionEndDate')
+        .select('id, planId, subscriptionDiscount, clientCode, email, subscriptionEndDate, subscriptionStartDate')
         .eq('id', clientId)
         .single()
       
@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
         await new Promise(resolve => setTimeout(resolve, 200))
         const { data: retryClient, error: retryError } = await supabase
           .from('Client')
-          .select('id, planId, subscriptionDiscount, clientCode, email, subscriptionEndDate')
+          .select('id, planId, subscriptionDiscount, clientCode, email, subscriptionEndDate, subscriptionStartDate')
           .eq('id', clientId)
           .single()
         
@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
       // Fetch existing client
       const { data: fetchedClient, error: clientError } = await supabase
         .from('Client')
-        .select('id, planId, subscriptionDiscount, clientCode, email, subscriptionEndDate')
+        .select('id, planId, subscriptionDiscount, clientCode, email, subscriptionEndDate, subscriptionStartDate')
         .eq('id', clientId)
         .single()
 
@@ -263,6 +263,62 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
 
+    // Determine if this is extend (same plan) or upgrade (different plan)
+    const isExtend = client.planId === planId && client.planId !== null
+    const isUpgrade = client.planId !== null && client.planId !== planId
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    
+    // Calculate subscription start date
+    let subscriptionStartDateCalculated: Date
+    let unusedPeriodCredit = 0
+    
+    if (isExtend && client.subscriptionEndDate) {
+      // Extend: start from current subscription end date
+      subscriptionStartDateCalculated = new Date(client.subscriptionEndDate)
+      subscriptionStartDateCalculated.setHours(0, 0, 0, 0)
+    } else if (isUpgrade && client.subscriptionEndDate && client.subscriptionStartDate) {
+      // Upgrade: start from today, calculate credit for unused period
+      subscriptionStartDateCalculated = now
+      
+      const currentEndDate = new Date(client.subscriptionEndDate)
+      currentEndDate.setHours(23, 59, 59, 999)
+      
+      // Only calculate credit if subscription is still active (not expired)
+      if (currentEndDate > now) {
+        // Get current plan details
+        const { data: currentPlan } = await supabase
+          .from('Plan')
+          .select('operationsRateEur')
+          .eq('id', client.planId)
+          .single()
+        
+        if (currentPlan) {
+          // Calculate unused days
+          const totalDays = Math.ceil((currentEndDate.getTime() - new Date(client.subscriptionStartDate).getTime()) / (1000 * 60 * 60 * 24))
+          const unusedDays = Math.ceil((currentEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          
+          // Calculate monthly rate (considering discounts)
+          const monthlyRate = currentPlan.operationsRateEur * (1 - (client.subscriptionDiscount || 0) / 100)
+          
+          // Calculate credit: (unused days / total days) * monthly rate
+          // Proportionally calculate based on actual subscription period
+          if (totalDays > 0) {
+            unusedPeriodCredit = (unusedDays / totalDays) * monthlyRate
+          } else {
+            unusedPeriodCredit = 0
+          }
+          
+          // Round to 2 decimal places
+          unusedPeriodCredit = Math.round(unusedPeriodCredit * 100) / 100
+        }
+      }
+    } else {
+      // New subscription or restart: use provided date or today
+      subscriptionStartDateCalculated = subscriptionStartDate ? new Date(subscriptionStartDate) : now
+      subscriptionStartDateCalculated.setHours(0, 0, 0, 0)
+    }
+
     // Calculate subscription amount
     let baseAmount = plan.operationsRateEur || 0
     
@@ -278,6 +334,11 @@ export async function POST(req: NextRequest) {
     // Apply client discount if exists
     const discount = client.subscriptionDiscount || 0
     let finalAmount = baseAmount * (1 - discount / 100)
+    
+    // Apply unused period credit for upgrades
+    if (isUpgrade && unusedPeriodCredit > 0) {
+      finalAmount = Math.max(0, finalAmount - unusedPeriodCredit)
+    }
 
     // Determine if setup fee should be charged
     // Setup fee is NOT charged if:
@@ -340,8 +401,10 @@ export async function POST(req: NextRequest) {
     
     const invoiceId = generateCUID()
 
-    // Prepare subscription dates for invoice metadata
-    const startDate = subscriptionStartDate ? new Date(subscriptionStartDate) : new Date()
+    // Use calculated start date (override with provided date if specified for new subscriptions)
+    const startDate = subscriptionStartDate && !isExtend && !isUpgrade 
+      ? new Date(subscriptionStartDate) 
+      : subscriptionStartDateCalculated
     startDate.setHours(0, 0, 0, 0)
     
     // Store planId in invoice metadata (we'll add a planId field to Invoice or use metadata JSON)
@@ -421,10 +484,7 @@ export async function POST(req: NextRequest) {
 
     // If bank transfer, activate account immediately
     if (paymentMethod === 'bank_transfer') {
-      // Calculate subscription dates
-      const startDate = subscriptionStartDate ? new Date(subscriptionStartDate) : new Date()
-      startDate.setHours(0, 0, 0, 0)
-      
+      // Use calculated start date
       const endDate = new Date(startDate)
       const months = parseInt(subscriptionPeriod) || 1
       endDate.setMonth(endDate.getMonth() + months)
@@ -476,6 +536,10 @@ export async function POST(req: NextRequest) {
       paymentMethod,
       bankTransferInfo,
       clientCode: client.clientCode,
+      isExtend,
+      isUpgrade,
+      unusedPeriodCredit: isUpgrade ? unusedPeriodCredit : 0,
+      subscriptionStartDate: startDate.toISOString(),
     })
   } catch (error) {
     console.error('Error upgrading subscription:', error)

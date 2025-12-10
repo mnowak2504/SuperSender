@@ -45,6 +45,9 @@ export default function CheckoutPage() {
   const [error, setError] = useState('')
   const [startImmediately, setStartImmediately] = useState<boolean>(true)
   const [subscriptionStartDate, setSubscriptionStartDate] = useState<string>('')
+  const [unusedPeriodCredit, setUnusedPeriodCredit] = useState(0)
+  const [isExtend, setIsExtend] = useState(false)
+  const [isUpgrade, setIsUpgrade] = useState(false)
 
   // Helper function to get today's date in local timezone (YYYY-MM-DD format)
   const getTodayLocalDate = (): string => {
@@ -78,9 +81,10 @@ export default function CheckoutPage() {
 
   const fetchData = async () => {
     try {
-      const [planRes, setupFeeRes] = await Promise.all([
+      const [planRes, setupFeeRes, profileRes] = await Promise.all([
         fetch(`/api/client/plan/${planId}`),
         fetch('/api/client/setup-fee'),
+        fetch('/api/client/profile'),
       ])
 
       if (planRes.ok) {
@@ -93,6 +97,53 @@ export default function CheckoutPage() {
       if (setupFeeRes.ok) {
         const setupFeeData = await setupFeeRes.json()
         setSetupFee(setupFeeData.setupFee)
+      }
+
+      // Calculate upgrade/extend info and credit
+      if (profileRes.ok && planId) {
+        const profileData = await profileRes.json()
+        const client = profileData.client
+        const currentPlanId = client?.planId
+        
+        if (currentPlanId === planId && currentPlanId !== null) {
+          setIsExtend(true)
+          setIsUpgrade(false)
+        } else if (currentPlanId !== null && currentPlanId !== planId) {
+          setIsExtend(false)
+          setIsUpgrade(true)
+          
+          // Calculate unused period credit for upgrade
+          if (client?.subscriptionEndDate && client?.subscriptionStartDate) {
+            const now = new Date()
+            now.setHours(0, 0, 0, 0)
+            const currentEndDate = new Date(client.subscriptionEndDate)
+            currentEndDate.setHours(23, 59, 59, 999)
+            
+            if (currentEndDate > now) {
+              // Fetch current plan to get rate
+              const currentPlanRes = await fetch(`/api/client/plan/${currentPlanId}`)
+              if (currentPlanRes.ok) {
+                const currentPlanData = await currentPlanRes.json()
+                const currentPlan = currentPlanData.plan
+                
+                // Calculate unused days
+                const totalDays = Math.ceil((currentEndDate.getTime() - new Date(client.subscriptionStartDate).getTime()) / (1000 * 60 * 60 * 24))
+                const unusedDays = Math.ceil((currentEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                
+                // Calculate monthly rate (considering discounts)
+                const monthlyRate = currentPlan.operationsRateEur * (1 - (client.subscriptionDiscount || 0) / 100)
+                
+                // Calculate credit: (unused days / total days) * monthly rate
+                // Proportionally calculate based on actual subscription period
+                let credit = 0
+                if (totalDays > 0) {
+                  credit = (unusedDays / totalDays) * monthlyRate
+                }
+                setUnusedPeriodCredit(Math.round(credit * 100) / 100)
+              }
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -150,6 +201,11 @@ export default function CheckoutPage() {
     let total = subscriptionAmount
     if (setupFee && setupFee.shouldCharge) {
       total += setupFee.currentAmountEur
+    }
+
+    // Apply unused period credit for upgrades
+    if (isUpgrade && unusedPeriodCredit > 0) {
+      total = Math.max(0, total - unusedPeriodCredit)
     }
 
     // Apply voucher discount
@@ -278,6 +334,16 @@ export default function CheckoutPage() {
                           )}
                         </div>
                         <p className="font-medium text-gray-900">€{setupFee.currentAmountEur.toFixed(2)}</p>
+                      </div>
+                    )}
+
+                    {isUpgrade && unusedPeriodCredit > 0 && (
+                      <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                        <div>
+                          <p className="font-medium text-green-600">Unused Period Credit</p>
+                          <p className="text-xs text-gray-500">Credit for remaining subscription period</p>
+                        </div>
+                        <p className="font-medium text-green-600">-€{unusedPeriodCredit.toFixed(2)}</p>
                       </div>
                     )}
 
@@ -529,6 +595,12 @@ export default function CheckoutPage() {
                     <span className="text-gray-600">Subtotal</span>
                     <span className="text-gray-900">€{(subscriptionAmount + (setupFee && setupFee.shouldCharge ? setupFee.currentAmountEur : 0)).toFixed(2)}</span>
                   </div>
+                  {isUpgrade && unusedPeriodCredit > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Unused Period Credit</span>
+                      <span className="text-green-600">-€{unusedPeriodCredit.toFixed(2)}</span>
+                    </div>
+                  )}
                   {voucherApplied && (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Discount</span>
