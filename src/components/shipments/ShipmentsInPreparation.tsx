@@ -140,8 +140,14 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
                           Ready for Transport Choice
                         </span>
                       ) : shipment.status === 'READY_FOR_LOADING' ? (
-                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                          Ready for Pickup
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          shipment.clientTransportChoice === 'OWN_TRANSPORT' || shipment.transportMode === 'CLIENT_OWN'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {shipment.clientTransportChoice === 'OWN_TRANSPORT' || shipment.transportMode === 'CLIENT_OWN'
+                            ? 'Ready for Pickup'
+                            : 'Ready for Loading'}
                         </span>
                       ) : (
                         <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
