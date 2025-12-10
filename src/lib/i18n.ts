@@ -3426,6 +3426,7 @@ const translations: Record<Language, Record<string, string>> = {
     transport_costs_palette_note: 'Po zmianie rozmiaru system automatycznie przelicza ceny netto i brutto.',
     transport_costs_europe_title: '5. Cennik palet – Europa',
     transport_costs_europe_note: 'Każda tabela zawiera:',
+    transport_costs_europe_li0: '1/2 paleta (60×80 cm)',
     transport_costs_europe_li1: '1–4 palety',
     transport_costs_europe_li2: '5+ palet',
     transport_costs_europe_li3: 'ceny netto',
