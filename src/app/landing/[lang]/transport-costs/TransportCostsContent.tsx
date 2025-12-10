@@ -43,6 +43,13 @@ interface VolumePricing {
 
 const standardPrices: PricingData[] = [
   {
+    country: 'ireland',
+    flag: '🇮🇪',
+    '1-4': { net: '310–390 €', gross: '381–480 €' },
+    '5+': { net: '270–360 €', gross: '332–443 €' },
+    isMain: true,
+  },
+  {
     country: 'germany',
     flag: '🇩🇪',
     '1-4': { net: '100–140 €', gross: '123–172 €' },
@@ -63,45 +70,20 @@ const standardPrices: PricingData[] = [
     '5+': { net: '130–180 €', gross: '160–221 €' },
     isMain: true,
   },
-  {
-    country: 'uk',
-    flag: '🇬🇧',
-    '1-4': { net: '280–350 €', gross: '344–430 €' },
-    '5+': { net: '240–300 €', gross: '295–369 €' },
-    note: 'uk_note',
-    isMain: true,
-  },
-  {
-    country: 'ireland',
-    flag: '🇮🇪',
-    '1-4': { net: '310–390 €', gross: '381–480 €' },
-    '5+': { net: '270–360 €', gross: '332–443 €' },
-    isMain: false,
-  },
-  {
-    country: 'scandinavia',
-    flag: '🇸🇪',
-    '1-4': { net: '170–260 €', gross: '209–320 €' },
-    '5+': { net: '140–220 €', gross: '172–271 €' },
-    note: 'scandinavia_note',
-    isMain: false,
-  },
 ]
 
 const halfTruckPrices: VolumePricing[] = [
+  { direction: 'ireland', flag: '🇮🇪', net: '2600–3400 €', gross: '3198–4182 €' },
   { direction: 'germany', flag: '🇩🇪', net: '1000–1500 €', gross: '1230–1845 €' },
   { direction: 'netherlands', flag: '🇳🇱', net: '1300–1900 €', gross: '1599–2337 €' },
   { direction: 'france', flag: '🇫🇷', net: '1600–2500 €', gross: '1968–3075 €' },
-  { direction: 'uk', flag: '🇬🇧', net: '1800–2600 €', gross: '2214–3198 €' },
-  { direction: 'ireland', flag: '🇮🇪', net: '2600–3400 €', gross: '3198–4182 €' },
 ]
 
 const fullTruckPrices: VolumePricing[] = [
+  { direction: 'ireland', flag: '🇮🇪', net: '4500–5500 €', gross: '5535–6765 €' },
   { direction: 'germany', flag: '🇩🇪', net: '1800–2400 €', gross: '2214–2952 €' },
   { direction: 'netherlands', flag: '🇳🇱', net: '2200–3000 €', gross: '2706–3690 €' },
   { direction: 'france', flag: '🇫🇷', net: '2600–3800 €', gross: '3198–4674 €' },
-  { direction: 'uk', flag: '🇬🇧', net: '3200–4200 €', gross: '3936–5166 €' },
-  { direction: 'ireland', flag: '🇮🇪', net: '4500–5500 €', gross: '5535–6765 €' },
 ]
 
 function calculatePriceWithMultiplier(priceRange: string, multiplier: number): string {
