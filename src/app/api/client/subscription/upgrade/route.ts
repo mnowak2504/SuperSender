@@ -356,15 +356,24 @@ export async function POST(req: NextRequest) {
 
     // Get setup fee and add it if needed
     if (shouldChargeSetupFee) {
-      const { data: setupFeeData } = await supabase
+      const { data: setupFeeData, error: setupFeeError } = await supabase
         .from('SetupFee')
         .select('*')
         .order('createdAt', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
-      const setupFee = setupFeeData?.currentAmountEur || 99.0
-      finalAmount += setupFee
+      // Use nullish coalescing (??) instead of || to handle 0 correctly
+      // If setupFeeData exists, use its currentAmountEur (even if 0)
+      // Only use default if setupFeeData is null/undefined
+      // If error or no data, default to 0 (no setup fee)
+      const setupFee = setupFeeError || !setupFeeData ? 0 : (setupFeeData.currentAmountEur ?? 0)
+      if (setupFee > 0) {
+        finalAmount += setupFee
+        console.log('[API /client/subscription/upgrade] Adding setup fee:', setupFee)
+      } else {
+        console.log('[API /client/subscription/upgrade] No setup fee (amount is 0 or not found)')
+      }
     }
 
     // Apply voucher discount if provided
@@ -424,6 +433,7 @@ export async function POST(req: NextRequest) {
         subscriptionStartDate: startDate.toISOString(),
         subscriptionPeriod: subscriptionPeriod,
         subscriptionPlanId: planId,
+        paymentMethod: paymentMethod === 'online' ? 'PAYMENT_LINK_REQUESTED' : paymentMethod === 'bank_transfer' ? 'BANK_TRANSFER' : null,
       })
       .select()
       .single()
@@ -505,17 +515,31 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // For online payment, mark invoice as awaiting payment link
+    // For online payment, activate subscription immediately when payment link is requested
     // Payment link will be created manually by admin/superadmin
     if (paymentMethod === 'online') {
-      // Update invoice to indicate payment link is requested
-      await supabase
-        .from('Invoice')
+      // Activate subscription immediately when payment link is requested
+      // Use calculated start date
+      const endDate = new Date(startDate)
+      const months = parseInt(subscriptionPeriod) || 1
+      endDate.setMonth(endDate.getMonth() + months)
+      endDate.setHours(23, 59, 59, 999)
+      
+      const { error: updatePlanError } = await supabase
+        .from('Client')
         .update({
-          revolutLink: null, // Will be set when admin creates payment link
+          planId: planId,
+          subscriptionStartDate: startDate.toISOString(),
+          subscriptionEndDate: endDate.toISOString(),
           updatedAt: new Date().toISOString(),
         })
-        .eq('id', invoice.id)
+        .eq('id', clientId)
+
+      if (updatePlanError) {
+        console.error('[API /client/subscription/upgrade] Error activating subscription for payment link requested:', updatePlanError)
+      } else {
+        console.log('[API /client/subscription/upgrade] Subscription activated immediately for payment link requested')
+      }
     }
 
     // Prepare bank transfer info if applicable
