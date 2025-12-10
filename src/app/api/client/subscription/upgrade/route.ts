@@ -505,12 +505,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Send invoice issued email notification (non-blocking)
+    // Use 'SUBSCRIPTION' as email type label even though invoice is stored as PROFORMA
     sendInvoiceIssuedEmail(
       clientId,
       invoice.id,
       invoice.invoiceNumber || null,
       finalAmount,
-      'PROFORMA', // Subscription invoices are proformas
+      'SUBSCRIPTION', // Email label - subscription invoices are stored as PROFORMA in DB
       dueDate.toISOString(),
       null // Payment link will be added after creation
     ).catch((error) => {

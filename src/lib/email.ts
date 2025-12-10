@@ -252,7 +252,7 @@ export async function sendInvoiceIssuedEmail(
   invoiceId: string,
   invoiceNumber: string | null,
   amount: number,
-  type: 'SUBSCRIPTION' | 'TRANSPORT' | 'OPERATIONS',
+  type: 'SUBSCRIPTION' | 'TRANSPORT' | 'OPERATIONS' | 'PROFORMA',
   dueDate: string,
   paymentLink?: string | null
 ): Promise<{ success: boolean; skipped?: boolean; error?: string }> {
@@ -277,6 +277,7 @@ export async function sendInvoiceIssuedEmail(
     SUBSCRIPTION: 'Subscription',
     TRANSPORT: 'Transport',
     OPERATIONS: 'Operations',
+    PROFORMA: 'Proforma Invoice',
   }
 
   const emailSubject = `New Invoice: ${invoiceNumber || invoiceId.slice(-8)} - €${amount.toFixed(2)}`
