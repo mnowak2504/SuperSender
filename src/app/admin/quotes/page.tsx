@@ -169,6 +169,11 @@ export default async function QuotesPage() {
                               Zgłoszono: {new Date(order.customQuoteRequestedAt).toLocaleDateString('pl-PL')}
                             </div>
                           )}
+                          {isSuperAdmin && order.Client && (order.Client as any)?.salesOwner && (
+                            <div className="mt-1 text-xs text-gray-500">
+                              Admin: {(order.Client as any).salesOwner.name || (order.Client as any).salesOwner.email || 'Nieprzypisany'}
+                            </div>
+                          )}
                           {order.calculatedPriceEur && (
                             <div className="mt-1 text-sm text-green-600 font-medium">
                               Wycena: €{order.calculatedPriceEur.toFixed(2)}
