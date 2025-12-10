@@ -135,7 +135,11 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
                       <span className="font-medium text-gray-900">
                         Shipment #{shipment.id.slice(-8)}
                       </span>
-                      {(shipment.status === 'QUOTED' || shipment.status === 'AWAITING_ACCEPTANCE') ? (
+                      {shipment.clientTransportChoice === 'REQUEST_CUSTOM' ? (
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                          Custom Quote Requested
+                        </span>
+                      ) : (shipment.status === 'QUOTED' || shipment.status === 'AWAITING_ACCEPTANCE') ? (
                         <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                           Ready for Transport Choice
                         </span>
@@ -207,7 +211,27 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
                     })}
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    {(shipment.status === 'QUOTED' || shipment.status === 'AWAITING_ACCEPTANCE') ? (
+                    {shipment.clientTransportChoice === 'REQUEST_CUSTOM' ? (
+                      <div className="space-y-3">
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                          <p className="text-sm font-medium text-yellow-900 mb-1">
+                            💼 Custom Quote Requested
+                          </p>
+                          <p className="text-sm text-yellow-700">
+                            Your sales representative has been notified and will contact you with a custom price quote.
+                          </p>
+                          {shipment.calculatedPriceEur ? (
+                            <p className="text-sm text-yellow-700 mt-2">
+                              Quote received: <strong>€{shipment.calculatedPriceEur.toFixed(2)}</strong>
+                            </p>
+                          ) : (
+                            <p className="text-xs text-yellow-600 mt-2">
+                              Waiting for quote from your sales representative...
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (shipment.status === 'QUOTED' || shipment.status === 'AWAITING_ACCEPTANCE') ? (
                       <div className="space-y-3">
                         <div className="bg-green-50 border border-green-200 rounded-md p-3">
                           <p className="text-sm font-medium text-green-900 mb-1">

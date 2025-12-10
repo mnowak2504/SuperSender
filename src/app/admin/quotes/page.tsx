@@ -18,15 +18,44 @@ export default async function QuotesPage() {
   }
 
   // Pobierz wszystkie zamówienia gotowe do wyceny
-  const { data: orders, error } = await supabase
+  // 1. WarehouseOrder ze statusem READY_FOR_QUOTE (zamówienia lokalne)
+  const { data: orders, error: ordersError } = await supabase
     .from('WarehouseOrder')
     .select('*, Client:clientId(displayName, clientCode)')
     .eq('status', 'READY_FOR_QUOTE')
     .order('createdAt', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching orders ready for quote:', error)
+  // 2. ShipmentOrder z REQUEST_CUSTOM (custom quote requests dla transportu wychodzącego)
+  const { data: customQuoteShipments, error: shipmentsError } = await supabase
+    .from('ShipmentOrder')
+    .select(`
+      id,
+      createdAt,
+      customQuoteRequestedAt,
+      calculatedPriceEur,
+      status,
+      clientTransportChoice,
+      Client:clientId(displayName, clientCode),
+      deliveryAddress:deliveryAddressId(city, country),
+      Package(widthCm, lengthCm, heightCm, weightKg)
+    `)
+    .or('customQuoteRequestedAt.not.is.null,clientTransportChoice.eq.REQUEST_CUSTOM')
+    .order('customQuoteRequestedAt', { ascending: false, nullsLast: true })
+
+  if (ordersError) {
+    console.error('Error fetching orders ready for quote:', ordersError)
   }
+  if (shipmentsError) {
+    console.error('Error fetching custom quote shipments:', shipmentsError)
+  }
+
+  const allOrders = (orders || []).map((o: any) => ({ ...o, type: 'WAREHOUSE_ORDER' }))
+  const allShipments = (customQuoteShipments || []).map((s: any) => ({ ...s, type: 'SHIPMENT_ORDER' }))
+  const combinedOrders = [...allOrders, ...allShipments].sort((a, b) => {
+    const dateA = a.type === 'WAREHOUSE_ORDER' ? a.createdAt : (a.customQuoteRequestedAt || a.createdAt)
+    const dateB = b.type === 'WAREHOUSE_ORDER' ? b.createdAt : (b.customQuoteRequestedAt || b.createdAt)
+    return new Date(dateB).getTime() - new Date(dateA).getTime()
+  })
 
   return (
     <div className="px-4 py-6 sm:px-0">
@@ -40,20 +69,24 @@ export default async function QuotesPage() {
         </Link>
       </div>
 
-      {orders && orders.length > 0 ? (
+      {combinedOrders && combinedOrders.length > 0 ? (
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <ul className="divide-y divide-gray-200">
-            {orders.map((order: any) => (
+            {combinedOrders.map((order: any) => (
               <li key={order.id}>
                 <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center">
                         <p className="text-sm font-medium text-gray-900">
-                          Zamówienie #{order.id.slice(-8)}
+                          {order.type === 'WAREHOUSE_ORDER' ? 'Zamówienie' : 'Transport'} #{order.id.slice(-8)}
                         </p>
-                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Gotowe do wyceny
+                        <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          order.type === 'WAREHOUSE_ORDER' 
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {order.type === 'WAREHOUSE_ORDER' ? 'Gotowe do wyceny' : 'Wycena indywidualna'}
                         </span>
                       </div>
                       <div className="mt-2 flex items-center text-sm text-gray-500">
@@ -64,21 +97,43 @@ export default async function QuotesPage() {
                           {(order.Client as any)?.clientCode || 'Brak kodu'}
                         </span>
                       </div>
-                      {order.warehouseLocation && (
-                        <div className="mt-1 text-sm text-gray-500">
-                          Lokalizacja: {order.warehouseLocation}
-                        </div>
-                      )}
-                      {order.packedLengthCm && order.packedWidthCm && order.packedHeightCm && (
-                        <div className="mt-1 text-sm text-gray-500">
-                          Wymiary: {order.packedLengthCm}×{order.packedWidthCm}×{order.packedHeightCm} cm
-                          {order.packedWeightKg && `, Waga: ${order.packedWeightKg} kg`}
-                        </div>
-                      )}
-                      {order.packedAt && (
-                        <div className="mt-1 text-xs text-gray-400">
-                          Spakowano: {new Date(order.packedAt).toLocaleDateString('pl-PL')}
-                        </div>
+                      {order.type === 'WAREHOUSE_ORDER' ? (
+                        <>
+                          {order.warehouseLocation && (
+                            <div className="mt-1 text-sm text-gray-500">
+                              Lokalizacja: {order.warehouseLocation}
+                            </div>
+                          )}
+                          {order.packedLengthCm && order.packedWidthCm && order.packedHeightCm && (
+                            <div className="mt-1 text-sm text-gray-500">
+                              Wymiary: {order.packedLengthCm}×{order.packedWidthCm}×{order.packedHeightCm} cm
+                              {order.packedWeightKg && `, Waga: ${order.packedWeightKg} kg`}
+                            </div>
+                          )}
+                          {order.packedAt && (
+                            <div className="mt-1 text-xs text-gray-400">
+                              Spakowano: {new Date(order.packedAt).toLocaleDateString('pl-PL')}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {order.deliveryAddress && (
+                            <div className="mt-1 text-sm text-gray-500">
+                              Dostawa: {(order.deliveryAddress as any)?.city || ''} {(order.deliveryAddress as any)?.country || ''}
+                            </div>
+                          )}
+                          {order.customQuoteRequestedAt && (
+                            <div className="mt-1 text-xs text-gray-400">
+                              Zgłoszono: {new Date(order.customQuoteRequestedAt).toLocaleDateString('pl-PL')}
+                            </div>
+                          )}
+                          {order.calculatedPriceEur && (
+                            <div className="mt-1 text-sm text-green-600 font-medium">
+                              Wycena: €{order.calculatedPriceEur.toFixed(2)}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                     <div className="ml-4 flex-shrink-0">
@@ -86,7 +141,7 @@ export default async function QuotesPage() {
                         href={`/admin/quote/${order.id}`}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                       >
-                        Wyceń transport
+                        {order.type === 'WAREHOUSE_ORDER' ? 'Wyceń transport' : 'Wyceń transport'}
                       </Link>
                     </div>
                   </div>
