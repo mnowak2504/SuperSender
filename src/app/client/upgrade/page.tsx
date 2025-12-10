@@ -21,6 +21,7 @@ interface SetupFee {
   currentAmountEur: number
   validUntil: string | null
   isPromotional: boolean
+  shouldCharge: boolean
 }
 
 export default function UpgradePage() {
@@ -31,6 +32,7 @@ export default function UpgradePage() {
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null)
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
   const [setupFee, setSetupFee] = useState<SetupFee | null>(null)
+  const [subscriptionEndDate, setSubscriptionEndDate] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export default function UpgradePage() {
       if (profileRes.ok) {
         const profileData = await profileRes.json()
         setCurrentPlanId(profileData.client?.planId || null)
+        setSubscriptionEndDate(profileData.client?.subscriptionEndDate || null)
         if (profileData.client?.planId) {
           setSelectedPlanId(profileData.client.planId)
         }
@@ -82,7 +85,9 @@ export default function UpgradePage() {
       return
     }
 
-    if (selectedPlanId === currentPlanId) {
+    // Allow selecting current plan if they have an active subscription (for extending)
+    const hasActiveSubscription = subscriptionEndDate ? new Date(subscriptionEndDate) > new Date() : false
+    if (selectedPlanId === currentPlanId && !hasActiveSubscription) {
       setError('This is your current plan')
       return
     }
@@ -180,7 +185,7 @@ export default function UpgradePage() {
                           <span className="text-3xl font-bold text-gray-900">€{plan.operationsRateEur.toFixed(2)}</span>
                           <span className="text-gray-500 ml-2">/month</span>
                         </div>
-                        {setupFee && (
+                        {setupFee && setupFee.shouldCharge && (
                           <div className="mt-2 text-sm">
                             <div className="flex items-center gap-2">
                               <span className="text-gray-500">Setup fee:</span>
@@ -193,6 +198,11 @@ export default function UpgradePage() {
                                 <span className="font-semibold">€{setupFee.currentAmountEur.toFixed(2)}</span>
                               )}
                             </div>
+                          </div>
+                        )}
+                        {setupFee && !setupFee.shouldCharge && (
+                          <div className="mt-2 text-xs text-gray-500">
+                            No setup fee (extend/upgrade/restart)
                           </div>
                         )}
                       </div>
@@ -277,7 +287,7 @@ export default function UpgradePage() {
             </Link>
             <button
               onClick={handleUpgrade}
-              disabled={processing || !selectedPlanId || selectedPlanId === currentPlanId}
+              disabled={processing || !selectedPlanId || (selectedPlanId === currentPlanId && (!subscriptionEndDate || new Date(subscriptionEndDate) <= new Date()))}
               className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
               {processing ? (
@@ -288,7 +298,18 @@ export default function UpgradePage() {
               ) : (
                 <>
                   <CreditCard className="w-4 h-4" />
-                  Continue to Payment
+                  {(() => {
+                    const hasActiveSubscription = subscriptionEndDate ? new Date(subscriptionEndDate) > new Date() : false
+                    if (selectedPlanId === currentPlanId && hasActiveSubscription) {
+                      return 'Extend Subscription'
+                    } else if (selectedPlanId !== currentPlanId && hasActiveSubscription) {
+                      return 'Upgrade Plan'
+                    } else if (subscriptionEndDate && new Date(subscriptionEndDate) <= new Date()) {
+                      return 'Restart Subscription'
+                    } else {
+                      return 'Continue to Payment'
+                    }
+                  })()}
                 </>
               )}
             </button>

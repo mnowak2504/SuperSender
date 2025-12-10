@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
     const isCurrentValid = !validUntil || validUntil > now
 
     // Check if setup fee should be charged for this client
+    // Setup fee is NOT charged if client has EVER had a subscription (extend/upgrade/restart scenarios)
     // Try to get client info from session if available
     let shouldChargeSetupFee = true
     try {
@@ -54,16 +55,10 @@ export async function GET(req: NextRequest) {
           if (clientByEmail) {
             clientId = clientByEmail.id
             
-            // Check if subscription expired less than 1 month ago
-            if (clientByEmail.subscriptionEndDate) {
-              const subscriptionEndDate = new Date(clientByEmail.subscriptionEndDate)
-              const oneMonthAgo = new Date(now)
-              oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-              
-              // If subscription is still active (end date in future) or expired less than 1 month ago, don't charge setup fee
-              if (subscriptionEndDate >= oneMonthAgo) {
-                shouldChargeSetupFee = false
-              }
+            // If client has EVER had a subscription (even if expired), don't charge setup fee
+            // This covers extend, upgrade, and restart scenarios
+            if (clientByEmail.subscriptionEndDate !== null && clientByEmail.subscriptionEndDate !== undefined) {
+              shouldChargeSetupFee = false
             }
           }
         } else {
@@ -74,15 +69,10 @@ export async function GET(req: NextRequest) {
             .eq('id', clientId)
             .single()
           
-          if (client?.subscriptionEndDate) {
-            const subscriptionEndDate = new Date(client.subscriptionEndDate)
-            const oneMonthAgo = new Date(now)
-            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-            
-            // If subscription is still active (end date in future) or expired less than 1 month ago, don't charge setup fee
-            if (subscriptionEndDate >= oneMonthAgo) {
-              shouldChargeSetupFee = false
-            }
+          // If client has EVER had a subscription (even if expired), don't charge setup fee
+          // This covers extend, upgrade, and restart scenarios
+          if (client?.subscriptionEndDate !== null && client?.subscriptionEndDate !== undefined) {
+            shouldChargeSetupFee = false
           }
         }
       }

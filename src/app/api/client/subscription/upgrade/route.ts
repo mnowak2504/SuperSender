@@ -281,23 +281,16 @@ export async function POST(req: NextRequest) {
 
     // Determine if setup fee should be charged
     // Setup fee is NOT charged if:
-    // - Client has an active subscription (subscriptionEndDate is in the future)
-    // - Client's subscription expired less than 1 month ago (renewal within 1 month)
+    // - Client has EVER had a subscription (subscriptionEndDate is not null)
+    //   This covers: extend (same plan), upgrade (different plan), restart (previously activated)
     // Setup fee IS charged if:
-    // - Client has no subscription (new client)
-    // - Client's subscription expired more than 1 month ago
+    // - Client has never had a subscription (subscriptionEndDate is null) - new client
     let shouldChargeSetupFee = true
     
-    if (client.subscriptionEndDate) {
-      const subscriptionEndDate = new Date(client.subscriptionEndDate)
-      const now = new Date()
-      const oneMonthAgo = new Date(now)
-      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-      
-      // If subscription is still active (end date in future) or expired less than 1 month ago, don't charge setup fee
-      if (subscriptionEndDate >= oneMonthAgo) {
-        shouldChargeSetupFee = false
-      }
+    // If client has EVER had a subscription (even if expired), don't charge setup fee
+    // This covers extend, upgrade, and restart scenarios
+    if (client.subscriptionEndDate !== null && client.subscriptionEndDate !== undefined) {
+      shouldChargeSetupFee = false
     }
 
     // Get setup fee and add it if needed
