@@ -58,9 +58,18 @@ export async function POST(req: NextRequest) {
     const hashedIP = ipAddress ? hashIP(ipAddress) : null
 
     try {
+      // Check if prisma is available
+      if (!prisma) {
+        return NextResponse.json({ success: true, skipped: true })
+      }
+
       // Use dynamic access to pageVisit model (works even if table doesn't exist yet)
       // @ts-ignore - pageVisit model may not exist until migration is run
       const pageVisitModel = (prisma as any).pageVisit
+
+      if (!pageVisitModel) {
+        return NextResponse.json({ success: true, skipped: true })
+      }
 
       // Check if this is a unique visit (first visit in this session for this page)
       const existingVisit = await pageVisitModel.findFirst({
