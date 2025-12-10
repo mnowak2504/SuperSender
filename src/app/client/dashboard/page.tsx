@@ -526,7 +526,7 @@ export default async function ClientDashboard() {
               <AlertCircle className="h-5 w-5 text-orange-600" />
             </div>
             <div className="ml-3 flex-1">
-              <h3 className="text-sm font-medium text-orange-800">Additional charges due now</h3>
+              <h3 className="text-sm font-medium text-orange-800">Charges due now</h3>
               <p className="mt-1 text-lg font-bold text-orange-900">
                 €{totalOutstanding.toFixed(2)}
               </p>
