@@ -19,9 +19,17 @@ export default async function QuotesPage() {
 
   const userId = (session.user as any)?.id
   const isSuperAdmin = role === 'SUPERADMIN'
-
+  
+  // Check if superadmin is impersonating an admin (from searchParams)
+  // Note: This is a server component, so we need to get searchParams differently
+  // For now, we'll check it in the query logic below
+  
   // Get admin's assigned clients (for regular admin) or all clients (for superadmin)
   let clientIds: string[] = []
+  let effectiveIsSuperAdmin = isSuperAdmin
+  
+  // TODO: Add support for ?asAdmin query param in server components
+  // For now, superadmin sees all clients
   if (isSuperAdmin) {
     // Superadmin sees all clients
     const { data: allClients } = await supabase.from('Client').select('id')
