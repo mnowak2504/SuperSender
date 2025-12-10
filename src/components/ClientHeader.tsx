@@ -21,8 +21,9 @@ export default async function ClientHeader({
 
   if (session?.user) {
     const { supabase } = await import('@/lib/db')
-    const clientId = (session.user as any)?.clientId
+    let clientId = (session.user as any)?.clientId
 
+    // First try to get client by clientId from session
     if (clientId) {
       const { data: clientData } = await supabase
         .from('Client')
@@ -32,6 +33,31 @@ export default async function ClientHeader({
 
       if (clientData) {
         client = clientData
+      } else {
+        // If clientId from session doesn't exist, try to find by email
+        console.warn('[ClientHeader] Client not found by clientId from session, trying email:', clientId)
+        clientId = null
+      }
+    }
+
+    // If no clientId or client not found, try to find by email
+    if (!client && session.user.email) {
+      const { data: clientByEmail } = await supabase
+        .from('Client')
+        .select('*')
+        .eq('email', session.user.email)
+        .single()
+
+      if (clientByEmail) {
+        client = clientByEmail
+        // Update user's clientId if it was wrong
+        if (clientId !== clientByEmail.id) {
+          console.warn('[ClientHeader] Updating user clientId from', clientId, 'to', clientByEmail.id)
+          await supabase
+            .from('User')
+            .update({ clientId: clientByEmail.id })
+            .eq('id', (session.user as any)?.id)
+        }
       }
     }
   }

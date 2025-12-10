@@ -30,18 +30,47 @@ export default async function InvoiceDetailsPage({
     redirect('/unauthorized')
   }
 
-  // Find client by email or clientId
+  // Find client by email or clientId - always verify email matches
   let clientId = (session.user as any)?.clientId
+  let client: any = null
   
-  if (!clientId) {
+  // First verify clientId from session matches user's email
+  if (clientId) {
+    const { data: clientData } = await supabase
+      .from('Client')
+      .select('id, clientCode, email')
+      .eq('id', clientId)
+      .single()
+    
+    if (clientData && clientData.email === session.user.email) {
+      client = clientData
+    } else {
+      // clientId mismatch - find by email
+      console.warn('[INVOICE] clientId mismatch - finding by email')
+      clientId = null
+    }
+  }
+  
+  // If no clientId or mismatch, find by email
+  if (!client && session.user.email) {
     const { data: clientByEmail } = await supabase
       .from('Client')
-      .select('id, clientCode')
+      .select('id, clientCode, email')
       .eq('email', session.user.email)
       .single()
     
     if (clientByEmail) {
       clientId = clientByEmail.id
+      client = clientByEmail
+      
+      // Update user's clientId if it was wrong
+      if ((session.user as any)?.clientId !== clientByEmail.id) {
+        console.warn('[INVOICE] Updating user clientId from', (session.user as any)?.clientId, 'to', clientByEmail.id)
+        await supabase
+          .from('User')
+          .update({ clientId: clientByEmail.id })
+          .eq('id', (session.user as any)?.id)
+      }
     }
   }
 
@@ -78,12 +107,7 @@ export default async function InvoiceDetailsPage({
     )
   }
 
-  // Fetch client code
-  const { data: client } = await supabase
-    .from('Client')
-    .select('clientCode')
-    .eq('id', clientId)
-    .single()
+  // Client already fetched above, no need to fetch again
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -172,6 +196,19 @@ export default async function InvoiceDetailsPage({
                   <p className="text-sm text-blue-700">
                     Account activated immediately. The payment link will be sent to your email within 1 working day.
                   </p>
+                  {(() => {
+                    // Check if payment was made recently (within last 24 hours)
+                    const now = new Date()
+                    const invoiceCreated = new Date(invoice.createdAt)
+                    const hoursSinceCreation = (now.getTime() - invoiceCreated.getTime()) / (1000 * 60 * 60)
+                    const shouldShowUpdateMessage = hoursSinceCreation > 24
+                    
+                    return shouldShowUpdateMessage ? (
+                      <p className="text-xs text-blue-600 mt-2">
+                        Payment status updates may take up to 24 hours to reflect in your account.
+                      </p>
+                    ) : null
+                  })()}
                 </div>
               </div>
             </div>
@@ -196,6 +233,8 @@ export default async function InvoiceDetailsPage({
               invoiceNumber={invoice.id.slice(-8).toUpperCase()}
               amount={invoice.amountEur}
               transferTitle={getBankTransferTitle(client.clientCode || 'N/A', invoice.id.slice(-8).toUpperCase())}
+              invoiceCreatedAt={invoice.createdAt}
+              invoicePaidAt={invoice.paidAt || null}
             />
           )}
         </div>

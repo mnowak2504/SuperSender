@@ -22,31 +22,53 @@ export default async function InvoicesPage() {
     redirect('/unauthorized')
   }
 
-  // Find client by email or clientId
+  // Find client by email or clientId - always verify email matches
   let clientId = (session.user as any)?.clientId
+  let client: any = null
   
-  if (!clientId) {
+  // First verify clientId from session matches user's email
+  if (clientId) {
+    const { data: clientData } = await supabase
+      .from('Client')
+      .select('id, clientCode, email')
+      .eq('id', clientId)
+      .single()
+    
+    if (clientData && clientData.email === session.user.email) {
+      client = clientData
+    } else {
+      // clientId mismatch - find by email
+      console.warn('[INVOICES] clientId mismatch - finding by email')
+      clientId = null
+    }
+  }
+  
+  // If no clientId or mismatch, find by email
+  if (!client && session.user.email) {
     const { data: clientByEmail } = await supabase
       .from('Client')
-      .select('id')
+      .select('id, clientCode, email')
       .eq('email', session.user.email)
       .single()
     
     if (clientByEmail) {
       clientId = clientByEmail.id
+      client = clientByEmail
+      
+      // Update user's clientId if it was wrong
+      if ((session.user as any)?.clientId !== clientByEmail.id) {
+        console.warn('[INVOICES] Updating user clientId from', (session.user as any)?.clientId, 'to', clientByEmail.id)
+        await supabase
+          .from('User')
+          .update({ clientId: clientByEmail.id })
+          .eq('id', (session.user as any)?.id)
+      }
     }
   }
 
-  if (!clientId) {
+  if (!clientId || !client) {
     redirect('/auth/signin')
   }
-
-  // Fetch client data for bank transfer info
-  const { data: client } = await supabase
-    .from('Client')
-    .select('clientCode')
-    .eq('id', clientId)
-    .single()
 
   // Fetch all invoices, ordered by createdAt descending (latest first)
   const { data: invoices, error } = await supabase

@@ -9,6 +9,8 @@ interface BankTransferInfoProps {
   invoiceNumber?: string
   amount: number
   transferTitle: string
+  invoiceCreatedAt?: string // Invoice creation date to check if payment was recent
+  invoicePaidAt?: string | null // Invoice paid date if available
 }
 
 export default function BankTransferInfo({
@@ -16,6 +18,8 @@ export default function BankTransferInfo({
   invoiceNumber,
   amount,
   transferTitle,
+  invoiceCreatedAt,
+  invoicePaidAt,
 }: BankTransferInfoProps) {
   const [copied, setCopied] = useState<string | null>(null)
 
@@ -160,6 +164,35 @@ export default function BankTransferInfo({
           <p className="text-xs text-gray-600">
             <strong>Processing time:</strong> {BANK_TRANSFER_INFO.processingTime}
           </p>
+          {(() => {
+            // Show payment update time message only if payment wasn't made recently
+            // Check if invoice was paid recently (within last 2 days)
+            if (invoicePaidAt) {
+              const now = new Date()
+              const paidDate = new Date(invoicePaidAt)
+              const daysSincePayment = (now.getTime() - paidDate.getTime()) / (1000 * 60 * 60 * 24)
+              if (daysSincePayment < 2) {
+                return null // Payment was recent, don't show message
+              }
+            }
+            
+            // Check if invoice was created recently (within last 2 days)
+            if (invoiceCreatedAt) {
+              const now = new Date()
+              const createdDate = new Date(invoiceCreatedAt)
+              const daysSinceCreation = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)
+              if (daysSinceCreation < 2) {
+                return null // Invoice was created recently, don't show message yet
+              }
+            }
+            
+            // Show message if invoice is older than 2 days and not paid recently
+            return (
+              <p className="text-xs text-blue-600 mt-2">
+                Payment status updates may take up to 2 business days to reflect in your account after the transfer is completed.
+              </p>
+            )
+          })()}
         </div>
       </div>
     </div>

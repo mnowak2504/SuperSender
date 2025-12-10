@@ -29,10 +29,36 @@ export default async function ClientDashboard() {
   }
 
   // Get clientId from session or find by email
+  // Always verify clientId matches email to prevent mismatched client data
   let clientId = (session.user as any)?.clientId
   let client: any = null
 
-  if (!clientId) {
+  // First try to get client by clientId from session
+  if (clientId) {
+    const { data: clientData } = await supabase
+      .from('Client')
+      .select('*')
+      .eq('id', clientId)
+      .single()
+
+    if (clientData) {
+      // Verify that the client's email matches the user's email
+      if (clientData.email === session.user.email) {
+        client = clientData
+      } else {
+        // clientId in session doesn't match user's email - find correct client
+        console.warn('[DASHBOARD] clientId mismatch - client email:', clientData.email, 'user email:', session.user.email)
+        clientId = null
+      }
+    } else {
+      // clientId doesn't exist - reset it
+      console.warn('[DASHBOARD] clientId from session not found:', clientId)
+      clientId = null
+    }
+  }
+
+  // If no clientId or client not found, find by email
+  if (!client && session.user.email) {
     const { data: clientData } = await supabase
       .from('Client')
       .select('*')
@@ -42,16 +68,15 @@ export default async function ClientDashboard() {
     if (clientData) {
       clientId = clientData.id
       client = clientData
-    }
-  } else {
-    const { data: clientData } = await supabase
-      .from('Client')
-      .select('*')
-      .eq('id', clientId)
-      .single()
-
-    if (clientData) {
-      client = clientData
+      
+      // Update user's clientId if it was wrong
+      if ((session.user as any)?.clientId !== clientData.id) {
+        console.warn('[DASHBOARD] Updating user clientId from', (session.user as any)?.clientId, 'to', clientData.id)
+        await supabase
+          .from('User')
+          .update({ clientId: clientData.id })
+          .eq('id', (session.user as any)?.id)
+      }
     }
   }
 
