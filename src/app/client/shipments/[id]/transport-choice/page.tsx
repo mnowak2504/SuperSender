@@ -84,10 +84,11 @@ export default async function TransportChoicePage({
   let totalWeight = 0
   let totalPallets = 0
   let shipmentTypeFromPackages: 'PALLET' | 'PACKAGE' = 'PACKAGE'
+  let palletDimensions: Array<{ widthCm: number; lengthCm: number; heightCm: number }> = []
   
   const { data: shipmentPackages } = await supabase
     .from('Package')
-    .select('type, volumeCbm, weightKg')
+    .select('type, volumeCbm, weightKg, widthCm, lengthCm, heightCm')
     .eq('shipmentId', id)
 
   if (shipmentPackages && shipmentPackages.length > 0) {
@@ -97,6 +98,13 @@ export default async function TransportChoicePage({
       if (pkg.type === 'PALLET') {
         totalPallets++
         shipmentTypeFromPackages = 'PALLET'
+        if (pkg.widthCm && pkg.lengthCm && pkg.heightCm) {
+          palletDimensions.push({
+            widthCm: pkg.widthCm,
+            lengthCm: pkg.lengthCm,
+            heightCm: pkg.heightCm,
+          })
+        }
       }
     }
   }
@@ -108,6 +116,7 @@ export default async function TransportChoicePage({
       totalVolume={totalVolume}
       totalWeight={totalWeight}
       totalPallets={totalPallets}
+      palletDimensions={palletDimensions}
       shipmentType={shipmentTypeFromPackages}
       currentChoice={shipment.clientTransportChoice}
       warehousePhone="+48 534 759 809"

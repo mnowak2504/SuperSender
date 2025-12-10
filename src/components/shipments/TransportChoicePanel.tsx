@@ -12,6 +12,7 @@ interface TransportChoicePanelProps {
   totalVolume: number
   totalWeight: number
   totalPallets: number
+  palletDimensions?: Array<{ widthCm: number; lengthCm: number; heightCm: number }>
   shipmentType: 'PALLET' | 'PACKAGE'
   currentChoice?: string | null
   warehousePhone?: string
@@ -23,6 +24,7 @@ export default function TransportChoicePanel({
   totalVolume,
   totalWeight,
   totalPallets,
+  palletDimensions = [],
   shipmentType,
   currentChoice,
   warehousePhone = '[Contact number]',
@@ -217,6 +219,18 @@ export default function TransportChoicePanel({
                 <span className="text-gray-600">Pallet Count:</span>
                 <span className="ml-2 font-medium">{totalPallets}</span>
               </div>
+              {palletDimensions.length > 0 && (
+                <div className="col-span-2">
+                  <span className="text-gray-600">Pallet Dimensions:</span>
+                  <div className="mt-1 space-y-1">
+                    {palletDimensions.map((dim, idx) => (
+                      <div key={idx} className="text-sm font-mono text-gray-700">
+                        Pallet {idx + 1}: {dim.widthCm} × {dim.lengthCm} × {dim.heightCm} cm
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <span className="text-gray-600">Total Weight:</span>
                 <span className="ml-2 font-medium">{totalWeight.toFixed(2)} kg</span>

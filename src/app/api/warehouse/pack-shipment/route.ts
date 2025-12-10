@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { supabase } from '@/lib/db'
 import { calculateVolumeCbm } from '@/lib/warehouse-calculations'
+import { calculateTotalPricingPositions } from '@/lib/pallet-position-calculator'
 
 export const runtime = 'nodejs'
 
@@ -175,12 +176,19 @@ export async function POST(req: NextRequest) {
     let totalVolume = 0
     let totalWeight = 0
     let totalPallets = 0
+    const palletDimensions: Array<{ widthCm: number; lengthCm: number }> = []
 
     packageInserts.forEach((pkg: any) => {
       totalVolume += pkg.volumeCbm
       totalWeight += pkg.weightKg
       if (pkg.type === 'PALLET') {
         totalPallets++
+        if (pkg.widthCm && pkg.lengthCm) {
+          palletDimensions.push({
+            widthCm: pkg.widthCm,
+            lengthCm: pkg.lengthCm,
+          })
+        }
       }
     })
 
@@ -197,6 +205,13 @@ export async function POST(req: NextRequest) {
 
       if (pricingRules && pricingRules.length > 0) {
         if (shipmentType === 'PALLET' && totalPallets > 0) {
+          // Calculate total pricing positions based on pallet dimensions
+          const totalPricingPositions = palletDimensions.length > 0
+            ? calculateTotalPricingPositions(palletDimensions)
+            : totalPallets // Fallback to pallet count if dimensions not available
+          
+          // Find matching rule based on pallet count (for rule matching)
+          // But use pricing positions for actual price calculation
           const matchingRule = pricingRules.find((rule: any) => {
             const countMatch = (!rule.palletCountMin || totalPallets >= rule.palletCountMin) &&
                               (!rule.palletCountMax || totalPallets <= rule.palletCountMax)
@@ -206,9 +221,14 @@ export async function POST(req: NextRequest) {
           })
 
           if (matchingRule) {
-            transportPrice = matchingRule.type === 'FIXED_PER_UNIT'
-              ? matchingRule.priceEur * totalPallets
-              : matchingRule.priceEur
+            // Use pricing positions instead of pallet count for price calculation
+            if (matchingRule.type === 'FIXED_PER_UNIT') {
+              // Price per standard pallet position (120x80cm)
+              transportPrice = matchingRule.priceEur * totalPricingPositions
+            } else {
+              // Fixed price (use as-is, but could be adjusted based on positions)
+              transportPrice = matchingRule.priceEur
+            }
             transportPricingId = matchingRule.id
           }
         } else {

@@ -28,6 +28,7 @@ type PaletteSize = 'standard' | 'large'
 interface PricingData {
   country: string
   flag: string
+  '1/2': { net: string; gross: string } // Half pallet (60x80cm)
   '1-4': { net: string; gross: string }
   '5+': { net: string; gross: string }
   note?: string
@@ -45,6 +46,7 @@ const standardPrices: PricingData[] = [
   {
     country: 'ireland',
     flag: '🇮🇪',
+    '1/2': { net: '180–200 €', gross: '221–246 €' },
     '1-4': { net: '310–390 €', gross: '381–480 €' },
     '5+': { net: '270–360 €', gross: '332–443 €' },
     isMain: true,
@@ -52,6 +54,7 @@ const standardPrices: PricingData[] = [
   {
     country: 'germany',
     flag: '🇩🇪',
+    '1/2': { net: '60–80 €', gross: '74–98 €' },
     '1-4': { net: '100–140 €', gross: '123–172 €' },
     '5+': { net: '80–120 €', gross: '98–148 €' },
     isMain: true,
@@ -59,6 +62,7 @@ const standardPrices: PricingData[] = [
   {
     country: 'netherlands',
     flag: '🇳🇱',
+    '1/2': { net: '80–100 €', gross: '98–123 €' },
     '1-4': { net: '130–180 €', gross: '160–221 €' },
     '5+': { net: '110–150 €', gross: '135–184 €' },
     isMain: true,
@@ -66,6 +70,7 @@ const standardPrices: PricingData[] = [
   {
     country: 'france',
     flag: '🇫🇷',
+    '1/2': { net: '90–110 €', gross: '111–135 €' },
     '1-4': { net: '150–210 €', gross: '184–258 €' },
     '5+': { net: '130–180 €', gross: '160–221 €' },
     isMain: true,
@@ -117,6 +122,10 @@ export default function TransportCostsContent({ lang, translations }: TransportC
       ? standardPrices 
       : standardPrices.map((price) => ({
           ...price,
+          '1/2': {
+            net: calculatePriceWithMultiplier(price['1/2'].net, 1.15),
+            gross: calculatePriceWithMultiplier(price['1/2'].gross, 1.15),
+          },
           '1-4': {
             net: calculatePriceWithMultiplier(price['1-4'].net, 1.15),
             gross: calculatePriceWithMultiplier(price['1-4'].gross, 1.15),
@@ -331,6 +340,17 @@ export default function TransportCostsContent({ lang, translations }: TransportC
                           <td colSpan={3} className="px-4 sm:px-6 py-3 font-semibold text-gray-900">
                             <span className="text-xl mr-2">{price.flag}</span>
                             {getCountryName(price.country)}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 sm:px-6 py-3 text-sm text-gray-700 border-r border-gray-300">
+                            {t.transport_costs_europe_li0 || '1/2 pallet (60×80 cm)'}
+                          </td>
+                          <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">
+                            {price['1/2'].net}
+                          </td>
+                          <td className="px-4 sm:px-6 py-3 text-sm font-medium text-gray-900">
+                            {price['1/2'].gross}
                           </td>
                         </tr>
                         <tr className="hover:bg-gray-50">
