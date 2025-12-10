@@ -154,6 +154,87 @@ export async function PUT(
       }
     }
 
+    // If marking transport invoice (TRANSPORT or PROFORMA without subscriptionPlanId) as paid, update shipment status
+    if (status === 'PAID' && (updatedInvoice.type === 'TRANSPORT' || (updatedInvoice.type === 'PROFORMA' && !updatedInvoice.subscriptionPlanId))) {
+      console.log('[API /superadmin/invoices/[id] PUT] Transport invoice marked as paid, updating shipment status')
+      
+      // Find shipment with AWAITING_PAYMENT status for this client
+      // Match by invoice amount and date proximity (within 1 day of invoice creation)
+      const invoiceCreatedDate = new Date(updatedInvoice.createdAt)
+      const oneDayBefore = new Date(invoiceCreatedDate)
+      oneDayBefore.setDate(oneDayBefore.getDate() - 1)
+      const oneDayAfter = new Date(invoiceCreatedDate)
+      oneDayAfter.setDate(oneDayAfter.getDate() + 1)
+      
+      const { data: shipments, error: shipmentsError } = await supabase
+        .from('ShipmentOrder')
+        .select('id, status, calculatedPriceEur, createdAt')
+        .eq('clientId', updatedInvoice.clientId)
+        .eq('status', 'AWAITING_PAYMENT')
+        .gte('createdAt', oneDayBefore.toISOString())
+        .lte('createdAt', oneDayAfter.toISOString())
+      
+      if (shipmentsError) {
+        console.error('[API /superadmin/invoices/[id] PUT] Error finding shipments:', shipmentsError)
+      } else if (shipments && shipments.length > 0) {
+        // Find best matching shipment (by price or most recent)
+        let matchingShipment = shipments.find(s => 
+          s.calculatedPriceEur && Math.abs(s.calculatedPriceEur - updatedInvoice.amountEur) < 0.01
+        )
+        
+        // If no price match, use most recent
+        if (!matchingShipment) {
+          matchingShipment = shipments.sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )[0]
+        }
+        
+        if (matchingShipment) {
+          console.log('[API /superadmin/invoices/[id] PUT] Found matching shipment:', matchingShipment.id)
+          
+          // Update shipment status to READY_FOR_LOADING
+          const { error: updateShipmentError } = await supabase
+            .from('ShipmentOrder')
+            .update({
+              status: 'READY_FOR_LOADING',
+              paymentConfirmedAt: new Date().toISOString(),
+            })
+            .eq('id', matchingShipment.id)
+          
+          if (updateShipmentError) {
+            console.error('[API /superadmin/invoices/[id] PUT] Error updating shipment status:', updateShipmentError)
+          } else {
+            console.log('[API /superadmin/invoices/[id] PUT] Updated shipment status to READY_FOR_LOADING')
+            
+            // Update all WarehouseOrders in this shipment to READY_TO_SHIP
+            const { data: shipmentItems, error: itemsError } = await supabase
+              .from('ShipmentItem')
+              .select('warehouseOrderId')
+              .eq('shipmentId', matchingShipment.id)
+            
+            if (itemsError) {
+              console.error('[API /superadmin/invoices/[id] PUT] Error fetching shipment items:', itemsError)
+            } else if (shipmentItems && shipmentItems.length > 0) {
+              const warehouseOrderIds = shipmentItems.map(item => item.warehouseOrderId).filter(Boolean)
+              
+              if (warehouseOrderIds.length > 0) {
+                const { error: updateOrdersError } = await supabase
+                  .from('WarehouseOrder')
+                  .update({ status: 'READY_TO_SHIP' })
+                  .in('id', warehouseOrderIds)
+                
+                if (updateOrdersError) {
+                  console.error('[API /superadmin/invoices/[id] PUT] Error updating warehouse orders:', updateOrdersError)
+                } else {
+                  console.log(`[API /superadmin/invoices/[id] PUT] Updated ${warehouseOrderIds.length} warehouse orders to READY_TO_SHIP`)
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     return NextResponse.json({ invoice: updatedInvoice })
   } catch (error) {
     console.error('Error in PUT /api/superadmin/invoices/[id]:', error)
