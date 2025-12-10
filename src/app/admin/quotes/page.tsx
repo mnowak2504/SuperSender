@@ -73,7 +73,7 @@ export default async function QuotesPage() {
       calculatedPriceEur,
       status,
       clientTransportChoice,
-      Client:clientId(displayName, clientCode, salesOwnerId, salesOwner:User(id, email, name)),
+      Client:clientId(displayName, clientCode, salesOwnerId, salesOwner:User!Client_salesOwnerId_fkey(id, email, name)),
       deliveryAddress:deliveryAddressId(city, country),
       Package(widthCm, lengthCm, heightCm, weightKg)
     `)

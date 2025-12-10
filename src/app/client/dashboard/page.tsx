@@ -314,6 +314,7 @@ export default async function ClientDashboard() {
       .from('ShipmentOrder')
       .select(`
         id,
+        packingOrderNumber,
         createdAt,
         status,
         calculatedPriceEur,
@@ -362,6 +363,7 @@ export default async function ClientDashboard() {
       .from('ShipmentOrder')
       .select(`
         id,
+        packingOrderNumber,
         createdAt,
         status,
         calculatedPriceEur,
@@ -405,6 +407,7 @@ export default async function ClientDashboard() {
       .from('ShipmentOrder')
       .select(`
         id,
+        packingOrderNumber,
         createdAt,
         status,
         calculatedPriceEur,

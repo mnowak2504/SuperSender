@@ -6,6 +6,7 @@ import Link from 'next/link'
 
 interface ShipmentInPrep {
   id: string
+  packingOrderNumber?: string | null
   createdAt: string
   status: string
   calculatedPriceEur?: number
@@ -133,7 +134,7 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900">
-                        Shipment #{shipment.id.slice(-8)}
+                        {shipment.packingOrderNumber || `Shipment #${shipment.id.slice(-8)}`}
                       </span>
                       {shipment.clientTransportChoice === 'REQUEST_CUSTOM' ? (
                         <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">

@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Package, CheckCircle, ChevronUp } from 'luci
 
 interface ArchivedShipment {
   id: string
+  packingOrderNumber?: string | null
   createdAt: string
   status: string
   calculatedPriceEur?: number
@@ -126,7 +127,7 @@ export default function Archive({ shipments }: ArchiveProps) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900">
-                        Shipment #{shipment.id.slice(-8)}
+                        {shipment.packingOrderNumber || `Shipment #${shipment.id.slice(-8)}`}
                       </span>
                       <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                         Delivered
