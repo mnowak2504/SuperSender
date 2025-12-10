@@ -46,7 +46,7 @@ export default async function QuotePage({
         calculatedPriceEur,
         deliveryAddressId,
         Client:clientId(displayName, clientCode, id),
-        deliveryAddress:deliveryAddressId(city, country, street, postalCode),
+        deliveryAddress:deliveryAddressId(contactName, line1, line2, city, postalCode, country),
         Package(widthCm, lengthCm, heightCm, weightKg)
       `)
       .eq('id', id)
@@ -170,10 +170,22 @@ export default async function QuotePage({
           ) : (
             <>
               {order.deliveryAddress && (
-                <div>
+                <div className="sm:col-span-2">
                   <dt className="text-sm font-medium text-gray-500">Adres dostawy</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {(order.deliveryAddress as any)?.street || ''} {(order.deliveryAddress as any)?.city || ''} {(order.deliveryAddress as any)?.postalCode || ''} {(order.deliveryAddress as any)?.country || ''}
+                    {(order.deliveryAddress as any)?.contactName && (
+                      <div className="font-medium">{(order.deliveryAddress as any).contactName}</div>
+                    )}
+                    <div>
+                      {(order.deliveryAddress as any)?.line1 || ''}
+                      {(order.deliveryAddress as any)?.line2 && `, ${(order.deliveryAddress as any).line2}`}
+                    </div>
+                    <div>
+                      {(order.deliveryAddress as any)?.city || ''} {(order.deliveryAddress as any)?.postalCode || ''}
+                    </div>
+                    <div>
+                      {(order.deliveryAddress as any)?.country || ''}
+                    </div>
                   </dd>
                 </div>
               )}
