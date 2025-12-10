@@ -227,7 +227,7 @@ export default function SuperAdminDashboardContent() {
           </div>
           <div className="space-y-3">
             <div className="text-sm text-gray-600">
-              <div className="font-medium mb-2">Pallet Pricing (by count)</div>
+              <div className="font-medium mb-2">Pallet Pricing (by positions)</div>
               <div className="bg-gray-50 rounded p-2 text-xs space-y-1">
                 {pricingRules
                   .filter(r => r.transportType === 'PALLET' && r.isActive)
@@ -235,12 +235,7 @@ export default function SuperAdminDashboardContent() {
                   .slice(0, 3)
                   .map((rule: any) => (
                     <div key={rule.id}>
-                      {rule.palletCountMin || 1}-{rule.palletCountMax || '∞'} pallets: €{rule.priceEur.toFixed(2)}
-                      {(rule.weightMinKg || rule.weightMaxKg) && (
-                        <span className="text-gray-500">
-                          {' '}({rule.weightMinKg || 0}-{rule.weightMaxKg || '∞'} kg)
-                        </span>
-                      )}
+                      {rule.palletCountMin || 1}-{rule.palletCountMax || '∞'} positions: €{rule.priceEur.toFixed(2)}
                     </div>
                   ))}
                 {pricingRules.filter(r => r.transportType === 'PALLET' && r.isActive).length === 0 && (

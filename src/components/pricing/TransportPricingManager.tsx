@@ -51,10 +51,15 @@ export default function TransportPricingManager() {
       const method = rule.id ? 'PUT' : 'POST'
       const url = rule.id ? `/api/superadmin/pricing/${rule.id}` : '/api/superadmin/pricing'
       
+      // For pallet rules, clear weight fields (pricing is based on positions only)
+      const ruleToSave = rule.transportType === 'PALLET' 
+        ? { ...rule, weightMinKg: undefined, weightMaxKg: undefined }
+        : rule
+      
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rule),
+        body: JSON.stringify(ruleToSave),
       })
 
       if (res.ok) {
@@ -118,7 +123,7 @@ export default function TransportPricingManager() {
       {/* Pallet Pricing */}
       <div className="bg-white shadow rounded-lg mb-8">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Pallet Pricing (by count)</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Pallet Pricing (by positions)</h2>
           <button
             onClick={() => setShowAddForm(true)}
             className="inline-flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
@@ -132,8 +137,7 @@ export default function TransportPricingManager() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pallet Count</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight Range (kg)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pallet Positions</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price (€)</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -230,7 +234,7 @@ function PricingRow({
   if (editingId === rule.id) {
     return (
       <tr>
-        <td colSpan={7} className="px-6 py-4">
+        <td colSpan={rule.transportType === 'PALLET' ? 6 : 7} className="px-6 py-4">
           <PricingForm
             rule={rule}
             onSave={(updated) => {
@@ -250,7 +254,7 @@ function PricingRow({
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
         {rule.transportType === 'PALLET' ? (
           rule.palletCountMin !== undefined || rule.palletCountMax !== undefined
-            ? `${rule.palletCountMin || '1'}-${rule.palletCountMax || '∞'}`
+            ? `${rule.palletCountMin || '1'}-${rule.palletCountMax || '∞'} positions`
             : 'Any'
         ) : (
           rule.volumeMinCbm !== undefined || rule.volumeMaxCbm !== undefined
@@ -258,11 +262,13 @@ function PricingRow({
             : 'Any'
         )}
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        {rule.weightMinKg !== undefined || rule.weightMaxKg !== undefined
-          ? `${rule.weightMinKg || '0'}-${rule.weightMaxKg || '∞'} kg`
-          : 'Any'}
-      </td>
+      {rule.transportType === 'PACKAGE' && (
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          {rule.weightMinKg !== undefined || rule.weightMaxKg !== undefined
+            ? `${rule.weightMinKg || '0'}-${rule.weightMaxKg || '∞'} kg`
+            : 'Any'}
+        </td>
+      )}
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">€{rule.priceEur.toFixed(2)}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{rule.priority}</td>
       <td className="px-6 py-4 whitespace-nowrap">
@@ -340,22 +346,28 @@ function PricingForm({
         {formData.transportType === 'PALLET' ? (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pallet Count Min</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pallet Positions Min</label>
               <input
                 type="number"
+                step="0.5"
                 value={formData.palletCountMin || ''}
-                onChange={(e) => setFormData({ ...formData, palletCountMin: e.target.value ? parseInt(e.target.value) : undefined })}
+                onChange={(e) => setFormData({ ...formData, palletCountMin: e.target.value ? parseFloat(e.target.value) : undefined })}
                 className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
+                placeholder="e.g., 0.5 for half pallet"
               />
+              <p className="mt-1 text-xs text-gray-500">Minimum pallet positions (120x80cm base). 0.5 = half pallet (60x80cm)</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pallet Count Max</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pallet Positions Max</label>
               <input
                 type="number"
+                step="0.5"
                 value={formData.palletCountMax || ''}
-                onChange={(e) => setFormData({ ...formData, palletCountMax: e.target.value ? parseInt(e.target.value) : undefined })}
+                onChange={(e) => setFormData({ ...formData, palletCountMax: e.target.value ? parseFloat(e.target.value) : undefined })}
                 className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
+                placeholder="Leave empty for unlimited"
               />
+              <p className="mt-1 text-xs text-gray-500">Maximum pallet positions. Leave empty for unlimited (∞)</p>
             </div>
           </>
         ) : (
@@ -380,28 +392,28 @@ function PricingForm({
                 className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Weight Min (kg)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={formData.weightMinKg || ''}
+                onChange={(e) => setFormData({ ...formData, weightMinKg: e.target.value ? parseFloat(e.target.value) : undefined })}
+                className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Weight Max (kg)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={formData.weightMaxKg || ''}
+                onChange={(e) => setFormData({ ...formData, weightMaxKg: e.target.value ? parseFloat(e.target.value) : undefined })}
+                className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
+              />
+            </div>
           </>
         )}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Weight Min (kg)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formData.weightMinKg || ''}
-            onChange={(e) => setFormData({ ...formData, weightMinKg: e.target.value ? parseFloat(e.target.value) : undefined })}
-            className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Weight Max (kg)</label>
-          <input
-            type="number"
-            step="0.1"
-            value={formData.weightMaxKg || ''}
-            onChange={(e) => setFormData({ ...formData, weightMaxKg: e.target.value ? parseFloat(e.target.value) : undefined })}
-            className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"
-          />
-        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Price (€)</label>
           <input
