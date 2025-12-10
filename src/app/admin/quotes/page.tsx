@@ -51,6 +51,11 @@ export default async function QuotesPage() {
   // 2. ShipmentOrder z REQUEST_CUSTOM (custom quote requests dla transportu wychodzącego)
   // For superadmin: get all quotes with admin info
   // For regular admin: get only quotes for assigned clients
+  // We want to show shipments that:
+  // - Have customQuoteRequestedAt set OR have clientTransportChoice = 'REQUEST_CUSTOM'
+  // - AND have NOT been quoted yet (calculatedPriceEur is null OR status is not AWAITING_ACCEPTANCE/QUOTED with price)
+  // Show only pending custom quote requests that haven't been processed yet
+  
   let customQuoteShipmentsQuery = supabase
     .from('ShipmentOrder')
     .select(`
@@ -70,7 +75,46 @@ export default async function QuotesPage() {
     customQuoteShipmentsQuery = customQuoteShipmentsQuery.in('clientId', clientIds.length > 0 ? clientIds : [''])
   }
   
-  const { data: customQuoteShipments, error: shipmentsError } = await customQuoteShipmentsQuery.order('customQuoteRequestedAt', { ascending: false })
+  const { data: customQuoteShipments, error: shipmentsError } = await customQuoteShipmentsQuery
+  
+  // Filter out shipments that have already been quoted and accepted
+  // Keep only those that are still waiting for a quote (no calculatedPriceEur or status indicates pending)
+  const pendingCustomQuotes = (customQuoteShipments || []).filter((shipment: any) => {
+    // If it has a calculatedPriceEur and status is AWAITING_ACCEPTANCE or later, it's already been quoted
+    // We want to show it only if it's still waiting for quote
+    if (shipment.calculatedPriceEur && shipment.status === 'AWAITING_ACCEPTANCE') {
+      // This has been quoted but client hasn't accepted yet - still show it
+      return true
+    }
+    // If it has calculatedPriceEur and status is AWAITING_PAYMENT or later, it's done - don't show
+    if (shipment.calculatedPriceEur && ['AWAITING_PAYMENT', 'READY_FOR_LOADING', 'IN_TRANSIT', 'DELIVERED'].includes(shipment.status)) {
+      return false
+    }
+    // Otherwise, show it (no price yet, or status indicates it's still pending)
+    return true
+  })
+  
+  // Sort client-side to handle null customQuoteRequestedAt properly
+  const sortedCustomQuotes = pendingCustomQuotes.sort((a: any, b: any) => {
+    const dateA = a.customQuoteRequestedAt || a.createdAt
+    const dateB = b.customQuoteRequestedAt || b.createdAt
+    if (!dateA && !dateB) return 0
+    if (!dateA) return 1
+    if (!dateB) return -1
+    return new Date(dateB).getTime() - new Date(dateA).getTime()
+  })
+  
+  console.log('[QUOTES PAGE] Custom quote shipments found:', sortedCustomQuotes.length, 'out of', customQuoteShipments?.length || 0, 'total')
+  if (sortedCustomQuotes.length > 0) {
+    console.log('[QUOTES PAGE] Sample shipments:', sortedCustomQuotes.slice(0, 3).map((s: any) => ({
+      id: s.id.slice(-8),
+      customQuoteRequestedAt: s.customQuoteRequestedAt,
+      clientTransportChoice: s.clientTransportChoice,
+      status: s.status,
+      calculatedPriceEur: s.calculatedPriceEur,
+      clientCode: s.Client?.clientCode || 'no code',
+    })))
+  }
 
   if (ordersError) {
     console.error('Error fetching orders ready for quote:', ordersError)
@@ -80,7 +124,7 @@ export default async function QuotesPage() {
   }
 
   const allOrders = (orders || []).map((o: any) => ({ ...o, type: 'WAREHOUSE_ORDER' }))
-  const allShipments = (customQuoteShipments || []).map((s: any) => ({ ...s, type: 'SHIPMENT_ORDER' }))
+  const allShipments = (sortedCustomQuotes || []).map((s: any) => ({ ...s, type: 'SHIPMENT_ORDER' }))
   const combinedOrders = [...allOrders, ...allShipments].sort((a, b) => {
     // Sort by date: customQuoteRequestedAt first (if exists), then createdAt
     const dateA = a.type === 'WAREHOUSE_ORDER' 
