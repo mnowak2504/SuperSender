@@ -57,12 +57,17 @@ export async function GET(req: NextRequest) {
 
     // 3. Quotes Awaiting Action (custom quote requests)
     // Include both customQuoteRequestedAt IS NOT NULL and clientTransportChoice = 'REQUEST_CUSTOM'
+    // But ONLY those that haven't been quoted yet (no calculatedPriceEur)
     // For superadmin: get all quotes with admin info
     // For regular admin: get only quotes for assigned clients
     let customQuotesQuery = supabase
       .from('ShipmentOrder')
-      .select('id, customQuoteRequestedAt, clientId, clientTransportChoice, Client:clientId(salesOwnerId, salesOwner:User(id, email, name))')
+      .select('id, customQuoteRequestedAt, clientId, clientTransportChoice, calculatedPriceEur, status, Client:clientId(salesOwnerId, salesOwner:User!Client_salesOwnerId_fkey(id, email, name))')
       .or('customQuoteRequestedAt.not.is.null,clientTransportChoice.eq.REQUEST_CUSTOM')
+      // Only show quotes that haven't been quoted yet (no calculatedPriceEur)
+      .is('calculatedPriceEur', null)
+      // Exclude already processed shipments
+      .not('status', 'in', '(AWAITING_PAYMENT,READY_FOR_LOADING,IN_TRANSIT,DELIVERED)')
     
     if (!isSuperAdmin) {
       customQuotesQuery = customQuotesQuery.in('clientId', clientIds.length > 0 ? clientIds : [''])

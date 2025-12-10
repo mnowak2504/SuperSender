@@ -214,23 +214,73 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     {shipment.clientTransportChoice === 'REQUEST_CUSTOM' ? (
                       <div className="space-y-3">
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                          <p className="text-sm font-medium text-yellow-900 mb-1">
-                            💼 Custom Quote Requested
-                          </p>
-                          <p className="text-sm text-yellow-700">
-                            Your sales representative has been notified and will contact you with a custom price quote.
-                          </p>
-                          {shipment.calculatedPriceEur ? (
-                            <p className="text-sm text-yellow-700 mt-2">
+                        {shipment.calculatedPriceEur && shipment.status === 'AWAITING_ACCEPTANCE' ? (
+                          // Quote received - show accept/reject options
+                          <>
+                            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                              <p className="text-sm font-medium text-blue-900 mb-1">
+                                💼 Custom Quote Received
+                              </p>
+                              <p className="text-sm text-blue-700 mb-2">
+                                Your sales representative has prepared a custom quote for this shipment.
+                              </p>
+                              <div className="bg-white rounded-md p-3 border border-blue-300">
+                                <p className="text-lg font-bold text-blue-900">
+                                  €{shipment.calculatedPriceEur.toFixed(2)}
+                                </p>
+                                <p className="text-xs text-blue-600 mt-1">
+                                  Custom transport quote
+                                </p>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Link
+                                href={`/client/shipments/${shipment.id}/transport-choice`}
+                                className="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 transition-colors"
+                              >
+                                Accept Quote
+                              </Link>
+                              <button
+                                onClick={() => {
+                                  // Handle reject - could open modal or navigate
+                                  if (confirm('Are you sure you want to reject this quote? You can organize your own transport instead.')) {
+                                    // Navigate to transport choice page with reject option
+                                    window.location.href = `/client/shipments/${shipment.id}/transport-choice?reject=true`
+                                  }
+                                }}
+                                className="inline-flex items-center justify-center px-4 py-2 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 transition-colors"
+                              >
+                                Reject / Own Transport
+                              </button>
+                            </div>
+                          </>
+                        ) : shipment.calculatedPriceEur ? (
+                          // Quote received but status not AWAITING_ACCEPTANCE yet
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                            <p className="text-sm font-medium text-yellow-900 mb-1">
+                              💼 Custom Quote Received
+                            </p>
+                            <p className="text-sm text-yellow-700">
                               Quote received: <strong>€{shipment.calculatedPriceEur.toFixed(2)}</strong>
                             </p>
-                          ) : (
+                            <p className="text-xs text-yellow-600 mt-2">
+                              Please wait for the quote to be finalized...
+                            </p>
+                          </div>
+                        ) : (
+                          // Waiting for quote
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                            <p className="text-sm font-medium text-yellow-900 mb-1">
+                              💼 Custom Quote Requested
+                            </p>
+                            <p className="text-sm text-yellow-700">
+                              Your sales representative has been notified and will contact you with a custom price quote.
+                            </p>
                             <p className="text-xs text-yellow-600 mt-2">
                               Waiting for quote from your sales representative...
                             </p>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     ) : (shipment.status === 'QUOTED' || shipment.status === 'AWAITING_ACCEPTANCE') ? (
                       <div className="space-y-3">

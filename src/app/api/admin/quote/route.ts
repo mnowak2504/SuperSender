@@ -89,6 +89,8 @@ export async function POST(req: NextRequest) {
         status: transportMode === 'MAK' && proposedPriceEur ? 'AWAITING_ACCEPTANCE' : 'QUOTED',
         deliveryAddressId: deliveryAddressId,
         transportMode: transportMode,
+        quotedAt: new Date().toISOString(),
+        quotedById: quotedById,
       }
 
       const { error: updateError } = await supabase
