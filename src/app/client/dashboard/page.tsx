@@ -318,6 +318,7 @@ export default async function ClientDashboard() {
         status,
         calculatedPriceEur,
         clientTransportChoice,
+        transportMode,
         ownTransportVehicleReg,
         ownTransportTrailerReg,
         ownTransportCarrier,

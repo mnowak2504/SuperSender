@@ -72,14 +72,27 @@ export async function POST(
     // This will be handled by the trigger, but we can also call it explicitly
     const clientId = shipment.clientId
     if (clientId) {
-      // Call the RPC function to recalculate capacity
-      await supabase.rpc('update_client_warehouse_capacity', { client_id: clientId })
+      try {
+        // Call the RPC function to recalculate capacity
+        const { error: capacityError } = await supabase.rpc('update_client_warehouse_capacity', { client_id: clientId })
+        if (capacityError) {
+          console.error('Error updating warehouse capacity:', capacityError)
+          // Don't fail the request, just log the error
+        }
+      } catch (capacityErr) {
+        console.error('Exception updating warehouse capacity:', capacityErr)
+        // Don't fail the request, just log the error
+      }
     }
 
     return NextResponse.json({ success: true, shipmentId: id })
   } catch (error) {
     console.error('Error confirming shipment:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: errorMessage 
+    }, { status: 500 })
   }
 }
 

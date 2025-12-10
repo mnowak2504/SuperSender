@@ -10,6 +10,7 @@ interface ShipmentInPrep {
   status: string
   calculatedPriceEur?: number
   clientTransportChoice?: string
+  transportMode?: string
   ownTransportVehicleReg?: string
   ownTransportTrailerReg?: string
   ownTransportCarrier?: string
@@ -250,49 +251,64 @@ export default function ShipmentsInPreparation({ shipments }: ShipmentsInPrepara
                         </Link>
                       </div>
                     ) : shipment.status === 'READY_FOR_LOADING' ? (
-                      <div className="space-y-3">
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                          <p className="text-sm font-medium text-yellow-900 mb-2">
-                            🚚 Ready for your own transport pickup
-                          </p>
-                          {shipment.ownTransportVehicleReg && (
-                            <p className="text-xs text-yellow-800">
-                              <span className="font-medium">Vehicle:</span> {shipment.ownTransportVehicleReg}
-                              {shipment.ownTransportTrailerReg && ` + Trailer: ${shipment.ownTransportTrailerReg}`}
+                      // Check if it's own transport or MAK transport
+                      shipment.clientTransportChoice === 'OWN_TRANSPORT' || shipment.transportMode === 'CLIENT_OWN' ? (
+                        <div className="space-y-3">
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                            <p className="text-sm font-medium text-yellow-900 mb-2">
+                              🚚 Ready for your own transport pickup
                             </p>
-                          )}
-                          {shipment.ownTransportCarrier && shipment.ownTransportTrackingNumber && (
-                            <p className="text-xs text-yellow-800 mt-1">
-                              <span className="font-medium">Carrier:</span> {shipment.ownTransportCarrier}
-                              <br />
-                              <span className="font-medium">Tracking:</span> {shipment.ownTransportTrackingNumber}
-                            </p>
-                          )}
-                          {shipment.ownTransportPlannedLoadingDate && (
-                            <p className="text-xs text-yellow-800 mt-1">
-                              <span className="font-medium">Planned loading date:</span>{' '}
-                              {new Date(shipment.ownTransportPlannedLoadingDate).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                              })}
-                            </p>
-                          )}
-                          {!shipment.ownTransportVehicleReg && !shipment.ownTransportCarrier && (
-                            <p className="text-xs text-yellow-700 mt-2 italic">
-                              ⚠️ Please add your transport details
-                            </p>
-                          )}
+                            {shipment.ownTransportVehicleReg && (
+                              <p className="text-xs text-yellow-800">
+                                <span className="font-medium">Vehicle:</span> {shipment.ownTransportVehicleReg}
+                                {shipment.ownTransportTrailerReg && ` + Trailer: ${shipment.ownTransportTrailerReg}`}
+                              </p>
+                            )}
+                            {shipment.ownTransportCarrier && shipment.ownTransportTrackingNumber && (
+                              <p className="text-xs text-yellow-800 mt-1">
+                                <span className="font-medium">Carrier:</span> {shipment.ownTransportCarrier}
+                                <br />
+                                <span className="font-medium">Tracking:</span> {shipment.ownTransportTrackingNumber}
+                              </p>
+                            )}
+                            {shipment.ownTransportPlannedLoadingDate && (
+                              <p className="text-xs text-yellow-800 mt-1">
+                                <span className="font-medium">Planned loading date:</span>{' '}
+                                {new Date(shipment.ownTransportPlannedLoadingDate).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                })}
+                              </p>
+                            )}
+                            {!shipment.ownTransportVehicleReg && !shipment.ownTransportCarrier && (
+                              <p className="text-xs text-yellow-700 mt-2 italic">
+                                ⚠️ Please add your transport details
+                              </p>
+                            )}
+                          </div>
+                          <Link
+                            href={`/client/shipments/${shipment.id}/transport-choice`}
+                            className="inline-flex items-center justify-center w-full px-4 py-2 bg-yellow-600 text-white font-medium rounded-md hover:bg-yellow-700 transition-colors"
+                          >
+                            {!shipment.ownTransportVehicleReg && !shipment.ownTransportCarrier 
+                              ? 'Add Transport Details'
+                              : 'Update Transport Details'}
+                          </Link>
                         </div>
-                        <Link
-                          href={`/client/shipments/${shipment.id}/transport-choice`}
-                          className="inline-flex items-center justify-center w-full px-4 py-2 bg-yellow-600 text-white font-medium rounded-md hover:bg-yellow-700 transition-colors"
-                        >
-                          {!shipment.ownTransportVehicleReg && !shipment.ownTransportCarrier 
-                            ? 'Add Transport Details'
-                            : 'Update Transport Details'}
-                        </Link>
-                      </div>
+                      ) : (
+                        // MAK transport - paid and ready for loading
+                        <div className="space-y-3">
+                          <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                            <p className="text-sm font-medium text-green-900 mb-2">
+                              ✓ Ready for Loading
+                            </p>
+                            <p className="text-xs text-green-800">
+                              Your shipment has been paid and is ready for loading. Our transport company will pick it up soon.
+                            </p>
+                          </div>
+                        </div>
+                      )
                     ) : (
                       <p className="text-xs text-gray-500">
                         ⏳ Warehouse is packing these orders. You'll receive an email notification when ready.
