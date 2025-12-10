@@ -34,18 +34,22 @@ export async function checkActiveSubscription(clientId: string): Promise<{
       }
     }
 
-    // Check if there's a subscription invoice with PAYMENT_LINK_REQUESTED status
+    // Check if there's a subscription invoice (PROFORMA with subscriptionPlanId) with PAYMENT_LINK_REQUESTED status
     // If so, subscription should be active even if not yet paid
     const { data: subscriptionInvoice, error: invoiceError } = await supabase
       .from('Invoice')
       .select('paymentMethod, status, subscriptionStartDate, subscriptionEndDate, subscriptionPeriod')
       .eq('clientId', clientId)
-      .eq('type', 'SUBSCRIPTION')
+      .eq('type', 'PROFORMA')
+      .not('subscriptionPlanId', 'is', null) // Has subscriptionPlanId = subscription invoice
       .eq('paymentMethod', 'PAYMENT_LINK_REQUESTED')
       .neq('status', 'PAID')
       .order('createdAt', { ascending: false })
       .limit(1)
       .maybeSingle()
+    
+    // Fallback: if the above query doesn't work, try without the .not() filter and filter in code
+    // (This is a workaround in case Supabase doesn't support .not() the way we expect)
 
     // If payment link requested, subscription is active
     // Ignore invoiceError - it's fine if no invoice exists

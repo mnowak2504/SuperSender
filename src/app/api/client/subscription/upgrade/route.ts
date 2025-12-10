@@ -398,17 +398,8 @@ export async function POST(req: NextRequest) {
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + 7) // 7 days payment term
 
-    // Generate invoice ID (CUID format)
-    const generateCUID = () => {
-      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-      let result = 'cl'
-      for (let i = 0; i < 22; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length))
-      }
-      return result
-    }
-    
-    const invoiceId = generateCUID()
+    // Let database generate the invoice ID using cuid() default
+    // This ensures proper format and avoids conflicts
 
     // Use calculated start date (override with provided date if specified for new subscriptions)
     const startDate = subscriptionStartDate && !isExtend && !isUpgrade 
@@ -416,25 +407,77 @@ export async function POST(req: NextRequest) {
       : subscriptionStartDateCalculated
     startDate.setHours(0, 0, 0, 0)
     
+    // Verify plan exists before creating invoice
+    const { data: planCheck, error: planCheckError } = await supabase
+      .from('Plan')
+      .select('id')
+      .eq('id', planId)
+      .single()
+
+    if (planCheckError || !planCheck) {
+      console.error('[API /client/subscription/upgrade] Plan not found:', {
+        planId,
+        error: planCheckError,
+      })
+      return NextResponse.json(
+        { 
+          error: 'Invalid plan selected', 
+          details: planCheckError?.message || 'Plan not found',
+        },
+        { status: 400 }
+      )
+    }
+
+    // Verify client exists before creating invoice
+    const { data: clientCheck, error: clientCheckError } = await supabase
+      .from('Client')
+      .select('id')
+      .eq('id', clientId)
+      .single()
+
+    if (clientCheckError || !clientCheck) {
+      console.error('[API /client/subscription/upgrade] Client not found:', {
+        clientId,
+        error: clientCheckError,
+      })
+      return NextResponse.json(
+        { 
+          error: 'Client account not found', 
+          details: clientCheckError?.message || 'Client not found',
+        },
+        { status: 404 }
+      )
+    }
+    
     // Store planId in invoice metadata (we'll add a planId field to Invoice or use metadata JSON)
     // For now, we'll store it in a way that webhook can access it
     // Note: We need to update Client with planId after payment, so we'll get it from invoice.clientId -> Client.planId
     
+    const invoiceData = {
+      clientId,
+      type: 'PROFORMA', // Subscription invoices are proformas - final invoices are sent manually
+      amountEur: finalAmount,
+      currency: 'EUR',
+      status: 'ISSUED',
+      dueDate: dueDate.toISOString(),
+      subscriptionStartDate: startDate.toISOString(),
+      subscriptionPeriod: subscriptionPeriod,
+      subscriptionPlanId: planId,
+      paymentMethod: paymentMethod === 'online' ? 'PAYMENT_LINK_REQUESTED' : paymentMethod === 'bank_transfer' ? 'BANK_TRANSFER' : null,
+    }
+
+    console.log('[API /client/subscription/upgrade] Creating invoice with data:', {
+      clientId,
+      planId,
+      finalAmount,
+      subscriptionPeriod,
+      paymentMethod,
+      invoiceData,
+    })
+    
     const { data: invoice, error: invoiceError } = await supabase
       .from('Invoice')
-      .insert({
-        id: invoiceId,
-        clientId,
-        type: 'SUBSCRIPTION',
-        amountEur: finalAmount,
-        currency: 'EUR',
-        status: 'ISSUED',
-        dueDate: dueDate.toISOString(),
-        subscriptionStartDate: startDate.toISOString(),
-        subscriptionPeriod: subscriptionPeriod,
-        subscriptionPlanId: planId,
-        paymentMethod: paymentMethod === 'online' ? 'PAYMENT_LINK_REQUESTED' : paymentMethod === 'bank_transfer' ? 'BANK_TRANSFER' : null,
-      })
+      .insert(invoiceData)
       .select()
       .single()
 
@@ -446,15 +489,9 @@ export async function POST(req: NextRequest) {
         details: invoiceError.details,
         hint: invoiceError.hint,
         clientId,
+        planId,
         finalAmount,
-        invoiceData: {
-          clientId,
-          type: 'SUBSCRIPTION',
-          amountEur: finalAmount,
-          currency: 'EUR',
-          status: 'ISSUED',
-          dueDate: dueDate.toISOString(),
-        },
+        invoiceData,
       })
       return NextResponse.json(
         { 
@@ -473,7 +510,7 @@ export async function POST(req: NextRequest) {
       invoice.id,
       invoice.invoiceNumber || null,
       finalAmount,
-      'SUBSCRIPTION',
+      'PROFORMA', // Subscription invoices are proformas
       dueDate.toISOString(),
       null // Payment link will be added after creation
     ).catch((error) => {

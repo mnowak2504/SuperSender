@@ -100,8 +100,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
-    // If payment link requested for subscription invoice, activate subscription immediately
-    if (paymentMethod === 'PAYMENT_LINK_REQUESTED' && updatedInvoice.type === 'SUBSCRIPTION' && updatedInvoice.subscriptionStartDate && updatedInvoice.subscriptionPeriod && updatedInvoice.subscriptionPlanId) {
+    // If payment link requested for subscription invoice (PROFORMA with subscriptionPlanId), activate subscription immediately
+    if (paymentMethod === 'PAYMENT_LINK_REQUESTED' && updatedInvoice.type === 'PROFORMA' && updatedInvoice.subscriptionPlanId && updatedInvoice.subscriptionStartDate && updatedInvoice.subscriptionPeriod) {
       const startDate = new Date(updatedInvoice.subscriptionStartDate)
       startDate.setHours(0, 0, 0, 0)
       
@@ -127,8 +127,8 @@ export async function PUT(
       }
     }
 
-    // If marking subscription invoice as paid, activate the subscription
-    if (status === 'PAID' && updatedInvoice.type === 'SUBSCRIPTION' && updatedInvoice.subscriptionStartDate && updatedInvoice.subscriptionPeriod && updatedInvoice.subscriptionPlanId) {
+    // If marking subscription invoice (PROFORMA with subscriptionPlanId) as paid, activate the subscription
+    if (status === 'PAID' && updatedInvoice.type === 'PROFORMA' && updatedInvoice.subscriptionPlanId && updatedInvoice.subscriptionStartDate && updatedInvoice.subscriptionPeriod) {
       const startDate = new Date(updatedInvoice.subscriptionStartDate)
       startDate.setHours(0, 0, 0, 0)
       

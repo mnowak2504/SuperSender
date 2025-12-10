@@ -443,7 +443,7 @@ export default function SuperAdminInvoicesContent() {
                         )}
                         
                         {/* Request payment link button for TRANSPORT and SUBSCRIPTION invoices */}
-                        {(invoice.type === 'TRANSPORT' || invoice.type === 'SUBSCRIPTION') && invoice.status === 'ISSUED' && !invoice.paymentMethod && (
+                        {(invoice.type === 'TRANSPORT' || (invoice.type === 'PROFORMA' && invoice.subscriptionPlanId)) && invoice.status === 'ISSUED' && !invoice.paymentMethod && (
                           <button
                             onClick={async () => {
                               if (!confirm('Czy na pewno chcesz żądać linku płatniczego dla tej faktury? Konto klienta zostanie aktywowane natychmiast.')) {
@@ -468,8 +468,8 @@ export default function SuperAdminInvoicesContent() {
                                   throw new Error(errorData.error || errorData.details || 'Failed to request payment link')
                                 }
 
-                                // If subscription invoice, activate subscription immediately
-                                if (invoice.type === 'SUBSCRIPTION') {
+                                // If subscription invoice (PROFORMA with subscriptionPlanId), activate subscription immediately
+                                if (invoice.type === 'PROFORMA' && invoice.subscriptionPlanId) {
                                   // Get invoice details to activate subscription
                                   const invoiceRes = await fetch(`/api/superadmin/invoices/${invoice.id}`)
                                   if (invoiceRes.ok) {

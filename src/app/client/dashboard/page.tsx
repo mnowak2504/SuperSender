@@ -183,12 +183,13 @@ export default async function ClientDashboard() {
       .from('Invoice')
       .select('paymentMethod, status, subscriptionStartDate, subscriptionEndDate, subscriptionPlanId, subscriptionPeriod')
       .eq('clientId', clientId)
-      .eq('type', 'SUBSCRIPTION')
+      .eq('type', 'PROFORMA')
+      .not('subscriptionPlanId', 'is', null) // Has subscriptionPlanId = subscription invoice
       .eq('paymentMethod', 'PAYMENT_LINK_REQUESTED')
       .neq('status', 'PAID')
       .order('createdAt', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
     
     if (subscriptionInvoice) {
       hasPaymentLinkRequested = true

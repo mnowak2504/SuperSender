@@ -69,8 +69,8 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', invoice.id)
 
-      // If subscription invoice, activate subscription
-      if (invoice.type === 'SUBSCRIPTION' && invoice.subscriptionStartDate && invoice.subscriptionPeriod && invoice.subscriptionPlanId) {
+      // If subscription invoice (PROFORMA with subscriptionPlanId), activate subscription
+      if (invoice.type === 'PROFORMA' && invoice.subscriptionPlanId && invoice.subscriptionStartDate && invoice.subscriptionPeriod) {
         const startDate = new Date(invoice.subscriptionStartDate)
         startDate.setHours(0, 0, 0, 0)
         

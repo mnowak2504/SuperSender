@@ -115,7 +115,7 @@ export default async function InvoiceDetailsPage({
     ? 'OVERDUE' 
     : invoice.status
 
-  const showBankTransfer = paymentMethod === 'bank_transfer' || (invoice.type === 'SUBSCRIPTION' && !invoice.revolutLink)
+  const showBankTransfer = paymentMethod === 'bank_transfer' || (invoice.type === 'PROFORMA' && invoice.subscriptionPlanId && !invoice.revolutLink)
 
   return (
     <ClientLayout>
