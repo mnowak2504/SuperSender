@@ -21,11 +21,18 @@ interface Customer {
   paymentStatus: 'PAID' | 'PENDING' | 'NO_INVOICE'
   assignedSince: string
   isActive: boolean
+  salesOwner?: {
+    id: string
+    name: string
+    email: string
+  } | null
+  salesOwnerId?: string | null
 }
 
 export default function CustomerOverview() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filters, setFilters] = useState({
     country: '',
@@ -33,6 +40,16 @@ export default function CustomerOverview() {
     plan: '',
     activity: '',
   })
+  
+  useEffect(() => {
+    // Check if user is superadmin by checking session
+    fetch('/api/auth/session')
+      .then(res => res.json())
+      .then(session => {
+        setIsSuperAdmin((session?.user as any)?.role === 'SUPERADMIN')
+      })
+      .catch(() => setIsSuperAdmin(false))
+  }, [])
 
   useEffect(() => {
     fetchCustomers()
@@ -180,6 +197,11 @@ export default function CustomerOverview() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Payment
               </th>
+              {isSuperAdmin && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Sales Owner
+                </th>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
@@ -244,6 +266,25 @@ export default function CustomerOverview() {
                     {customer.paymentStatus === 'PAID' ? '✅ Paid' : customer.paymentStatus === 'PENDING' ? '⚠️ Pending' : '❌ No Invoice'}
                   </span>
                 </td>
+                {isSuperAdmin && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {customer.salesOwner ? (
+                      <div>
+                        <div className="font-medium">{customer.salesOwner.name}</div>
+                        <div className="text-xs text-gray-500">{customer.salesOwner.email}</div>
+                        <Link
+                          href={`/admin/dashboard?asAdmin=${customer.salesOwner.id}`}
+                          className="text-xs text-blue-600 hover:text-blue-800 mt-1 inline-block"
+                          title="View dashboard as this admin"
+                        >
+                          View as Admin →
+                        </Link>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">Unassigned</span>
+                    )}
+                  </td>
+                )}
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <Link
                     href={`/admin/customers/${customer.id}`}

@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     }
 
     const userId = (session.user as any)?.id
+    const isSuperAdmin = role === 'SUPERADMIN'
     const { searchParams } = new URL(req.url)
     const country = searchParams.get('country')
     const status = searchParams.get('status')
@@ -37,9 +38,15 @@ export async function GET(req: NextRequest) {
         limitCbm,
         createdAt,
         Plan:planId(name),
-        salesOwnerId
+        salesOwnerId,
+        salesOwner:salesOwnerId(id, name, email)
       `)
-      .eq('salesOwnerId', userId)
+    
+    // For regular admin: only their assigned clients
+    // For superadmin: all clients
+    if (!isSuperAdmin) {
+      query = query.eq('salesOwnerId', userId)
+    }
 
     if (country) {
       query = query.eq('country', country)
@@ -132,6 +139,11 @@ export async function GET(req: NextRequest) {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
       const isActive = new Date(client.createdAt) > thirtyDaysAgo || deliveries > 0 || dispatches > 0
 
+      // Get sales owner info
+      const salesOwner = Array.isArray(client.salesOwner) 
+        ? (client.salesOwner[0] as any)
+        : (client.salesOwner as any)
+
       return {
         id: client.id,
         displayName: client.displayName,
@@ -149,6 +161,12 @@ export async function GET(req: NextRequest) {
         paymentStatus,
         assignedSince: client.createdAt,
         isActive,
+        salesOwner: salesOwner ? {
+          id: salesOwner.id,
+          name: salesOwner.name,
+          email: salesOwner.email,
+        } : null,
+        salesOwnerId: client.salesOwnerId,
       }
     }) || []
 

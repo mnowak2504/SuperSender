@@ -78,19 +78,20 @@ export default async function QuotesPage() {
   const { data: customQuoteShipments, error: shipmentsError } = await customQuoteShipmentsQuery
   
   // Filter out shipments that have already been quoted and accepted
-  // Keep only those that are still waiting for a quote (no calculatedPriceEur or status indicates pending)
+  // Keep only those that are still waiting for a quote
+  // Show ALL custom quote requests (REQUEST_CUSTOM) regardless of status, unless they're already delivered
   const pendingCustomQuotes = (customQuoteShipments || []).filter((shipment: any) => {
-    // If it has a calculatedPriceEur and status is AWAITING_ACCEPTANCE or later, it's already been quoted
-    // We want to show it only if it's still waiting for quote
-    if (shipment.calculatedPriceEur && shipment.status === 'AWAITING_ACCEPTANCE') {
-      // This has been quoted but client hasn't accepted yet - still show it
-      return true
-    }
-    // If it has calculatedPriceEur and status is AWAITING_PAYMENT or later, it's done - don't show
-    if (shipment.calculatedPriceEur && ['AWAITING_PAYMENT', 'READY_FOR_LOADING', 'IN_TRANSIT', 'DELIVERED'].includes(shipment.status)) {
+    // If status is DELIVERED, don't show it
+    if (shipment.status === 'DELIVERED') {
       return false
     }
-    // Otherwise, show it (no price yet, or status indicates it's still pending)
+    // Show all custom quote requests that haven't been delivered yet
+    // This includes:
+    // - Requests without calculatedPriceEur (not quoted yet)
+    // - Requests with calculatedPriceEur but status AWAITING_ACCEPTANCE (quoted, waiting for client)
+    // - Requests with calculatedPriceEur and status AWAITING_PAYMENT (accepted, waiting for payment)
+    // - Requests with calculatedPriceEur and status READY_FOR_LOADING (paid, ready to ship)
+    // - Requests with calculatedPriceEur and status IN_TRANSIT (in transit)
     return true
   })
   
