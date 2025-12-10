@@ -36,7 +36,7 @@ export async function checkActiveSubscription(clientId: string): Promise<{
 
     // Check if there's a subscription invoice with PAYMENT_LINK_REQUESTED status
     // If so, subscription should be active even if not yet paid
-    const { data: subscriptionInvoice } = await supabase
+    const { data: subscriptionInvoice, error: invoiceError } = await supabase
       .from('Invoice')
       .select('paymentMethod, status, subscriptionStartDate, subscriptionEndDate, subscriptionPeriod')
       .eq('clientId', clientId)
@@ -45,9 +45,10 @@ export async function checkActiveSubscription(clientId: string): Promise<{
       .neq('status', 'PAID')
       .order('createdAt', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     // If payment link requested, subscription is active
+    // Ignore invoiceError - it's fine if no invoice exists
     if (subscriptionInvoice && subscriptionInvoice.paymentMethod === 'PAYMENT_LINK_REQUESTED') {
       const startDate = subscriptionInvoice.subscriptionStartDate ? new Date(subscriptionInvoice.subscriptionStartDate) : new Date()
       let endDate = subscriptionInvoice.subscriptionEndDate ? new Date(subscriptionInvoice.subscriptionEndDate) : null
@@ -79,7 +80,20 @@ export async function checkActiveSubscription(clientId: string): Promise<{
 
     // Check if subscription has expired
     const now = new Date()
+    now.setHours(0, 0, 0, 0) // Normalize to start of day for comparison
     const endDate = client.subscriptionEndDate ? new Date(client.subscriptionEndDate) : null
+    if (endDate) {
+      endDate.setHours(23, 59, 59, 999) // Set to end of day for comparison
+    }
+    
+    console.log('[checkActiveSubscription] Checking dates:', {
+      clientId,
+      planId: client.planId,
+      subscriptionStartDate: client.subscriptionStartDate,
+      subscriptionEndDate: client.subscriptionEndDate,
+      now: now.toISOString(),
+      endDate: endDate?.toISOString(),
+    })
     
     if (endDate && endDate < now) {
       return {
@@ -135,6 +149,15 @@ export async function requireActiveSubscription(
   }
 
   const subscriptionCheck = await checkActiveSubscription(clientId)
+
+  console.log('[requireActiveSubscription] Subscription check result:', {
+    clientId,
+    hasActiveSubscription: subscriptionCheck.hasActiveSubscription,
+    status: subscriptionCheck.status,
+    subscriptionEndDate: subscriptionCheck.subscriptionEndDate,
+    subscriptionStartDate: subscriptionCheck.subscriptionStartDate,
+    error: subscriptionCheck.error,
+  })
 
   if (!subscriptionCheck.hasActiveSubscription) {
     const message = subscriptionCheck.status === 'EXPIRED'
