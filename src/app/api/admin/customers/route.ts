@@ -24,6 +24,9 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status')
     const plan = searchParams.get('plan')
     const activity = searchParams.get('activity') // 'active' or 'inactive'
+    const asAdminId = searchParams.get('asAdmin')
+    const effectiveUserId = (isSuperAdmin && asAdminId) ? asAdminId : userId
+    const effectiveIsSuperAdmin = isSuperAdmin && !asAdminId // Only true superadmin, not impersonating
 
     // Build query
     let query = supabase
@@ -42,10 +45,10 @@ export async function GET(req: NextRequest) {
         salesOwner:salesOwnerId(id, name, email)
       `)
     
-    // For regular admin: only their assigned clients
-    // For superadmin: all clients
-    if (!isSuperAdmin) {
-      query = query.eq('salesOwnerId', userId)
+    // For regular admin or superadmin impersonating: only their assigned clients
+    // For superadmin (not impersonating): all clients
+    if (!effectiveIsSuperAdmin) {
+      query = query.eq('salesOwnerId', effectiveUserId)
     }
 
     if (country) {

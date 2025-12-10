@@ -19,19 +19,25 @@ export async function GET(req: NextRequest) {
 
     const userId = (session.user as any)?.id
     const isSuperAdmin = role === 'SUPERADMIN'
+    
+    // Check if superadmin is impersonating an admin
+    const { searchParams } = new URL(req.url)
+    const asAdminId = searchParams.get('asAdmin')
+    const effectiveUserId = (isSuperAdmin && asAdminId) ? asAdminId : userId
+    const effectiveIsSuperAdmin = isSuperAdmin && !asAdminId // Only true superadmin, not impersonating
 
     // Get admin's assigned clients (for regular admin) or all clients (for superadmin)
     let clientIds: string[] = []
-    if (isSuperAdmin) {
-      // Superadmin sees all clients
+    if (effectiveIsSuperAdmin) {
+      // Superadmin sees all clients (when not impersonating)
       const { data: allClients } = await supabase.from('Client').select('id')
       clientIds = allClients?.map(c => c.id) || []
     } else {
-      // Regular admin sees only assigned clients
+      // Regular admin or superadmin impersonating admin sees only assigned clients
       const { data: assignedClients, error: clientsError } = await supabase
         .from('Client')
         .select('id')
-        .eq('salesOwnerId', userId)
+        .eq('salesOwnerId', effectiveUserId)
       clientIds = assignedClients?.map(c => c.id) || []
     }
 
