@@ -39,13 +39,21 @@ export default function NewDeliveryPage() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Failed to create delivery' }))
-        throw new Error(errorData.error || 'Failed to create delivery')
+        const errorMessage = errorData.details 
+          ? `${errorData.error || 'Failed to create delivery'}: ${errorData.details}`
+          : errorData.error || 'Failed to create delivery'
+        setError(errorMessage)
+        setLoading(false)
+        return
       }
 
       // Use window.location for full page reload to ensure session is updated
       window.location.href = '/client/deliveries'
     } catch (err) {
-      setError('Failed to submit delivery. Please try again.')
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : 'Failed to submit delivery. Please try again.'
+      setError(errorMessage)
       setLoading(false)
     }
   }
