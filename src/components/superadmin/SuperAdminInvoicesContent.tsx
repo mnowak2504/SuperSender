@@ -16,6 +16,10 @@ interface Invoice {
   paidAt: string | null
   invoiceNumber: string | null
   paymentMethod?: string | null // 'BANK_TRANSFER', 'PAYMENT_LINK_REQUESTED'
+  subscriptionPlanId?: string | null // For subscription invoices (PROFORMA with subscriptionPlanId)
+  subscriptionStartDate?: string | null
+  subscriptionPeriod?: string | null
+  subscriptionEndDate?: string | null
   client?: {
     id: string
     displayName: string

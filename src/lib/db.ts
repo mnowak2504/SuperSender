@@ -121,7 +121,7 @@ export interface ShipmentOrder {
 export interface Invoice {
   id: string
   clientId: string
-  type: 'SUBSCRIPTION' | 'TRANSPORT' | 'OPERATIONS'
+  type: 'SUBSCRIPTION' | 'TRANSPORT' | 'OPERATIONS' | 'PROFORMA'
   amountEur: number
   currency: string
   status: 'ISSUED' | 'PAID' | 'OVERDUE'
@@ -133,6 +133,11 @@ export interface Invoice {
   periodEnd: string | null
   dueDate: string
   shipmentOrderId: string | null
+  subscriptionPlanId?: string | null // For subscription invoices (PROFORMA with subscriptionPlanId)
+  subscriptionStartDate?: string | null
+  subscriptionPeriod?: string | null
+  subscriptionEndDate?: string | null
+  paymentMethod?: string | null // 'BANK_TRANSFER', 'PAYMENT_LINK_REQUESTED'
   createdAt: string
   paidAt: string | null
 }
