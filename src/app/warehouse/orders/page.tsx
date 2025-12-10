@@ -478,9 +478,6 @@ export default async function WarehouseOrdersPage({
                                   plannedDeliveryDateFrom: order.plannedDeliveryDateFrom,
                                   plannedDeliveryDateTo: order.plannedDeliveryDateTo,
                                 }}
-                                onSuccess={() => {
-                                  window.location.reload()
-                                }}
                               />
                             </div>
                           )}

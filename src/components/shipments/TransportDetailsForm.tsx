@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Truck } from 'lucide-react'
 
 interface TransportDetailsFormProps {
@@ -11,14 +12,13 @@ interface TransportDetailsFormProps {
     plannedDeliveryDateFrom?: string | null
     plannedDeliveryDateTo?: string | null
   }
-  onSuccess?: () => void
 }
 
 export default function TransportDetailsForm({
   shipmentId,
   currentData,
-  onSuccess,
 }: TransportDetailsFormProps) {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -63,9 +63,8 @@ export default function TransportDetailsForm({
       }
 
       setShowForm(false)
-      if (onSuccess) {
-        onSuccess()
-      }
+      // Refresh the page to show updated data
+      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save transport details')
     } finally {
