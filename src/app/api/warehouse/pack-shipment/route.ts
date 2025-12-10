@@ -206,27 +206,33 @@ export async function POST(req: NextRequest) {
       if (pricingRules && pricingRules.length > 0) {
         if (shipmentType === 'PALLET' && totalPallets > 0) {
           // Calculate total pricing positions based on pallet dimensions
+          // This accounts for pallet sizes and applies rounding/surcharge logic
           const totalPricingPositions = palletDimensions.length > 0
             ? calculateTotalPricingPositions(palletDimensions)
             : totalPallets // Fallback to pallet count if dimensions not available
           
-          // Find matching rule based on pallet count (for rule matching)
-          // But use pricing positions for actual price calculation
+          // Round total pricing positions to nearest integer for rule matching
+          // This matches the website pricing tiers: 1/2, 1-4, 5+
+          const roundedPositions = Math.round(totalPricingPositions)
+          
+          // Find matching rule based on pallet positions (NOT weight, NOT pallet count)
+          // Rules should be configured with palletCountMin/Max representing positions
           const matchingRule = pricingRules.find((rule: any) => {
-            const countMatch = (!rule.palletCountMin || totalPallets >= rule.palletCountMin) &&
-                              (!rule.palletCountMax || totalPallets <= rule.palletCountMax)
-            const weightMatch = (!rule.weightMinKg || totalWeight >= rule.weightMinKg) &&
-                               (!rule.weightMaxKg || totalWeight <= rule.weightMaxKg)
-            return rule.transportType === 'PALLET' && countMatch && weightMatch
+            // Match by pallet positions (palletCountMin/Max now represents positions)
+            const positionsMatch = (!rule.palletCountMin || roundedPositions >= rule.palletCountMin) &&
+                                  (!rule.palletCountMax || roundedPositions <= rule.palletCountMax)
+            // Ignore weight matching for pallets - pricing is based on positions only
+            return rule.transportType === 'PALLET' && positionsMatch
           })
 
           if (matchingRule) {
-            // Use pricing positions instead of pallet count for price calculation
+            // Use pricing positions for price calculation
             if (matchingRule.type === 'FIXED_PER_UNIT') {
               // Price per standard pallet position (120x80cm)
+              // Use exact pricing positions (with multipliers) for accurate pricing
               transportPrice = matchingRule.priceEur * totalPricingPositions
             } else {
-              // Fixed price (use as-is, but could be adjusted based on positions)
+              // Fixed price - use as-is (for tiered pricing like 1-4 pallets = fixed price)
               transportPrice = matchingRule.priceEur
             }
             transportPricingId = matchingRule.id

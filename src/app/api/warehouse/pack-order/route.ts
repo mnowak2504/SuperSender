@@ -202,20 +202,24 @@ export async function POST(req: NextRequest) {
 
       if (pricingRules && pricingRules.length > 0) {
         if (shipmentType === 'PALLET') {
-          // For pallets: find pricing by count and weight
+          // For pallets: find pricing by pallet positions (not weight)
+          // Note: In pack-order we don't have pallet dimensions, so we use pallet count as fallback
+          // The actual pricing calculation with positions happens in pack-shipment
           const matchingRule = pricingRules.find((rule: any) => {
+            // Match by pallet count (will be positions when dimensions are available in pack-shipment)
             const countMatch = (!rule.palletCountMin || totalPallets >= rule.palletCountMin) &&
                               (!rule.palletCountMax || totalPallets <= rule.palletCountMax)
-            const weightMatch = (!rule.weightMinKg || totalWeight >= rule.weightMinKg) &&
-                               (!rule.weightMaxKg || totalWeight <= rule.weightMaxKg)
-            return rule.transportType === 'PALLET' && countMatch && weightMatch
+            // Ignore weight matching - pricing is based on positions only
+            return rule.transportType === 'PALLET' && countMatch
           })
 
           if (matchingRule) {
-            // For pallets, price is per pallet or total based on rule type
+            // For pallets, price is per pallet position or total based on rule type
             if (matchingRule.type === 'FIXED_PER_UNIT') {
+              // Price per pallet (will be recalculated with positions in pack-shipment)
               transportPrice = matchingRule.priceEur * totalPallets
             } else {
+              // Fixed price (for tiered pricing)
               transportPrice = matchingRule.priceEur
             }
             transportPricingId = matchingRule.id
