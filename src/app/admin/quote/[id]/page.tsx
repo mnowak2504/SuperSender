@@ -22,25 +22,45 @@ export default async function QuotePage({
     redirect('/unauthorized')
   }
 
-  // Pobierz szczegóły zamówienia
-  const { data: order, error: orderError } = await supabase
+  // Sprawdź czy to WarehouseOrder czy ShipmentOrder
+  // Najpierw spróbuj WarehouseOrder
+  let { data: warehouseOrder, error: warehouseOrderError } = await supabase
     .from('WarehouseOrder')
     .select('*, Client:clientId(displayName, clientCode, id)')
     .eq('id', id)
     .single()
 
-  // Pobierz adresy klienta (dla wyceny potrzebny będzie adres dostawy)
-  let addresses: any[] = []
-  if (order && (order.Client as any)?.id) {
-    const { data: clientAddresses } = await supabase
-      .from('Address')
-      .select('*')
-      .eq('clientId', (order.Client as any).id)
+  // Jeśli nie znaleziono WarehouseOrder, spróbuj ShipmentOrder
+  let shipmentOrder: any = null
+  let orderType: 'WAREHOUSE_ORDER' | 'SHIPMENT_ORDER' = 'WAREHOUSE_ORDER'
+  
+  if (warehouseOrderError || !warehouseOrder) {
+    const { data: shipment, error: shipmentError } = await supabase
+      .from('ShipmentOrder')
+      .select(`
+        id,
+        clientId,
+        status,
+        customQuoteRequestedAt,
+        clientTransportChoice,
+        calculatedPriceEur,
+        deliveryAddressId,
+        Client:clientId(displayName, clientCode, id),
+        deliveryAddress:deliveryAddressId(city, country, street, postalCode),
+        Package(widthCm, lengthCm, heightCm, weightKg)
+      `)
+      .eq('id', id)
+      .single()
     
-    addresses = clientAddresses || []
+    if (!shipmentError && shipment) {
+      shipmentOrder = shipment
+      orderType = 'SHIPMENT_ORDER'
+    }
   }
 
-  if (orderError || !order) {
+  const order = warehouseOrder || shipmentOrder
+
+  if (!order) {
     return (
       <div className="px-4 py-6 sm:px-0">
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -53,13 +73,39 @@ export default async function QuotePage({
     )
   }
 
+  // Pobierz adresy klienta (dla wyceny potrzebny będzie adres dostawy)
+  let addresses: any[] = []
+  if (order && (order.Client as any)?.id) {
+    const { data: clientAddresses } = await supabase
+      .from('Address')
+      .select('*')
+      .eq('clientId', (order.Client as any).id)
+    
+    addresses = clientAddresses || []
+  }
+
   // Sprawdź czy zamówienie może być wycenione
-  if (order.status !== 'READY_FOR_QUOTE') {
+  if (orderType === 'WAREHOUSE_ORDER' && order.status !== 'READY_FOR_QUOTE') {
     return (
       <div className="px-4 py-6 sm:px-0">
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
           <p className="text-yellow-800">
             To zamówienie nie może być wycenione. Obecny status: {order.status}
+          </p>
+          <a href="/admin/quotes" className="text-yellow-600 hover:text-yellow-800 underline mt-2 inline-block">
+            Wróć do listy
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  if (orderType === 'SHIPMENT_ORDER' && order.clientTransportChoice !== 'REQUEST_CUSTOM' && !order.customQuoteRequestedAt) {
+    return (
+      <div className="px-4 py-6 sm:px-0">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+          <p className="text-yellow-800">
+            To zamówienie nie jest zgłoszone do wyceny indywidualnej.
           </p>
           <a href="/admin/quotes" className="text-yellow-600 hover:text-yellow-800 underline mt-2 inline-block">
             Wróć do listy
