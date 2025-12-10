@@ -95,29 +95,20 @@ export default function SalesDashboardContent() {
           </div>
         </Link>
 
-        {/* Quotes Awaiting Action */}
+        {/* Transporty do wyceny */}
         <Link
-          href="/admin/customers?section=quotes"
+          href="/admin/quotes"
           className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-yellow-50 rounded-lg">
               <MessageSquare className="w-6 h-6 text-yellow-600" />
             </div>
-            <span className="text-xs font-medium text-gray-500">{adminTranslations.quotes_pending}</span>
+            <span className="text-xs font-medium text-gray-500">Transporty do wyceny</span>
           </div>
           <div>
             <p className="text-3xl font-bold text-gray-900">{kpi?.quotesAwaitingAction?.total || 0}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-gray-600">
-                {kpi?.quotesAwaitingAction?.over24h || 0} &gt;24h
-              </span>
-              {(kpi?.quotesAwaitingAction?.over48h || 0) > 0 && (
-                <span className="text-xs text-red-600 font-medium">
-                  {kpi?.quotesAwaitingAction?.over48h || 0} &gt;48h
-                </span>
-              )}
-            </div>
+            <p className="text-sm text-gray-600 mt-1">Oczekujące na wycenę</p>
           </div>
         </Link>
 

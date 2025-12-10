@@ -17,16 +17,41 @@ export default async function QuotesPage() {
     redirect('/unauthorized')
   }
 
+  const userId = (session.user as any)?.id
+  const isSuperAdmin = role === 'SUPERADMIN'
+
+  // Get admin's assigned clients (for regular admin) or all clients (for superadmin)
+  let clientIds: string[] = []
+  if (isSuperAdmin) {
+    // Superadmin sees all clients
+    const { data: allClients } = await supabase.from('Client').select('id')
+    clientIds = allClients?.map(c => c.id) || []
+  } else {
+    // Regular admin sees only assigned clients
+    const { data: assignedClients } = await supabase
+      .from('Client')
+      .select('id')
+      .eq('salesOwnerId', userId)
+    clientIds = assignedClients?.map(c => c.id) || []
+  }
+
   // Pobierz wszystkie zamówienia gotowe do wyceny
   // 1. WarehouseOrder ze statusem READY_FOR_QUOTE (zamówienia lokalne)
-  const { data: orders, error: ordersError } = await supabase
+  let ordersQuery = supabase
     .from('WarehouseOrder')
     .select('*, Client:clientId(displayName, clientCode)')
     .eq('status', 'READY_FOR_QUOTE')
-    .order('createdAt', { ascending: false })
+  
+  if (!isSuperAdmin) {
+    ordersQuery = ordersQuery.in('clientId', clientIds.length > 0 ? clientIds : [''])
+  }
+  
+  const { data: orders, error: ordersError } = await ordersQuery.order('createdAt', { ascending: false })
 
   // 2. ShipmentOrder z REQUEST_CUSTOM (custom quote requests dla transportu wychodzącego)
-  const { data: customQuoteShipments, error: shipmentsError } = await supabase
+  // For superadmin: get all quotes with admin info
+  // For regular admin: get only quotes for assigned clients
+  let customQuoteShipmentsQuery = supabase
     .from('ShipmentOrder')
     .select(`
       id,
@@ -35,12 +60,17 @@ export default async function QuotesPage() {
       calculatedPriceEur,
       status,
       clientTransportChoice,
-      Client:clientId(displayName, clientCode),
+      Client:clientId(displayName, clientCode, salesOwnerId, salesOwner:User(id, email, name)),
       deliveryAddress:deliveryAddressId(city, country),
       Package(widthCm, lengthCm, heightCm, weightKg)
     `)
     .or('customQuoteRequestedAt.not.is.null,clientTransportChoice.eq.REQUEST_CUSTOM')
-    .order('customQuoteRequestedAt', { ascending: false })
+  
+  if (!isSuperAdmin) {
+    customQuoteShipmentsQuery = customQuoteShipmentsQuery.in('clientId', clientIds.length > 0 ? clientIds : [''])
+  }
+  
+  const { data: customQuoteShipments, error: shipmentsError } = await customQuoteShipmentsQuery.order('customQuoteRequestedAt', { ascending: false })
 
   if (ordersError) {
     console.error('Error fetching orders ready for quote:', ordersError)

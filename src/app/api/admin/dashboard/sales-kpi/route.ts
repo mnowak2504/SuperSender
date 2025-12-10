@@ -18,16 +18,24 @@ export async function GET(req: NextRequest) {
     }
 
     const userId = (session.user as any)?.id
+    const isSuperAdmin = role === 'SUPERADMIN'
 
-    // Get admin's assigned clients
-    const { data: assignedClients, error: clientsError } = await supabase
-      .from('Client')
-      .select('id')
-      .eq('salesOwnerId', userId)
+    // Get admin's assigned clients (for regular admin) or all clients (for superadmin)
+    let clientIds: string[] = []
+    if (isSuperAdmin) {
+      // Superadmin sees all clients
+      const { data: allClients } = await supabase.from('Client').select('id')
+      clientIds = allClients?.map(c => c.id) || []
+    } else {
+      // Regular admin sees only assigned clients
+      const { data: assignedClients, error: clientsError } = await supabase
+        .from('Client')
+        .select('id')
+        .eq('salesOwnerId', userId)
+      clientIds = assignedClients?.map(c => c.id) || []
+    }
 
-    const clientIds = assignedClients?.map(c => c.id) || []
-
-    // 1. My Accounts - number of assigned clients
+    // 1. My Accounts - number of assigned clients (or all for superadmin)
     const myAccounts = clientIds.length
 
     // 2. Pending Deliveries >7d
@@ -43,29 +51,32 @@ export async function GET(req: NextRequest) {
 
     // 3. Quotes Awaiting Action (custom quote requests)
     // Include both customQuoteRequestedAt IS NOT NULL and clientTransportChoice = 'REQUEST_CUSTOM'
-    const { data: customQuotes, error: quotesError } = await supabase
+    // For superadmin: get all quotes with admin info
+    // For regular admin: get only quotes for assigned clients
+    let customQuotesQuery = supabase
       .from('ShipmentOrder')
-      .select('id, customQuoteRequestedAt, clientId, clientTransportChoice')
-      .in('clientId', clientIds.length > 0 ? clientIds : [''])
+      .select('id, customQuoteRequestedAt, clientId, clientTransportChoice, Client:clientId(salesOwnerId, salesOwner:User(id, email, name))')
       .or('customQuoteRequestedAt.not.is.null,clientTransportChoice.eq.REQUEST_CUSTOM')
+    
+    if (!isSuperAdmin) {
+      customQuotesQuery = customQuotesQuery.in('clientId', clientIds.length > 0 ? clientIds : [''])
+    }
+    
+    const { data: customQuotes, error: quotesError } = await customQuotesQuery
 
-    // Count quotes by time pending (excluding weekends)
-    const now = new Date()
-    const quotesByTime = customQuotes?.map(quote => {
-      if (!quote.customQuoteRequestedAt) return { hours: 0 }
-      const requested = new Date(quote.customQuoteRequestedAt)
-      let hours = (now.getTime() - requested.getTime()) / (1000 * 60 * 60)
-      
-      // Remove weekend hours (simplified: subtract 48h for each weekend)
-      const daysDiff = Math.floor(hours / 24)
-      const weekends = Math.floor(daysDiff / 7)
-      hours -= weekends * 48
-      
-      return { hours }
+    // For superadmin: return quotes with admin info and request date
+    // For regular admin: just return total count (no time breakdown needed)
+    const quotesWithDetails = customQuotes?.map((quote: any) => {
+      const client = quote.Client || {}
+      const salesOwner = client.salesOwner || {}
+      return {
+        id: quote.id,
+        customQuoteRequestedAt: quote.customQuoteRequestedAt,
+        adminEmail: salesOwner.email || null,
+        adminName: salesOwner.name || null,
+        adminId: client.salesOwnerId || null,
+      }
     }) || []
-
-    const quotesOver24h = quotesByTime.filter(q => q.hours > 24).length
-    const quotesOver48h = quotesByTime.filter(q => q.hours > 48).length
 
     // 4. Active Subscriptions
     const { data: activeClients, error: activeError } = await supabase
@@ -102,8 +113,8 @@ export async function GET(req: NextRequest) {
       pendingDeliveries7d: pendingDeliveries?.length || 0,
       quotesAwaitingAction: {
         total: customQuotes?.length || 0,
-        over24h: quotesOver24h,
-        over48h: quotesOver48h,
+        // For superadmin: include details about which admin handles each quote
+        details: isSuperAdmin ? quotesWithDetails : undefined,
       },
       activeSubscriptions: {
         total: activeClients?.length || 0,

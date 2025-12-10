@@ -9,6 +9,7 @@ interface QuoteFormProps {
   clientId: string
   addresses: Address[]
   quotedById: string
+  orderType?: 'WAREHOUSE_ORDER' | 'SHIPMENT_ORDER'
   dimensions: {
     length: number
     width: number
@@ -22,6 +23,7 @@ export default function QuoteForm({
   clientId,
   addresses,
   quotedById,
+  orderType = 'WAREHOUSE_ORDER',
   dimensions,
 }: QuoteFormProps) {
   const router = useRouter()
@@ -55,6 +57,7 @@ export default function QuoteForm({
         },
         body: JSON.stringify({
           orderId,
+          orderType,
           clientId,
           deliveryAddressId: formData.deliveryAddressId,
           transportMode: formData.transportMode,

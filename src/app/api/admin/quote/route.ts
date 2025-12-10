@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const {
       orderId,
+      orderType = 'WAREHOUSE_ORDER', // Default to WAREHOUSE_ORDER for backward compatibility
       clientId,
       deliveryAddressId,
       transportMode,
@@ -58,7 +59,62 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Sprawdź czy zamówienie istnieje i ma odpowiedni status
+    // Handle different order types
+    if (orderType === 'SHIPMENT_ORDER') {
+      // For ShipmentOrder, update the existing shipment with the quote
+      const { data: shipmentOrder, error: shipmentError } = await supabase
+        .from('ShipmentOrder')
+        .select('*')
+        .eq('id', orderId)
+        .single()
+
+      if (shipmentError || !shipmentOrder) {
+        return NextResponse.json(
+          { error: 'Shipment order not found' },
+          { status: 404 }
+        )
+      }
+
+      if (shipmentOrder.clientTransportChoice !== 'REQUEST_CUSTOM' && !shipmentOrder.customQuoteRequestedAt) {
+        return NextResponse.json(
+          { error: 'Shipment order is not a custom quote request' },
+          { status: 400 }
+        )
+      }
+
+      // Update the shipment order with the quote
+      const updateData: any = {
+        calculatedPriceEur: proposedPriceEur || null,
+        proposedPriceEur: proposedPriceEur || null,
+        status: transportMode === 'MAK' && proposedPriceEur ? 'AWAITING_ACCEPTANCE' : 'QUOTED',
+        deliveryAddressId: deliveryAddressId,
+        transportMode: transportMode,
+      }
+
+      const { error: updateError } = await supabase
+        .from('ShipmentOrder')
+        .update(updateData)
+        .eq('id', orderId)
+
+      if (updateError) {
+        console.error('Error updating shipment order:', updateError)
+        return NextResponse.json(
+          { error: 'Failed to update shipment order', details: updateError.message },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json(
+        {
+          message: 'Quote created successfully',
+          shipmentOrderId: orderId,
+          shipmentStatus: updateData.status,
+        },
+        { status: 200 }
+      )
+    }
+
+    // Original logic for WarehouseOrder
     const { data: order, error: orderError } = await supabase
       .from('WarehouseOrder')
       .select('*')

@@ -84,10 +84,12 @@ export default async function QuotePage({
 
       {/* Informacje o zamówieniu */}
       <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Szczegóły zamówienia</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          {orderType === 'WAREHOUSE_ORDER' ? 'Szczegóły zamówienia' : 'Szczegóły transportu'}
+        </h2>
         <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
           <div>
-            <dt className="text-sm font-medium text-gray-500">ID zamówienia</dt>
+            <dt className="text-sm font-medium text-gray-500">ID {orderType === 'WAREHOUSE_ORDER' ? 'zamówienia' : 'transportu'}</dt>
             <dd className="mt-1 text-sm text-gray-900">#{order.id.slice(-8)}</dd>
           </div>
           <div>
@@ -96,25 +98,56 @@ export default async function QuotePage({
               {(order.Client as any)?.displayName || 'Brak'} ({(order.Client as any)?.clientCode || 'Brak kodu'})
             </dd>
           </div>
-          {order.warehouseLocation && (
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Lokalizacja magazynowa</dt>
-              <dd className="mt-1 text-sm text-gray-900">{order.warehouseLocation}</dd>
-            </div>
-          )}
-          {order.packedLengthCm && order.packedWidthCm && order.packedHeightCm && (
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Wymiary</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {order.packedLengthCm}×{order.packedWidthCm}×{order.packedHeightCm} cm
-              </dd>
-            </div>
-          )}
-          {order.packedWeightKg && (
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Waga</dt>
-              <dd className="mt-1 text-sm text-gray-900">{order.packedWeightKg} kg</dd>
-            </div>
+          {orderType === 'WAREHOUSE_ORDER' ? (
+            <>
+              {order.warehouseLocation && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Lokalizacja magazynowa</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{order.warehouseLocation}</dd>
+                </div>
+              )}
+              {order.packedLengthCm && order.packedWidthCm && order.packedHeightCm && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Wymiary</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {order.packedLengthCm}×{order.packedWidthCm}×{order.packedHeightCm} cm
+                  </dd>
+                </div>
+              )}
+              {order.packedWeightKg && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Waga</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{order.packedWeightKg} kg</dd>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {order.deliveryAddress && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Adres dostawy</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {(order.deliveryAddress as any)?.street || ''} {(order.deliveryAddress as any)?.city || ''} {(order.deliveryAddress as any)?.postalCode || ''} {(order.deliveryAddress as any)?.country || ''}
+                  </dd>
+                </div>
+              )}
+              {order.customQuoteRequestedAt && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Zgłoszono</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {new Date(order.customQuoteRequestedAt).toLocaleDateString('pl-PL')}
+                  </dd>
+                </div>
+              )}
+              {order.Package && (order.Package as any[]).length > 0 && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Paczki/Palety</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {(order.Package as any[]).length} szt.
+                  </dd>
+                </div>
+              )}
+            </>
           )}
         </dl>
       </div>
@@ -125,11 +158,18 @@ export default async function QuotePage({
         clientId={order.clientId}
         addresses={addresses}
         quotedById={session.user.id!}
-        dimensions={{
+        orderType={orderType}
+        dimensions={orderType === 'WAREHOUSE_ORDER' ? {
           length: order.packedLengthCm || 0,
           width: order.packedWidthCm || 0,
           height: order.packedHeightCm || 0,
           weight: order.packedWeightKg || 0,
+        } : {
+          // Dla ShipmentOrder oblicz wymiary z Package
+          length: (order.Package as any[])?.[0]?.lengthCm || 0,
+          width: (order.Package as any[])?.[0]?.widthCm || 0,
+          height: (order.Package as any[])?.[0]?.heightCm || 0,
+          weight: (order.Package as any[])?.reduce((sum, pkg) => sum + (pkg.weightKg || 0), 0) || 0,
         }}
       />
     </div>

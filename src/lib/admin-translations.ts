@@ -23,7 +23,7 @@ export const adminTranslations = {
   assigned_clients: 'Przypisani klienci',
   pending_deliveries: 'Oczekujące dostawy',
   deliveries_not_received: 'Dostawy nieodebrane',
-  quotes_pending: 'Oferty oczekujące',
+  quotes_pending: 'Transporty do wyceny',
   subscriptions: 'Subskrypcje',
   paid_on_time: 'Opłacone na czas',
   
