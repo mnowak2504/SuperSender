@@ -40,7 +40,7 @@ export default async function QuotesPage() {
       Package(widthCm, lengthCm, heightCm, weightKg)
     `)
     .or('customQuoteRequestedAt.not.is.null,clientTransportChoice.eq.REQUEST_CUSTOM')
-    .order('customQuoteRequestedAt', { ascending: false, nullsLast: true })
+    .order('customQuoteRequestedAt', { ascending: false })
 
   if (ordersError) {
     console.error('Error fetching orders ready for quote:', ordersError)
@@ -52,8 +52,19 @@ export default async function QuotesPage() {
   const allOrders = (orders || []).map((o: any) => ({ ...o, type: 'WAREHOUSE_ORDER' }))
   const allShipments = (customQuoteShipments || []).map((s: any) => ({ ...s, type: 'SHIPMENT_ORDER' }))
   const combinedOrders = [...allOrders, ...allShipments].sort((a, b) => {
-    const dateA = a.type === 'WAREHOUSE_ORDER' ? a.createdAt : (a.customQuoteRequestedAt || a.createdAt)
-    const dateB = b.type === 'WAREHOUSE_ORDER' ? b.createdAt : (b.customQuoteRequestedAt || b.createdAt)
+    // Sort by date: customQuoteRequestedAt first (if exists), then createdAt
+    const dateA = a.type === 'WAREHOUSE_ORDER' 
+      ? a.createdAt 
+      : (a.customQuoteRequestedAt || a.createdAt)
+    const dateB = b.type === 'WAREHOUSE_ORDER' 
+      ? b.createdAt 
+      : (b.customQuoteRequestedAt || b.createdAt)
+    
+    // Put null dates last
+    if (!dateA && !dateB) return 0
+    if (!dateA) return 1
+    if (!dateB) return -1
+    
     return new Date(dateB).getTime() - new Date(dateA).getTime()
   })
 
