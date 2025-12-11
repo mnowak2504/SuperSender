@@ -269,6 +269,9 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
             <p className="text-xl text-gray-600">
               {translations.pricing_subtitle}
             </p>
+            <p className="text-lg text-gray-600 mt-2">
+              {translations.pricing_subtitle_note}
+            </p>
           </div>
 
           {/* Pricing Plans Grid */}
