@@ -70,6 +70,12 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
           
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
+            <Link 
+              href={isLandingPage ? `/landing/${currentLang}` : '/landing/en'} 
+              className="text-gray-700 hover:text-blue-600 transition"
+            >
+              {translations.nav_home}
+            </Link>
             <Link href="/about" className="text-gray-700 hover:text-blue-600 transition">
               {translations.nav_about}
             </Link>
@@ -142,6 +148,13 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
         {showMobileMenu && (
           <div className="md:hidden bg-white border-t">
             <div className="px-4 pt-2 pb-3 space-y-1">
+              <Link 
+                href={isLandingPage ? `/landing/${currentLang}` : '/landing/en'} 
+                className="block px-3 py-2 text-gray-700 hover:bg-gray-50"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                {translations.nav_home}
+              </Link>
               <Link 
                 href="/about" 
                 className="block px-3 py-2 text-gray-700 hover:bg-gray-50"
