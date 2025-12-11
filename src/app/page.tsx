@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
+import HomeRedirect from '@/components/HomeRedirect'
 
 export default async function Home() {
   const session = await auth()
@@ -21,6 +22,7 @@ export default async function Home() {
     }
   }
 
-  // If not logged in, redirect to landing page (default: English)
-  redirect('/landing/en')
+  // If not logged in, use client-side redirect to check localStorage for language preference
+  // This allows us to respect user's language choice
+  return <HomeRedirect />
 }

@@ -33,6 +33,11 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Save language preference to localStorage when on landing page
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('app-language', lang)
+    }
+    
     trackPageVisit(pathname || '/', lang)
     
     return () => {

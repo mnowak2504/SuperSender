@@ -13,13 +13,26 @@ type LanguageContextType = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
 
 export function LanguageProvider({ children, defaultLang = 'en' }: { children: ReactNode; defaultLang?: Language }) {
-  const [language, setLanguageState] = useState<Language>(defaultLang)
+  // Initialize with language from localStorage if available, otherwise use defaultLang
+  const getInitialLanguage = (): Language => {
+    if (typeof window !== 'undefined') {
+      const savedLang = localStorage.getItem('app-language') as Language | null
+      if (savedLang && ['en', 'de', 'fr', 'it', 'pl'].includes(savedLang)) {
+        return savedLang
+      }
+    }
+    return defaultLang
+  }
+
+  const [language, setLanguageState] = useState<Language>(getInitialLanguage)
 
   useEffect(() => {
-    // Try to get language from localStorage
-    const savedLang = localStorage.getItem('app-language') as Language | null
-    if (savedLang && ['en', 'de', 'fr', 'it', 'pl'].includes(savedLang)) {
-      setLanguageState(savedLang)
+    // Try to get language from localStorage on mount (client-side only)
+    if (typeof window !== 'undefined') {
+      const savedLang = localStorage.getItem('app-language') as Language | null
+      if (savedLang && ['en', 'de', 'fr', 'it', 'pl'].includes(savedLang)) {
+        setLanguageState(savedLang)
+      }
     }
   }, [])
 

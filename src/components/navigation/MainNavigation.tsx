@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
@@ -16,6 +16,7 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
   const router = useRouter()
   const pathname = usePathname()
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [clientLang, setClientLang] = useState<Language>('en')
   
   // Use language context if available and requested, otherwise use prop
   let langContext: ReturnType<typeof useLanguage> | undefined
@@ -23,21 +24,48 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
     try {
       langContext = useLanguage()
     } catch {
-      // Not in LanguageProvider context - will use propLang
+      // Not in LanguageProvider context - will use propLang or localStorage
     }
   }
   
-  const currentLang = langContext?.language || propLang || 'en'
+  // Get language from context, prop, or localStorage (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedLang = localStorage.getItem('app-language') as Language | null
+      if (savedLang && ['en', 'de', 'fr', 'it', 'pl'].includes(savedLang)) {
+        setClientLang(savedLang)
+      }
+    }
+  }, [])
+  
+  const currentLang = langContext?.language || propLang || clientLang || 'en'
   const translations = langContext?.translations || getTranslations(currentLang)
 
   const handleLanguageChange = (newLang: Language) => {
+    // Save to localStorage first
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('app-language', newLang)
+    }
+    
+    // Update context if available
     if (langContext) {
       langContext.setLanguage(newLang)
     }
+    
+    // Update local state
+    setClientLang(newLang)
+    
+    // Redirect based on current page
     if (pathname?.startsWith('/landing/')) {
+      // For landing pages, navigate to new language version
       router.push(`/landing/${newLang}`)
-    } else {
+    } else if (pathname === '/about' || pathname === '/process') {
+      // For about/process pages, stay on same page but refresh to apply new language
+      // The LanguageProvider will pick up the new language from localStorage
       router.refresh()
+    } else {
+      // For other pages, redirect to landing page with new language
+      router.push(`/landing/${newLang}`)
     }
   }
 
@@ -50,7 +78,7 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link 
-              href={isLandingPage ? `/landing/${currentLang}` : '/landing/en'} 
+              href={`/landing/${currentLang}`}
               className="flex items-center gap-3"
             >
               <Image
@@ -71,7 +99,7 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
             <Link 
-              href={isLandingPage ? `/landing/${currentLang}` : '/landing/en'} 
+              href={`/landing/${currentLang}`}
               className="text-gray-700 hover:text-blue-600 transition"
             >
               {translations.nav_home}
@@ -149,7 +177,7 @@ export default function MainNavigation({ currentLang: propLang, useLanguageConte
           <div className="md:hidden bg-white border-t">
             <div className="px-4 pt-2 pb-3 space-y-1">
               <Link 
-                href={isLandingPage ? `/landing/${currentLang}` : '/landing/en'} 
+                href={`/landing/${currentLang}`}
                 className="block px-3 py-2 text-gray-700 hover:bg-gray-50"
                 onClick={() => setShowMobileMenu(false)}
               >
