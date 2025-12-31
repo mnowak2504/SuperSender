@@ -467,42 +467,24 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
                       <td className="px-4 py-3 text-sm text-center text-gray-500">...</td>
                     </>
                   ) : (
-                      plans.map((plan, index) => {
-                      // Shift values one column to the left: Basic shows Standard's price, etc.
-                      const nextPlanIndex = index + 1
-                      const nextPlan = plans[nextPlanIndex]
-                      
-                      // For Enterprise (last column), show "Custom pricing"
-                      if (plan.name === 'Enterprise') {
-                        return (
-                          <td key={plan.id} className="px-4 py-3 text-sm text-center text-gray-900">
-                            {translations.pricing_enterprise_price}
-                          </td>
-                        )
-                      }
-                      
-                      // For other plans, show the next plan's price
-                      if (nextPlan) {
-                        const priceInfo = getPlanPrice(nextPlan)
-                        return (
-                          <td key={plan.id} className="px-4 py-3 text-sm text-center text-gray-900">
-                            {priceInfo.isPromotional ? (
-                              <div className="flex flex-col items-center">
-                                <span className="line-through text-gray-400 text-xs mb-1">
-                                  €{priceInfo.original.toFixed(0)}/month
-                                </span>
-                                <span className="font-semibold text-green-600">€{priceInfo.promotional!.toFixed(0)}/month</span>
-                              </div>
-                            ) : (
-                              `€${priceInfo.original.toFixed(0)}/month`
-                            )}
-                          </td>
-                        )
-                      }
-                      
-                      // Fallback (shouldn't happen)
+                      plans.map((plan) => {
+                      const priceInfo = getPlanPrice(plan)
+                      const isEnterprise = plan.name === 'Enterprise'
                       return (
-                        <td key={plan.id} className="px-4 py-3 text-sm text-center text-gray-900">-</td>
+                        <td key={plan.id} className="px-4 py-3 text-sm text-center text-gray-900">
+                          {priceInfo.isPromotional ? (
+                            <div className="flex flex-col items-center">
+                              <span className="line-through text-gray-400 text-xs mb-1">
+                                €{priceInfo.original.toFixed(0)}/month
+                              </span>
+                              <span className="font-semibold text-green-600">€{priceInfo.promotional!.toFixed(0)}/month</span>
+                            </div>
+                          ) : isEnterprise ? (
+                            translations.pricing_enterprise_price
+                          ) : (
+                            `€${priceInfo.original.toFixed(0)}/month`
+                          )}
+                        </td>
                       )
                     })
                   )}
@@ -518,24 +500,13 @@ export default function LandingPageContent({ lang, translations }: LandingPageCo
                         <td className="px-4 py-3 text-sm text-center text-gray-500">...</td>
                       </>
                     ) : (
-                      plans.map((plan, index) => {
-                        // Shift values one column to the left: Basic shows Standard's fee, etc.
-                        const nextPlanIndex = index + 1
-                        const nextPlan = plans[nextPlanIndex]
-                        
-                        // For Enterprise (last column), show "-"
-                        if (plan.name === 'Enterprise') {
-                          return (
-                            <td key={plan.id} className="px-4 py-3 text-sm text-center text-gray-900">
-                              -
-                            </td>
-                          )
-                        }
-                        
-                        // For other plans, show the setup fee (same for all non-Enterprise plans)
+                      plans.map((plan) => {
+                        const isEnterprise = plan.name === 'Enterprise'
                         return (
                           <td key={plan.id} className="px-4 py-3 text-sm text-center text-gray-900">
-                            {setupFee.isPromotional ? (
+                            {isEnterprise ? (
+                              '-'
+                            ) : setupFee.isPromotional ? (
                               <>
                                 <span className="line-through text-gray-400 mr-2">
                                   €{setupFee.suggestedAmountEur.toFixed(0)}
