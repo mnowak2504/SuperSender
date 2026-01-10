@@ -10,10 +10,21 @@ if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
+// Warn if using anon key instead of service role key
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('❌ CRITICAL: SUPABASE_SERVICE_ROLE_KEY is not set! Using ANON key which will cause RLS policy failures.')
+  console.error('   Please set SUPABASE_SERVICE_ROLE_KEY in your environment variables (Vercel).')
+} else {
+  console.log('✅ Using SUPABASE_SERVICE_ROLE_KEY (RLS bypass enabled)')
+}
+
 export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  db: {
+    schema: 'public',
   },
 })
 
